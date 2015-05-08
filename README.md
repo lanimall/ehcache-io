@@ -1,4 +1,4 @@
-# ehcache-streaming
+# ehcache-io: Input/Output Streams for Ehcache
 
 ## Description
 This extension creates a streaming capability for Ehcache, which allows you to:
