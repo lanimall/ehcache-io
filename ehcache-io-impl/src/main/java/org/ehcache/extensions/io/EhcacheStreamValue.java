@@ -5,7 +5,7 @@ import java.io.Serializable;
 /**
 * Created by Fabien Sanglier on 5/6/15.
 */
-class EhcacheStreamValue implements Serializable {
+/*package protected*/ class EhcacheStreamValue implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final byte[] chunk;

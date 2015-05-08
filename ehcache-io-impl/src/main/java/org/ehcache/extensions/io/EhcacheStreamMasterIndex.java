@@ -5,7 +5,8 @@ import java.io.Serializable;
 /**
  * Created by Fabien Sanglier on 5/6/15.
  */
-class EhcacheStreamMasterIndex implements Serializable, Cloneable {
+
+/*package protected*/ class EhcacheStreamMasterIndex implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
 
     private int numberOfChunks;

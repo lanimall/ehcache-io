@@ -8,7 +8,7 @@ import java.io.IOException;
 /**
  * Created by FabienSanglier on 5/6/15.
  */
-public class EhcacheStreamsDAL {
+/*package protected*/ class EhcacheStreamsDAL {
     /*
      * The Internal Ehcache cache object
      */

@@ -25,12 +25,12 @@ public class EhcacheOutputStream extends OutputStream {
      */
     protected int count;
 
-    /*
+    /**
      * The Internal Ehcache streaming access layer
      */
     protected final EhcacheStreamsDAL ehcacheStreamsDAL;
 
-    /*
+    /**
      * The number of cache entry chunks
      */
     protected volatile EhcacheStreamMasterIndex currentStreamMasterIndex = null;
@@ -61,6 +61,10 @@ public class EhcacheOutputStream extends OutputStream {
         this.currentStreamMasterIndex = null;
     }
 
+    /**
+     * Remove the cache entries related to that key
+     * @throws IOException
+     */
     public void clearCacheDataForKey() throws IOException {
         EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = ehcacheStreamsDAL.casReplaceEhcacheStreamMasterIndex(null, true);
         if(!ehcacheStreamsDAL.clearChunksForKey(oldEhcacheStreamMasterIndex)){
@@ -70,11 +74,13 @@ public class EhcacheOutputStream extends OutputStream {
         }
     }
 
-    /** Flush the internal buffer */
+    /**
+     * Flush the internal buffer to cache
+     * @throws IOException
+     */
     private void flushBuffer() throws IOException {
         if (count > 0) { // we're going to write here
             //first time writing, so clear all cache entries for that key first (overwriting operation)
-            //TODO: suspecting some sort of padlocking here for multi-thread protection...let's investigate later when basic functional is done
             if(null == currentStreamMasterIndex) {
                 //set a new EhcacheStreamMasterIndex in write mode
                 EhcacheStreamMasterIndex newStreamMasterIndex = new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE);
@@ -102,6 +108,11 @@ public class EhcacheOutputStream extends OutputStream {
         }
     }
 
+    /**
+     *
+     * @param b
+     * @throws IOException
+     */
     @Override
     public void write(int b) throws IOException {
         if (count >= buf.length) {
@@ -110,11 +121,23 @@ public class EhcacheOutputStream extends OutputStream {
         buf[count++] = (byte)b;
     }
 
+    /**
+     *
+     * @param b
+     * @throws IOException
+     */
     @Override
     public void write(byte[] b) throws IOException {
         write(b, 0, b.length);
     }
 
+    /**
+     *
+     * @param b
+     * @param off
+     * @param len
+     * @throws IOException
+     */
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
         if (len >= buf.length) {
@@ -131,11 +154,20 @@ public class EhcacheOutputStream extends OutputStream {
         count += len;
     }
 
+    /**
+     * Flush the stream
+     * @throws IOException
+     */
     @Override
     public void flush() throws IOException {
         flushBuffer();
     }
 
+    /**
+     * Close the stream.
+     * Will flush the stream and finalize the cache master index key here
+     * @throws IOException
+     */
     @Override
     public void close() throws IOException {
         flush();

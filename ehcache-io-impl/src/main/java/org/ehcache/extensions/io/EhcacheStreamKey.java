@@ -5,7 +5,7 @@ import java.io.Serializable;
 /**
 * Created by Fabien Sanglier on 5/6/15.
 */
-class EhcacheStreamKey implements Serializable {
+/*package protected*/ class EhcacheStreamKey implements Serializable {
     private static final long serialVersionUID = 1L;
     public static final int MASTER_INDEX = -1;
 
