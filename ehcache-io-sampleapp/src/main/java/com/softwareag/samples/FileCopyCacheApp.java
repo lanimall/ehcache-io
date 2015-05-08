@@ -12,9 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.zip.CRC32;
-import java.util.zip.CheckedInputStream;
-import java.util.zip.CheckedOutputStream;
+import java.util.zip.*;
 
 /**
  * Created by FabienSanglier on 5/7/15.
@@ -43,8 +41,18 @@ public class FileCopyCacheApp {
             app.generateBigFile();
 
             String cache_key = "somekey";
-            app.copyFileToCache(IN_FILE_PATH, cache_key);
-            app.copyCacheToFile(cache_key, OUT_FILE_PATH);
+            boolean useGzip = false;
+            app.copyFileToCache(IN_FILE_PATH, cache_key, useGzip);
+            app.copyCacheToFile(cache_key, OUT_FILE_PATH, useGzip);
+
+            cache_key = "someotherkey";
+            useGzip = true;
+            app.copyFileToCache(IN_FILE_PATH, cache_key, useGzip);
+            app.copyCacheToFile(cache_key, OUT_FILE_PATH, useGzip);
+
+            //get file from cache again to see the effect of local caching
+            app.copyCacheToFile(cache_key, OUT_FILE_PATH, useGzip);
+
         } finally {
             app.tearDownCache();
             app.cleanupFiles(IN_FILE_PATH, OUT_FILE_PATH);
@@ -80,16 +88,16 @@ public class FileCopyCacheApp {
         Files.delete(outFilePath);
     }
 
-    public void copyFileToCache(Path inFilePath, Object cache_key) throws IOException {
+    public void copyFileToCache(Path inFilePath, Object cache_key, boolean useGzip) throws IOException {
         int inBufferSize = 32*1024;
         int copyBufferSize = 128*1024;
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(inFilePath),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key),new CRC32())
+                CheckedOutputStream os = new CheckedOutputStream((useGzip)?new GZIPOutputStream(new EhcacheOutputStream(cache, cache_key)):new EhcacheOutputStream(cache, cache_key),new CRC32())
         )
         {
-            System.out.println("============ testCopyFileToCacheWithBuffer ====================");
+            System.out.println("============ Copy File To Cache " + ((useGzip)?"(with Gzip Compression)":"") + " ====================");
 
             long start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
@@ -100,15 +108,15 @@ public class FileCopyCacheApp {
         }
     }
 
-    public void copyCacheToFile(Object cache_key, Path outFilePath) throws IOException {
+    public void copyCacheToFile(Object cache_key, Path outFilePath, boolean useGzip) throws IOException {
         int copyBufferSize = 512 * 1024; //copy buffer size
 
         try (
-                CheckedInputStream is = new CheckedInputStream(new EhcacheInputStream(cache, cache_key),new CRC32());
+                CheckedInputStream is = new CheckedInputStream((useGzip)?new GZIPInputStream(new EhcacheInputStream(cache, cache_key)):new EhcacheInputStream(cache, cache_key),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(outFilePath)), new CRC32())
         )
         {
-            System.out.println("============ copyCacheToFileUsingStreamDefaultBuffers ====================");
+            System.out.println("============ Copy Cache To File " + ((useGzip)?"(with Gzip Decompression)":"") + "====================");
             long start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
             long end = System.nanoTime();;
