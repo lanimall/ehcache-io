@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="ehcache.xsd" updateCheck="false"
+         monitoring="autodetect" dynamicConfig="true" name="EhcacheStreamsDistributedTest">
+
+    <diskStore path="java.io.tmpdir"/>
+
+    <terracottaConfig url="tcvm:9510" rejoin="false" />
+
+    <defaultCache eternal="false" maxElementsInMemory="100000"
+                  timeToIdleSeconds="120" timeToLiveSeconds="120" maxElementsOnDisk="1000000"/>
+
+    <cache name="FileStore-Distributed" maxEntriesLocalHeap="5000" eternal="true">
+        <!-- must be pinned inCache to avoid cache entries being thrown out randomly -->
+        <pinning store="inCache"></pinning>
+
+        <!-- should be set to strong to keep consistent across the cluster -->
+        <terracotta consistency="strong"></terracotta>
+    </cache>
+</ehcache>

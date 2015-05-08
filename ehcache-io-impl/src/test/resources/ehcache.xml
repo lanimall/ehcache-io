@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="ehcache.xsd" updateCheck="false"
+         monitoring="autodetect" dynamicConfig="true" name="EhcacheStreamsTest">
+
+    <diskStore path="java.io.tmpdir"/>
+
+    <defaultCache eternal="false" maxElementsInMemory="100000"
+                  timeToIdleSeconds="120" timeToLiveSeconds="120" maxElementsOnDisk="1000000"/>
+
+    <cache name="FileStore" maxEntriesLocalHeap="5000" eternal="true">
+        <!-- must be pinned inCache to avoid cache entries being thrown out randomly -->
+        <pinning store="inCache"></pinning>
+    </cache>
+</ehcache>
