@@ -1,6 +1,5 @@
 package org.ehcache.extensions.io;
 
-import net.sf.ehcache.Element;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -14,7 +13,7 @@ import java.util.zip.CheckedOutputStream;
 
 public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
-    private long fileCheckSum = -1L;
+    private long inputFileCheckSum = -1L;
 
     @Before
     public void copyFileToCache() throws Exception {
@@ -35,61 +34,20 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
-            this.fileCheckSum = is.getChecksum().getValue();
+            this.inputFileCheckSum = is.getChecksum().getValue();
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
         }
     }
 
     @Test
-    public void copyCacheToFileUsingNativeCacheCalls() throws Exception {
-        int outBufferSize = 128 * 1024;
-        try (
-                CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
-        )
-        {
-            System.out.println("============ copyCacheToFileUsingNativeCacheCalls ====================");
-
-            CRC32 cacheCheckSum = new CRC32();
-
-            long start = System.nanoTime();
-
-            //get the master index for key
-            Element ehcacheStreamMasterIndexCacheElement;
-            if(null == (ehcacheStreamMasterIndexCacheElement = cache.get(new EhcacheStreamKey(cache_key, EhcacheStreamKey.MASTER_INDEX))))
-                throw new Exception(cache_key + " not found");
-
-            EhcacheStreamMasterIndex cacheMasterIndexForKey = (EhcacheStreamMasterIndex)ehcacheStreamMasterIndexCacheElement.getObjectValue();
-            System.out.println("Total Chunks = " + cacheMasterIndexForKey.getNumberOfChunk());
-
-            Element chunkElem;
-            for(int i = 0; i < cacheMasterIndexForKey.getNumberOfChunk(); i++){
-                if(null == (chunkElem = cache.get(new EhcacheStreamKey(cache_key, i))))
-                    throw new Exception(new EhcacheStreamKey(cache_key, i).toString() + " not found");
-
-                EhcacheStreamValue cacheChunk = (EhcacheStreamValue)chunkElem.getObjectValue();
-                cacheCheckSum.update(cacheChunk.getChunk()); // update cache checksum
-
-                os.write(cacheChunk.getChunk());
-            }
-            long end = System.nanoTime();;
-
-            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-            System.out.println("============================================");
-
-            Assert.assertEquals(fileCheckSum, os.getChecksum().getValue());
-            Assert.assertEquals(cacheCheckSum.getValue(), fileCheckSum);
-            Assert.assertEquals(cacheCheckSum.getValue(), os.getChecksum().getValue());
-        }
-    }
-
-    @Test
     public void copyCacheToFileUsingStreamSmallerCopyBuffer() throws Exception {
+        boolean lockImmediately = false;
         int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
         int outBufferSize = 128 * 1024;
         int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
 
         try (
-                CheckedInputStream is = new CheckedInputStream(new EhcacheInputStream(cache, cache_key, inBufferSize),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(new EhcacheInputStream(cache, cache_key, inBufferSize, lockImmediately),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
@@ -101,20 +59,21 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
-            Assert.assertEquals(fileCheckSum, os.getChecksum().getValue());
-            Assert.assertEquals(is.getChecksum().getValue(), fileCheckSum);
+            Assert.assertEquals(inputFileCheckSum, os.getChecksum().getValue());
+            Assert.assertEquals(is.getChecksum().getValue(), inputFileCheckSum);
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
         }
     }
 
     @Test
     public void copyCacheToFileUsingStreamLargerCopyBuffer() throws Exception {
+        boolean lockImmediately = false;
         int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
         int outBufferSize = 128 * 1024;
         int copyBufferSize = 357 * 1024; //copy buffer size *larger* than ehcache input stream internal buffer to make sure it works that way
 
         try (
-                CheckedInputStream is = new CheckedInputStream(new EhcacheInputStream(cache, cache_key, inBufferSize),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(new EhcacheInputStream(cache, cache_key, inBufferSize,lockImmediately),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
@@ -126,8 +85,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
-            Assert.assertEquals(fileCheckSum, os.getChecksum().getValue());
-            Assert.assertEquals(is.getChecksum().getValue(), fileCheckSum);
+            Assert.assertEquals(inputFileCheckSum, os.getChecksum().getValue());
+            Assert.assertEquals(is.getChecksum().getValue(), inputFileCheckSum);
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
         }
     }
@@ -149,8 +108,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
-            Assert.assertEquals(fileCheckSum, os.getChecksum().getValue());
-            Assert.assertEquals(is.getChecksum().getValue(), fileCheckSum);
+            Assert.assertEquals(inputFileCheckSum, os.getChecksum().getValue());
+            Assert.assertEquals(is.getChecksum().getValue(), inputFileCheckSum);
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
         }
     }
@@ -170,8 +129,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             System.out.println("============================================");
 
-            Assert.assertEquals(fileCheckSum, os.getChecksum().getValue());
-            Assert.assertEquals(is.getChecksum().getValue(), fileCheckSum);
+            Assert.assertEquals(inputFileCheckSum, os.getChecksum().getValue());
+            Assert.assertEquals(is.getChecksum().getValue(), inputFileCheckSum);
             Assert.assertEquals(is.getChecksum().getValue(), os.getChecksum().getValue());
         }
     }

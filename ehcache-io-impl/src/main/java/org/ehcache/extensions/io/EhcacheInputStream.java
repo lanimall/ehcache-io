@@ -1,6 +1,7 @@
 package org.ehcache.extensions.io;
 
 import net.sf.ehcache.Cache;
+import org.ehcache.extensions.io.impl.EhcacheStreamReader;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -41,19 +42,9 @@ public class EhcacheInputStream extends InputStream {
     protected int pos;
 
     /*
-     * The current position in the ehcache value chunk list.
-     */
-    protected volatile int cacheValueChunkIndexPos = 0;
-
-    /*
-     * The current offset in the ehcache value chunk
-     */
-    protected volatile int cacheValueChunkBytePos = 0;
-
-    /*
      * The Internal Ehcache streaming access layer
      */
-    protected final EhcacheStreamsDAL ehcacheStreamsDAL;
+    protected final EhcacheStreamReader ehcacheStreamReader;
 
     /**
      * Creates a new Ehcache Input Stream to read data from a cache key
@@ -62,7 +53,8 @@ public class EhcacheInputStream extends InputStream {
      * @param   cacheKey    the underlying cache key to read data from
      */
     public EhcacheInputStream(Cache cache, Object cacheKey) {
-        this(cache, cacheKey, DEFAULT_BUFFER_SIZE);
+        this.buf = new byte[DEFAULT_BUFFER_SIZE];
+        this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
     }
 
     /**
@@ -74,12 +66,20 @@ public class EhcacheInputStream extends InputStream {
      * @param   size        the buffer size.
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(Cache cache, Object cacheKey, int size) {
+    public EhcacheInputStream(Cache cache, Object cacheKey, int size, boolean lockReadsImmediately) throws IOException {
         if (size <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
         this.buf = new byte[size];
-        this.ehcacheStreamsDAL = new EhcacheStreamsDAL(cache,cacheKey);
+        this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
+
+        if(lockReadsImmediately) {
+            try {
+                ehcacheStreamReader.open();
+            } catch (InterruptedException e) {
+                throw new IOException("Could not acquire the read lock for the underlying datastore", e);
+            }
+        }
     }
 
     /**
@@ -102,35 +102,19 @@ public class EhcacheInputStream extends InputStream {
     private void fill() throws IOException {
         byte[] buffer = getBufIfOpen();
 
-        /* throw away the content of the buffer */
+        /* if we're here, that means we need to refill the buffer and as such it's ok to throw away the content of the buffer */
         pos = 0;
         count = pos;
 
-        EhcacheStreamMasterIndex ehcacheStreamMasterIndex = ehcacheStreamsDAL.getMasterIndexValueIfAvailable();
-        if(null != ehcacheStreamMasterIndex && cacheValueChunkIndexPos < ehcacheStreamMasterIndex.getNumberOfChunk()){
-            //get chunk from cache
-            EhcacheStreamValue cacheChunk = ehcacheStreamsDAL.getChunkValue(cacheValueChunkIndexPos);
-            if(null != cacheChunk && null != cacheChunk.getChunk()) {
-                int cnt = (cacheChunk.getChunk().length - cacheValueChunkBytePos < buffer.length - count) ? cacheChunk.getChunk().length - cacheValueChunkBytePos : buffer.length - count;
-                System.arraycopy(cacheChunk.getChunk(), cacheValueChunkBytePos, buffer, pos, cnt);
-
-                if (cnt > 0)
-                    count = cnt + pos;
-
-                //track the chunk offset for next
-                if(cnt < cacheChunk.getChunk().length - cacheValueChunkBytePos)
-                    cacheValueChunkBytePos += cnt;
-                else { // it means we'll need to use the next chunk
-                    cacheValueChunkIndexPos++;
-                    cacheValueChunkBytePos = 0;
-                }
-            } else {
-                //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new IOException("Cache chunk [" + (cacheValueChunkIndexPos + 1) + " of " +  ehcacheStreamMasterIndex.getNumberOfChunk() + "] is null and should not be since we're within the cache total chunks boundaries");
-            }
-        } else { //no more chunks of data
-            count = pos;
+        int byteCopied;
+        try {
+            byteCopied = ehcacheStreamReader.read(buffer, pos);
+        } catch (InterruptedException e) {
+            throw new IOException("Could not acquire the read lock within the timeout", e);
         }
+
+        if (byteCopied > 0)
+            count = pos + byteCopied;
     }
 
     /**
@@ -239,12 +223,17 @@ public class EhcacheInputStream extends InputStream {
      * @exception  IOException  if an I/O error occurs.
      */
     public void close() throws IOException {
-        byte[] buffer;
-        while ( (buffer = buf) != null) {
-            if (bufUpdater.compareAndSet(this, buffer, null)) {
-                return;
+        try {
+            byte[] buffer;
+            while ((buffer = buf) != null) {
+                if (bufUpdater.compareAndSet(this, buffer, null)) {
+                    return;
+                }
+                // Else retry in case a new buf was CASed in fill()
             }
-            // Else retry in case a new buf was CASed in fill()
+        } finally {
+            //close the ehcache reader
+            ehcacheStreamReader.close();
         }
     }
 }

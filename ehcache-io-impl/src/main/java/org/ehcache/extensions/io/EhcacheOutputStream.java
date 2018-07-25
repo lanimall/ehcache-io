@@ -1,10 +1,10 @@
 package org.ehcache.extensions.io;
 
 import net.sf.ehcache.Cache;
+import org.ehcache.extensions.io.impl.EhcacheStreamWriter;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Arrays;
 
 /**
  * Created by Fabien Sanglier on 5/4/15.
@@ -28,12 +28,7 @@ public class EhcacheOutputStream extends OutputStream {
     /**
      * The Internal Ehcache streaming access layer
      */
-    protected final EhcacheStreamsDAL ehcacheStreamsDAL;
-
-    /**
-     * The number of cache entry chunks
-     */
-    protected volatile EhcacheStreamMasterIndex currentStreamMasterIndex = null;
+    protected EhcacheStreamWriter ehcacheStreamWriter;
 
     /**
      * Creates a new buffered output stream to write data to a cache
@@ -41,7 +36,8 @@ public class EhcacheOutputStream extends OutputStream {
      * @param   cache   the underlying cache to copy data to
      */
     public EhcacheOutputStream(Cache cache, Object cacheKey) {
-        this(cache, cacheKey, DEFAULT_BUFFER_SIZE);
+        this.buf = new byte[DEFAULT_BUFFER_SIZE];
+        this.ehcacheStreamWriter = new EhcacheStreamWriter(cache,cacheKey);
     }
 
     /**
@@ -50,27 +46,21 @@ public class EhcacheOutputStream extends OutputStream {
      *
      * @param   cache   the underlying cache to copy data to
      * @param   size   the buffer size.
-     * @exception IllegalArgumentException if size &lt;= 0.
+     * @exception IOException If the underlying openWrites operation is not successful
      */
-    public EhcacheOutputStream(Cache cache, Object cacheKey, int size) {
+    public EhcacheOutputStream(Cache cache, Object cacheKey, int size, boolean lockWritesImmediately) throws IOException {
         if (size <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
         this.buf = new byte[size];
-        this.ehcacheStreamsDAL = new EhcacheStreamsDAL(cache,cacheKey);
-        this.currentStreamMasterIndex = null;
-    }
+        this.ehcacheStreamWriter = new EhcacheStreamWriter(cache,cacheKey);
 
-    /**
-     * Remove the cache entries related to that key
-     * @throws IOException
-     */
-    public void clearCacheDataForKey() throws IOException {
-        EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = ehcacheStreamsDAL.casReplaceEhcacheStreamMasterIndex(null, true);
-        if(!ehcacheStreamsDAL.clearChunksForKey(oldEhcacheStreamMasterIndex)){
-            // could not remove successfully all the chunk entries...
-            // but that's not too terrible as long as the EhcacheStreamMasterIndex was removed properly (because the chunks will get overwritten on subsequent writes)
-            // do nothing for now...
+        if(lockWritesImmediately) {
+            try {
+                ehcacheStreamWriter.open();
+            } catch (InterruptedException e) {
+                throw new IOException("Could not acquire the write lock for the underlying datastore", e);
+            }
         }
     }
 
@@ -80,30 +70,12 @@ public class EhcacheOutputStream extends OutputStream {
      */
     private void flushBuffer() throws IOException {
         if (count > 0) { // we're going to write here
-            //first time writing, so clear all cache entries for that key first (overwriting operation)
-            if(null == currentStreamMasterIndex) {
-                //set a new EhcacheStreamMasterIndex in write mode
-                EhcacheStreamMasterIndex newStreamMasterIndex = new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE);
-
-                /*
-                TODO let's think about this a bit more: if 2 thread arrive here, 1 should fail and the other should go through...fine.
-                TODO But the one which failed is going to try to close the stream, which flush the buffer again...hence potential for overwritting the first one if it's already finished...
-                */
-
-                //set a new EhcacheStreamMasterIndex in write mode in cache if current element in cache is writable - else exception (protecting from concurrent writing)
-                EhcacheStreamMasterIndex oldEhcacheStreamMasterIndex = ehcacheStreamsDAL.casReplaceEhcacheStreamMasterIndex(
-                        new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE),
-                        true);
-
-                //if previous cas operation successful, create a new EhcacheStreamMasterIndex for currentStreamMasterIndex (to avoid soft references issues to the cached value above)
-                currentStreamMasterIndex = new EhcacheStreamMasterIndex(EhcacheStreamMasterIndex.StreamOpStatus.CURRENT_WRITE);
-
-                //at this point, we're somewhat safe...entry is set to write-able
-                //let's do some cleanup first
-                ehcacheStreamsDAL.clearChunksForKey(oldEhcacheStreamMasterIndex);
+            try {
+                ehcacheStreamWriter.writeData(buf, count);
+            } catch (InterruptedException e) {
+                throw new IOException("Could not acquire the cache lock within the timeout", e);
             }
 
-            ehcacheStreamsDAL.putChunkValue(currentStreamMasterIndex.getAndIncrementChunkIndex(), Arrays.copyOf(buf, count));
             count = 0; //reset buffer count
         }
     }
@@ -170,14 +142,11 @@ public class EhcacheOutputStream extends OutputStream {
      */
     @Override
     public void close() throws IOException {
-        flush();
-
-        //finalize the EhcacheStreamMasterIndex value by saving it in cache
-        if(null != currentStreamMasterIndex && currentStreamMasterIndex.isCurrentWrite()) {
-            currentStreamMasterIndex.setAvailable();
-            ehcacheStreamsDAL.casReplaceEhcacheStreamMasterIndex(currentStreamMasterIndex, false);
+        try {
+            flush();
+        } finally {
+            //important to close this to release the locks etc...
+            ehcacheStreamWriter.close();
         }
-
-        currentStreamMasterIndex = null;
     }
 }
