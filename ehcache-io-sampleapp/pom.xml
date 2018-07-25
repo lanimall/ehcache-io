@@ -18,7 +18,7 @@
     <dependencies>
         <dependency>
             <groupId>org.ehcache.extensions.io</groupId>
-            <artifactId>ehcache-io-impl</artifactId>
+            <artifactId>ehcache-io</artifactId>
             <version>1.0</version>
         </dependency>
 
