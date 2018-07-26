@@ -3,10 +3,7 @@ package org.ehcache.extensions.io;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
+import org.junit.*;
 
 import java.io.*;
 import java.nio.file.FileSystems;
@@ -15,6 +12,7 @@ import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 
 /**
@@ -102,6 +100,31 @@ public abstract class EhcacheStreamingTestsBase {
         CacheManager cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, null));
         if(null != cm)
             cm.shutdown();
+    }
+
+    public long getFileChecksumFromCache() throws IOException {
+        int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
+        int outBufferSize = 128 * 1024;
+        int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
+        long start = 0L, end = 0L;
+        long inputChecksum = 0L, outputChecksum = 0L;
+
+        try (
+                CheckedInputStream is = new CheckedInputStream(new EhcacheInputStream(cache, cache_key, inBufferSize),new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
+        )
+        {
+            start = System.nanoTime();
+            pipeStreamsWithBuffer(is, os, copyBufferSize);
+            end = System.nanoTime();
+
+            inputChecksum = is.getChecksum().getValue();
+            outputChecksum = os.getChecksum().getValue();
+        }
+
+        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        Assert.assertEquals(inputChecksum, outputChecksum);
+        return outputChecksum;
     }
 
     private CacheManager getCacheManager(String cacheManagerName, String resourcePath) {
