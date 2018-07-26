@@ -79,7 +79,7 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
                 if(!replaceEhcacheStreamMaster(currentStreamMaster))
                     throw new IOException("Could not close the ehcache stream index properly.");
             }
-            ixing various concurrency issues();
+            releaseExclusiveWriteOnMaster();
             isOpen = false;
         }
     }
