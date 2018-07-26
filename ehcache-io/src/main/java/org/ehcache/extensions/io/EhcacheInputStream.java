@@ -77,7 +77,7 @@ public class EhcacheInputStream extends InputStream {
         ehcacheStreamReader.open();
     }
 
-    private void closeInternalReader() {
+    private void closeInternalReader() throws IOException {
         ehcacheStreamReader.close();
     }
 
