@@ -46,7 +46,7 @@ public class EhcacheOutputStream extends OutputStream {
      * @param   cache   the underlying cache to copy data to
      */
     public EhcacheOutputStream(Cache cache, Object cacheKey, boolean override) {
-        this(cache, cacheKey, OVERRIDE_DEFAULT, DEFAULT_BUFFER_SIZE);
+        this(cache, cacheKey, override, DEFAULT_BUFFER_SIZE);
     }
 
     /**
