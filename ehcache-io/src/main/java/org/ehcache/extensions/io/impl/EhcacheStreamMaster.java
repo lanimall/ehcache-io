@@ -7,19 +7,19 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by Fabien Sanglier on 5/6/15.
  */
 
-/*package protected*/ class EhcacheStreamMaster implements Serializable, Cloneable {
+/*package protected*/ class EhcacheStreamMaster implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private final AtomicInteger numberOfChunks;
+    private final AtomicInteger chunkCounter;
     private StreamOpStatus status = StreamOpStatus.AVAILABLE;
 
     public EhcacheStreamMaster(StreamOpStatus status) {
-        this.numberOfChunks = new AtomicInteger(0);
+        this.chunkCounter = new AtomicInteger(0);
         this.status = status;
     }
 
     public EhcacheStreamMaster(int numberOfChunk, StreamOpStatus status) {
-        this.numberOfChunks = new AtomicInteger(numberOfChunk);
+        this.chunkCounter = new AtomicInteger(numberOfChunk);
         this.status = status;
     }
 
@@ -27,12 +27,12 @@ import java.util.concurrent.atomic.AtomicInteger;
         CURRENT_WRITE, AVAILABLE
     }
 
-    public int getAndIncrementChunkIndex(){
-        return numberOfChunks.getAndIncrement(); //return the value before increment
+    public int getChunkCounter() {
+        return chunkCounter.get();
     }
 
-    public int getNumberOfChunk(){
-        return numberOfChunks.get();
+    public int getAndIncrementChunkCounter() {
+        return chunkCounter.getAndIncrement();
     }
 
     public boolean isCurrentWrite(){
@@ -48,18 +48,13 @@ import java.util.concurrent.atomic.AtomicInteger;
     }
 
     @Override
-    public Object clone() {
-        return new EhcacheStreamMaster(numberOfChunks.get(), status);
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
         EhcacheStreamMaster that = (EhcacheStreamMaster) o;
 
-        if (!numberOfChunks.equals(that.numberOfChunks)) return false;
+        if (getChunkCounter() != that.getChunkCounter()) return false;
         if (status != that.status) return false;
 
         return true;
@@ -67,15 +62,15 @@ import java.util.concurrent.atomic.AtomicInteger;
 
     @Override
     public int hashCode() {
-        int result = numberOfChunks.hashCode();
+        int result = getChunkCounter();
         result = 31 * result + status.hashCode();
         return result;
     }
 
     @Override
     public String toString() {
-        return "EhcacheStreamMasterIndex{" +
-                "numberOfChunks=" + numberOfChunks +
+        return "EhcacheStreamMaster{" +
+                "numberOfChunks=" + getChunkCounter() +
                 ", status=" + status +
                 '}';
     }
