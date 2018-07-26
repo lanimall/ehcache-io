@@ -199,7 +199,7 @@ import net.sf.ehcache.Element;
     void clearChunksForKey(EhcacheStreamMaster ehcacheStreamMasterIndex) {
         if(null != ehcacheStreamMasterIndex){
             //remove all the chunk entries
-            for(int i = 0; i < ehcacheStreamMasterIndex.getNumberOfChunk(); i++){
+            for(int i = 0; i < ehcacheStreamMasterIndex.getChunkCounter(); i++){
                 cache.remove(new EhcacheStreamKey(cacheKey, i));
             }
         }
@@ -213,7 +213,7 @@ import net.sf.ehcache.Element;
         return new EhcacheStreamKey(cacheKey, chunkIndex);
     }
 
-    private Element getMasterIndexElement() {
+    Element getMasterIndexElement() {
         return cache.get(buildMasterKey());
     }
 
@@ -243,19 +243,19 @@ import net.sf.ehcache.Element;
      * Perform a CAS operation on the "critical" MasterIndex object
      * Replace the cached element only if the current Element is equal to the supplied old Element.
      *
-     * @param      currentEhcacheStreamMaster   the current MasterIndex object that should be in cache
+     * @param      currentEhcacheStreamMasterElement   the current MasterIndex object that should be in cache
      * @param      newEhcacheStreamMaster  the new MasterIndex object to put in cache
      * @return     true if the Element was replaced
      *
      */
-    boolean replaceEhcacheStreamMaster(EhcacheStreamMaster currentEhcacheStreamMaster, EhcacheStreamMaster newEhcacheStreamMaster) {
+    boolean replaceEhcacheStreamMaster(Element currentEhcacheStreamMasterElement, EhcacheStreamMaster newEhcacheStreamMaster) {
         boolean returnValue = false;
-        if(null != currentEhcacheStreamMaster) {
+        if(null != currentEhcacheStreamMasterElement) {
             if(null != newEhcacheStreamMaster) {
                 //replace old writeable element with new one using CAS operation for consistency
-                returnValue = cache.replace(new Element(buildMasterKey(),currentEhcacheStreamMaster) , new Element(buildMasterKey(), newEhcacheStreamMaster));
+                returnValue = cache.replace(currentEhcacheStreamMasterElement , new Element(buildMasterKey(), newEhcacheStreamMaster));
             } else { // if null, let's understand this as a remove of current cache value
-                returnValue = cache.removeElement(new Element(buildMasterKey(),currentEhcacheStreamMaster));
+                returnValue = cache.removeElement(currentEhcacheStreamMasterElement);
             }
         } else {
             if (null != newEhcacheStreamMaster) { //only add a new entry if the object to add is not null...otherwise do nothing

@@ -1,6 +1,7 @@
 package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
+import net.sf.ehcache.Element;
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -14,7 +15,7 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
     /*
      * The current position in the ehcache value chunk list.
      */
-    protected volatile EhcacheStreamMaster currentStreamMaster;
+    private volatile EhcacheStreamMaster currentStreamMaster;
 
     private final boolean override;
 
@@ -36,13 +37,16 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
                     }
 
                     //get the master index from cache, unless override is set
-                    EhcacheStreamMaster oldMasterIndex = getMasterIndexValue();
-                    if (!override) {
-                        this.currentStreamMaster = oldMasterIndex;
-                        //maybe set it to write in the cache...
-                    } else {
-                        this.currentStreamMaster = null;
-                        clearChunksForKey(oldMasterIndex);
+                    Element oldMasterIndexElement = getMasterIndexElement();
+                    EhcacheStreamMaster oldMasterIndex = null;
+                    if(null != oldMasterIndexElement) {
+                        oldMasterIndex = (EhcacheStreamMaster)oldMasterIndexElement.getObjectValue();
+                        if (!override) {
+                            this.currentStreamMaster = oldMasterIndex;
+                            //maybe set it to write in the cache...
+                        } else {
+                            this.currentStreamMaster = null;
+                        }
                     }
 
                     //then we get the index to know where we are in the writes
@@ -50,12 +54,15 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
                         //set a new EhcacheStreamMasterIndex in write mode
                         EhcacheStreamMaster newStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
 
-                        boolean replaced = replaceEhcacheStreamMaster(oldMasterIndex, newStreamMaster);
+                        boolean replaced = replaceEhcacheStreamMaster(oldMasterIndexElement, newStreamMaster);
                         if(!replaced)
                             throw new IOException("Concurrent write not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
 
                         //if previous cas operation successful, create a new EhcacheStreamMasterIndex for currentStreamMasterIndex (to avoid soft references issues to the cached value above)
                         currentStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+
+                        //clear the chunks for the old master...
+                        clearChunksForKey(oldMasterIndex);
                     }
 
                     isOpen = true;
@@ -96,7 +103,8 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
             throw new IllegalStateException("EhcacheStreamWriter is not open...call open() first.");
 
         //put and increment stream index
-        if(count > 0)
-            putChunkValue(currentStreamMaster.getAndIncrementChunkIndex(), Arrays.copyOf(buf, count));
+        if(count > 0) {
+            putChunkValue(currentStreamMaster.getAndIncrementChunkCounter(), Arrays.copyOf(buf, count));
+        }
     }
 }
