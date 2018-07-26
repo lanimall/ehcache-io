@@ -23,6 +23,7 @@ public abstract class EhcacheStreamingTestsBase {
     public static final String ENV_CACHEMGR_NAME = "ehcache.config.cachemgr.name";
     public static final String ENV_CACHE_CONFIGPATH = "ehcache.config.path";
 
+    public static final String DEFAULT_CACHE_PATH = "classpath:ehcache_localheap.xml";
     public static final String DEFAULT_CACHE_NAME = "FileStore";
     public static final String DEFAULT_CACHEMGR_NAME = "EhcacheStreamsTest";
 
@@ -71,14 +72,13 @@ public abstract class EhcacheStreamingTestsBase {
 
     @AfterClass
     public static void oneTimeTearDown() throws Exception {
-        //remove files
-        //Files.delete(IN_FILE_PATH);
-        //Files.delete(OUT_FILE_PATH);
+        //remove input file
+        Files.delete(IN_FILE_PATH);
     }
 
     @Before
     public void setUp() throws Exception {
-        CacheManager cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, null));
+        CacheManager cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, DEFAULT_CACHE_PATH));
         String cacheName = System.getProperty(ENV_CACHE_NAME, DEFAULT_CACHE_NAME);
         try {
             cache = cm.getCache(cacheName);

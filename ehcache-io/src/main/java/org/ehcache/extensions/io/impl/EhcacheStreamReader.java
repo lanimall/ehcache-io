@@ -65,7 +65,7 @@ public class EhcacheStreamReader extends BaseEhcacheStream {
         int byteCopied = 0;
 
         //then we get the index to know where we are in the writes
-        if(null != currentStreamMaster && cacheChunkIndexPos < this.currentStreamMaster.getNumberOfChunk()){
+        if(null != currentStreamMaster && cacheChunkIndexPos < this.currentStreamMaster.getChunkCounter()){
             //get chunk from cache
             EhcacheStreamValue cacheChunkValue = getChunkValue(cacheChunkIndexPos);
             if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
@@ -89,7 +89,7 @@ public class EhcacheStreamReader extends BaseEhcacheStream {
                 }
             } else {
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new IOException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getNumberOfChunk() + "] boundaries. Make sure the cache values are not evicted");
+                throw new IOException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCounter() + "] boundaries. Make sure the cache values are not evicted");
             }
         }
 

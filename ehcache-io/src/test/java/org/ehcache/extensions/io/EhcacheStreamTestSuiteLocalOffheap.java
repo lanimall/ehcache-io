@@ -14,12 +14,12 @@ import org.junit.runners.Suite;
         EhcacheInputStreamTest.class,
         EhcacheOutputStreamTest.class
         })
-public class EhcacheStreamTestSuite {
+public class EhcacheStreamTestSuiteLocalOffheap {
     @BeforeClass
     public static void setup() throws Exception {
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_localheap.xml");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsTest");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStore");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_localoffheap.xml");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsOffheapTest");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStoreOffheap");
     }
 
     @AfterClass

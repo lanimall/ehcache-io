@@ -51,6 +51,9 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
     @After
     public void emptyCache() throws Exception {
         cache.removeAll();
+
+        if(Files.exists(OUT_FILE_PATH))
+            Files.delete(OUT_FILE_PATH);
     }
 
     @Test
@@ -85,6 +88,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
     @Test
@@ -119,6 +123,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
     @Test
@@ -151,6 +156,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
     @Test
@@ -182,6 +188,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
     @Test
@@ -217,5 +224,6 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(0, outputChecksum);
         Assert.assertEquals(inputChecksum, 0);
+        Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 }
