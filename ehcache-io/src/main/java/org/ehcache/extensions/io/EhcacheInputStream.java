@@ -53,8 +53,7 @@ public class EhcacheInputStream extends InputStream {
      * @param   cacheKey    the underlying cache key to read data from
      */
     public EhcacheInputStream(Cache cache, Object cacheKey) {
-        this.buf = new byte[DEFAULT_BUFFER_SIZE];
-        this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
+        this(cache,cacheKey,DEFAULT_BUFFER_SIZE);
     }
 
     /**
@@ -66,20 +65,20 @@ public class EhcacheInputStream extends InputStream {
      * @param   size        the buffer size.
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(Cache cache, Object cacheKey, int size, boolean lockReadsImmediately) throws IOException {
+    public EhcacheInputStream(Cache cache, Object cacheKey, int size) {
         if (size <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
         this.buf = new byte[size];
         this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
+    }
 
-        if(lockReadsImmediately) {
-            try {
-                ehcacheStreamReader.open();
-            } catch (InterruptedException e) {
-                throw new IOException("Could not acquire the read lock for the underlying datastore", e);
-            }
-        }
+    private void tryOpenInternalReader() throws IOException{
+        ehcacheStreamReader.open();
+    }
+
+    private void closeInternalReader() {
+        ehcacheStreamReader.close();
     }
 
     /**
@@ -100,18 +99,16 @@ public class EhcacheInputStream extends InputStream {
      * hence pos > count.
      */
     private void fill() throws IOException {
+        //open the internal reader upon starting the writes
+        tryOpenInternalReader();
+
         byte[] buffer = getBufIfOpen();
 
         /* if we're here, that means we need to refill the buffer and as such it's ok to throw away the content of the buffer */
         pos = 0;
         count = pos;
 
-        int byteCopied;
-        try {
-            byteCopied = ehcacheStreamReader.read(buffer, pos);
-        } catch (InterruptedException e) {
-            throw new IOException("Could not acquire the read lock within the timeout", e);
-        }
+        int byteCopied = ehcacheStreamReader.read(buffer, pos);
 
         if (byteCopied > 0)
             count = pos + byteCopied;
@@ -232,8 +229,8 @@ public class EhcacheInputStream extends InputStream {
                 // Else retry in case a new buf was CASed in fill()
             }
         } finally {
-            //close the ehcache reader
-            ehcacheStreamReader.close();
+            //important to close this to release the locks etc...
+            closeInternalReader();
         }
     }
 }

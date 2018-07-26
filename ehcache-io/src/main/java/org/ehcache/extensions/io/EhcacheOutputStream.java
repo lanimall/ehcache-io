@@ -11,6 +11,7 @@ import java.io.OutputStream;
  */
 public class EhcacheOutputStream extends OutputStream {
     private static int DEFAULT_BUFFER_SIZE = 5 * 1024 * 1024; // 5MB
+    private static boolean OVERRIDE_DEFAULT = true;
 
     /**
      * The internal buffer where data is stored.
@@ -36,8 +37,16 @@ public class EhcacheOutputStream extends OutputStream {
      * @param   cache   the underlying cache to copy data to
      */
     public EhcacheOutputStream(Cache cache, Object cacheKey) {
-        this.buf = new byte[DEFAULT_BUFFER_SIZE];
-        this.ehcacheStreamWriter = new EhcacheStreamWriter(cache,cacheKey);
+        this(cache, cacheKey, OVERRIDE_DEFAULT);
+    }
+
+    /**
+     * Creates a new buffered output stream to write data to a cache
+     *
+     * @param   cache   the underlying cache to copy data to
+     */
+    public EhcacheOutputStream(Cache cache, Object cacheKey, boolean override) {
+        this(cache, cacheKey, OVERRIDE_DEFAULT, DEFAULT_BUFFER_SIZE);
     }
 
     /**
@@ -45,23 +54,23 @@ public class EhcacheOutputStream extends OutputStream {
      * with the specified buffer size.
      *
      * @param   cache   the underlying cache to copy data to
-     * @param   size   the buffer size.
+     * @param   bufferSize   the buffer size.
      * @exception IOException If the underlying openWrites operation is not successful
      */
-    public EhcacheOutputStream(Cache cache, Object cacheKey, int size, boolean lockWritesImmediately) throws IOException {
-        if (size <= 0) {
+    public EhcacheOutputStream(Cache cache, Object cacheKey, boolean override, int bufferSize) {
+        if (bufferSize <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
-        this.buf = new byte[size];
-        this.ehcacheStreamWriter = new EhcacheStreamWriter(cache,cacheKey);
+        this.buf = new byte[bufferSize];
+        this.ehcacheStreamWriter = new EhcacheStreamWriter(cache, cacheKey, override);
+    }
 
-        if(lockWritesImmediately) {
-            try {
-                ehcacheStreamWriter.open();
-            } catch (InterruptedException e) {
-                throw new IOException("Could not acquire the write lock for the underlying datastore", e);
-            }
-        }
+    private void tryOpenInternalWriter() throws IOException{
+        ehcacheStreamWriter.open();
+    }
+
+    private void closeInternalWriter() throws IOException {
+        ehcacheStreamWriter.close();
     }
 
     /**
@@ -69,12 +78,11 @@ public class EhcacheOutputStream extends OutputStream {
      * @throws IOException
      */
     private void flushBuffer() throws IOException {
+        //open the internal writer upon starting the writes
+        tryOpenInternalWriter();
+
         if (count > 0) { // we're going to write here
-            try {
-                ehcacheStreamWriter.writeData(buf, count);
-            } catch (InterruptedException e) {
-                throw new IOException("Could not acquire the cache lock within the timeout", e);
-            }
+            ehcacheStreamWriter.writeData(buf, count);
 
             count = 0; //reset buffer count
         }
@@ -146,7 +154,7 @@ public class EhcacheOutputStream extends OutputStream {
             flush();
         } finally {
             //important to close this to release the locks etc...
-            ehcacheStreamWriter.close();
+            closeInternalWriter();
         }
     }
 }

@@ -9,6 +9,8 @@ import java.io.IOException;
  */
 public class EhcacheStreamReader extends BaseEhcacheStream {
 
+    protected volatile EhcacheStreamMaster currentStreamMaster;
+
     /*
      * The current position in the ehcache value chunk list.
      */
@@ -19,33 +21,51 @@ public class EhcacheStreamReader extends BaseEhcacheStream {
      */
     protected volatile int cacheChunkBytePos = 0;
 
+    private volatile boolean isOpen = false;
 
     public EhcacheStreamReader(Cache cache, Object cacheKey) {
         super(cache, cacheKey);
     }
 
+    public void open() throws IOException {
+        if(!isOpen) {
+            synchronized (this.getClass()) {
+                if (!isOpen) {
+                    try {
+                        acquireReadOnMaster(LOCK_TIMEOUT);
+                    } catch (InterruptedException e) {
+                        throw new IOException("Could not acquire the internal ehcache read lock", e);
+                    }
 
-    public void open() throws InterruptedException {
-        synchronized (this.getClass()) {
-            acquireExclusiveRead(LOCK_TIMEOUT);
+                    this.currentStreamMaster = getMasterIndexValue();
+
+                    isOpen = true;
+                }
+            }
         }
     }
 
-    public void close() {
+    public void close() throws IOException {
+        if(!isOpen)
+            throw new IOException("EhcacheStreamWriter is not open...");
+
         synchronized (this.getClass()) {
-            releaseExclusiveRead();
+            if(!isOpen)
+                throw new IOException("EhcacheStreamWriter is not open...");
+
+            releaseReadOnMaster();
+            isOpen = false;
         }
     }
 
-    public int read(byte[] outBuf, int bufferBytePos) throws InterruptedException, IOException {
+    public int read(byte[] outBuf, int bufferBytePos) throws IOException {
+        if(!isOpen)
+            throw new IOException("EhcacheStreamReader is not open...call open() first.");
+
         int byteCopied = 0;
 
-        //first we try to acquire the read lock
-        acquireExclusiveRead(LOCK_TIMEOUT);
-
         //then we get the index to know where we are in the writes
-        EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
-        if(null != currentStreamMaster && cacheChunkIndexPos < currentStreamMaster.getNumberOfChunk()){
+        if(null != currentStreamMaster && cacheChunkIndexPos < this.currentStreamMaster.getNumberOfChunk()){
             //get chunk from cache
             EhcacheStreamValue cacheChunkValue = getChunkValue(cacheChunkIndexPos);
             if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
@@ -69,7 +89,7 @@ public class EhcacheStreamReader extends BaseEhcacheStream {
                 }
             } else {
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new IOException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getNumberOfChunk() + "] boundaries.");
+                throw new IOException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getNumberOfChunk() + "] boundaries. Make sure the cache values are not evicted");
             }
         }
 

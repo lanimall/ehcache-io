@@ -32,7 +32,7 @@ import net.sf.ehcache.Element;
 //
 //    public int readData(byte[] outBuf, int cacheChunkIndexPos, int cacheChunkBytePos, int bufferBytePos) throws InterruptedException, IOException {
 //        //first we try to acquire the read lock
-//        acquireExclusiveRead(LOCK_TIMEOUT);
+//        acquireReadOnMaster(LOCK_TIMEOUT);
 //
 //        int byteCopied = 0;
 //
@@ -62,7 +62,7 @@ import net.sf.ehcache.Element;
 //        DataReadOutPut dataReadOutPut = null;
 //
 //        //first we try to acquire the read lock
-//        acquireExclusiveRead(LOCK_TIMEOUT);
+//        acquireReadOnMaster(LOCK_TIMEOUT);
 //
 //        //then we get the index to know where we are in the writes
 //        EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
@@ -123,19 +123,19 @@ import net.sf.ehcache.Element;
 //        }
 //    }
 
-    boolean acquireExclusiveRead(long timeout) throws InterruptedException {
+    boolean acquireReadOnMaster(long timeout) throws InterruptedException {
         return tryLockInternal(buildMasterKey(),LockType.READ,timeout);
     }
 
-    boolean acquireExclusiveWrite(long timeout) throws InterruptedException {
-        return tryLockInternal(buildMasterKey(),LockType.WRITE,timeout);
-    }
-
-    void releaseExclusiveRead(){
+    void releaseReadOnMaster(){
         releaseLockInternal(buildMasterKey(),LockType.READ);
     }
 
-    void releaseExclusiveWrite(){
+    boolean acquireExclusiveWriteOnMaster(long timeout) throws InterruptedException {
+        return tryLockInternal(buildMasterKey(),LockType.WRITE,timeout);
+    }
+
+    void releaseExclusiveWriteOnMaster(){
         releaseLockInternal(buildMasterKey(),LockType.WRITE);
     }
 
@@ -196,16 +196,13 @@ import net.sf.ehcache.Element;
         }
     }
 
-    boolean clearChunksForKey(EhcacheStreamMaster ehcacheStreamMasterIndex) {
-        boolean success = false;
+    void clearChunksForKey(EhcacheStreamMaster ehcacheStreamMasterIndex) {
         if(null != ehcacheStreamMasterIndex){
             //remove all the chunk entries
             for(int i = 0; i < ehcacheStreamMasterIndex.getNumberOfChunk(); i++){
                 cache.remove(new EhcacheStreamKey(cacheKey, i));
             }
-            success = true;
         }
-        return success;
     }
 
     private EhcacheStreamKey buildMasterKey(){
@@ -278,8 +275,9 @@ import net.sf.ehcache.Element;
      * @return     The Element previously cached for this key, or null if no Element was cached
      *
      */
-    Element replaceEhcacheStreamMaster(EhcacheStreamMaster newEhcacheStreamMaster) {
+    boolean replaceEhcacheStreamMaster(EhcacheStreamMaster newEhcacheStreamMaster) {
         //replace old writeable element with new one using CAS operation for consistency
-        return cache.replace(new Element(buildMasterKey(), newEhcacheStreamMaster));
+        Element previous = cache.replace(new Element(buildMasterKey(), newEhcacheStreamMaster));
+        return (previous != null);
     }
 }
