@@ -3,8 +3,7 @@ package com.softwareag.samples;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
-import org.ehcache.extensions.io.EhcacheInputStream;
-import org.ehcache.extensions.io.EhcacheOutputStream;
+import org.ehcache.extensions.io.EhcacheStreamFactory;
 
 import java.io.*;
 import java.nio.file.FileSystems;
@@ -109,7 +108,7 @@ public class FileCopyCacheApp {
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(inFilePath),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream((useGzip)?new GZIPOutputStream(new EhcacheOutputStream(cache, cache_key)):new EhcacheOutputStream(cache, cache_key),new CRC32())
+                CheckedOutputStream os = new CheckedOutputStream((useGzip)?new GZIPOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key,true)):EhcacheStreamFactory.getOutputStream(cache, cache_key, true),new CRC32())
         )
         {
             System.out.println("============ Copy File To Cache " + ((useGzip)?"(with Gzip Compression)":"") + " ====================");
@@ -133,7 +132,7 @@ public class FileCopyCacheApp {
         Checksum returnChecksum = null;
 
         try (
-                CheckedInputStream is = new CheckedInputStream((useGzip)?new GZIPInputStream(new EhcacheInputStream(cache, cache_key)):new EhcacheInputStream(cache, cache_key),new CRC32());
+                CheckedInputStream is = new CheckedInputStream((useGzip)?new GZIPInputStream(EhcacheStreamFactory.getInputStream(cache, cache_key)):EhcacheStreamFactory.getInputStream(cache, cache_key),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(outFilePath)), new CRC32())
         )
         {
