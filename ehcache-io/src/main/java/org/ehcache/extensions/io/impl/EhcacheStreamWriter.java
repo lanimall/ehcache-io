@@ -2,15 +2,17 @@ package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Element;
+import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.impl.BaseEhcacheStream;
+import org.ehcache.extensions.io.impl.EhcacheStreamMaster;
 
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.Arrays;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
-public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable {
+/*package protected*/ class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable {
 
     /*
      * The current position in the ehcache value chunk list.
@@ -26,14 +28,14 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
         this.override = override;
     }
 
-    public void open() throws IOException {
+    public void open() throws EhcacheStreamException {
         if(!isOpen) {
             synchronized (this.getClass()) {
                 if (!isOpen) {
                     try {
                         acquireExclusiveWriteOnMaster(LOCK_TIMEOUT);
                     } catch (InterruptedException e) {
-                        throw new IOException("Could not acquire the internal ehcache write lock", e);
+                        throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
                     }
 
                     //get the master index from cache, unless override is set
@@ -56,7 +58,7 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
 
                         boolean replaced = replaceEhcacheStreamMaster(oldMasterIndexElement, newStreamMaster);
                         if(!replaced)
-                            throw new IOException("Concurrent write not allowed - Current cache entry with key[" + cacheKey + "] is currently being written...");
+                            throw new EhcacheStreamException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
 
                         //if previous cas operation successful, create a new EhcacheStreamMasterIndex for currentStreamMasterIndex (to avoid soft references issues to the cached value above)
                         currentStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
@@ -71,20 +73,20 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
         }
     }
 
-    public void close() throws IOException {
+    public void close() throws EhcacheStreamException {
         if(!isOpen)
-            throw new IOException("EhcacheStreamWriter is not open...");
+            throw new EhcacheStreamException("EhcacheStreamWriter is not opened...");
 
         synchronized (this.getClass()) {
             if(!isOpen)
-                throw new IOException("EhcacheStreamWriter is not open...");
+                throw new EhcacheStreamException("EhcacheStreamWriter is not opened...");
 
             //finalize the EhcacheStreamMaster value by saving it in cache
             //EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
             if (null != currentStreamMaster) {
                 currentStreamMaster.setAvailable();
                 if(!replaceEhcacheStreamMaster(currentStreamMaster))
-                    throw new IOException("Could not close the ehcache stream index properly.");
+                    throw new EhcacheStreamException("Could not close the ehcache stream index properly.");
             }
             releaseExclusiveWriteOnMaster();
             isOpen = false;
@@ -98,7 +100,7 @@ public class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable 
      * <tt>buf[0]</tt> through <tt>buf[count-1]</tt> contain valid
      * byte data.
      */
-    public void writeData(byte[] buf, int count) throws IOException {
+    public void writeData(byte[] buf, int count) throws EhcacheStreamException {
         if(!isOpen)
             throw new IllegalStateException("EhcacheStreamWriter is not open...call open() first.");
 

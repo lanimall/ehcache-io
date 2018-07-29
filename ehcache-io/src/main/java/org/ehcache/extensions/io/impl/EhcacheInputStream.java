@@ -1,7 +1,7 @@
-package org.ehcache.extensions.io;
+package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
-import org.ehcache.extensions.io.impl.EhcacheStreamReader;
+import org.ehcache.extensions.io.EhcacheStreamException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -71,6 +71,11 @@ public class EhcacheInputStream extends InputStream {
         }
         this.buf = new byte[size];
         this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
+    }
+
+    @Override
+    public int available() throws IOException {
+        return ehcacheStreamReader.getSize();
     }
 
     private void tryOpenInternalReader() throws IOException{

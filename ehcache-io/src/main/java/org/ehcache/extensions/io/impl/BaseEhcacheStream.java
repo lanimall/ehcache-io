@@ -7,7 +7,7 @@ import net.sf.ehcache.Element;
  * Created by FabienSanglier on 5/6/15.
  */
 
-/*package protected*/ abstract class BaseEhcacheStream {
+public abstract class BaseEhcacheStream {
     public static final long LOCK_TIMEOUT = 10000;
 
     /*
@@ -20,122 +20,38 @@ import net.sf.ehcache.Element;
      */
     final Object cacheKey;
 
-    BaseEhcacheStream(Cache cache, Object cacheKey) {
+    protected BaseEhcacheStream(Cache cache, Object cacheKey) {
+        //TODO: we should check if the cache is not null but maybe enforce "Pinning"?? (because otherwise cache chunks can disappear and that would mess up the data consistency...)
         this.cache = cache;
         this.cacheKey = cacheKey;
+    }
+
+    protected Cache getCache() {
+        return cache;
+    }
+
+    protected Object getCacheKey() {
+        return cacheKey;
     }
 
     private enum LockType {
         READ,
         WRITE
     }
-//
-//    public int readData(byte[] outBuf, int cacheChunkIndexPos, int cacheChunkBytePos, int bufferBytePos) throws InterruptedException, IOException {
-//        //first we try to acquire the read lock
-//        acquireReadOnMaster(LOCK_TIMEOUT);
-//
-//        int byteCopied = 0;
-//
-//        //then we get the index to know where we are in the writes
-//        EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
-//        if(null != currentStreamMaster && cacheChunkIndexPos < currentStreamMaster.getNumberOfChunk()) {
-//            //get chunk from cache
-//            EhcacheStreamValue cacheChunkValue = getChunkValue(cacheChunkIndexPos);
-//            if (null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
-//                byte[] cacheChunk = cacheChunkValue.getChunk();
-//
-//                //calculate the number of bytes to copy from the cacheChunks into the destination buffer based on the buffer size that's available
-//                if (cacheChunk.length - cacheChunkBytePos < outBuf.length - bufferBytePos) {
-//                    byteCopied = cacheChunk.length - cacheChunkBytePos;
-//                } else {
-//                    byteCopied = outBuf.length - bufferBytePos;
-//                }
-//
-//                System.arraycopy(cacheChunk, cacheChunkBytePos, outBuf, bufferBytePos, byteCopied);
-//            }
-//        }
-//
-//        return byteCopied;
-//    }
-//
-//    public DataReadOutPut readData2(byte[] outBuf, int cacheChunkIndexPos, int cacheChunkBytePos, int bufferBytePos) throws InterruptedException, IOException {
-//        DataReadOutPut dataReadOutPut = null;
-//
-//        //first we try to acquire the read lock
-//        acquireReadOnMaster(LOCK_TIMEOUT);
-//
-//        //then we get the index to know where we are in the writes
-//        EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
-//        if(null != currentStreamMaster && cacheChunkIndexPos < currentStreamMaster.getNumberOfChunk()){
-//            //prepare the output for state maintaining
-//            dataReadOutPut = new DataReadOutPut();
-//
-//            //get chunk from cache
-//            EhcacheStreamValue cacheChunkValue = getChunkValue(cacheChunkIndexPos);
-//            if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
-//                byte[] cacheChunk = cacheChunkValue.getChunk();
-//
-//                //calculate the number of bytes to copy from the cacheChunks into the destination buffer based on the buffer size that's available
-//                int byteLengthToCopy;
-//                if(cacheChunk.length - cacheChunkBytePos < outBuf.length - bufferBytePos){
-//                    byteLengthToCopy = cacheChunk.length - cacheChunkBytePos;
-//                } else {
-//                    byteLengthToCopy = outBuf.length - bufferBytePos;
-//                }
-//
-//                System.arraycopy(cacheChunk, cacheChunkBytePos, outBuf, bufferBytePos, byteLengthToCopy);
-//
-//                if (byteLengthToCopy > 0)
-//                    dataReadOutPut.bufferAvailableBytes = bufferBytePos + byteLengthToCopy;
-//
-//                //track the chunk offset for next
-//                if(byteLengthToCopy < cacheChunk.length - cacheChunkBytePos) {
-//                    dataReadOutPut.cacheChunkIndexPos = cacheChunkIndexPos;
-//                    dataReadOutPut.cacheChunkBytePos = cacheChunkBytePos + byteLengthToCopy;
-//                } else { // it means we'll need to use the next chunk
-//                    dataReadOutPut.cacheChunkIndexPos = cacheChunkIndexPos++;
-//                    dataReadOutPut.cacheChunkBytePos = 0;
-//                }
-//            } else {
-//                //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-//                throw new IOException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getNumberOfChunk() + "] boundaries.");
-//            }
-//        }
-//
-//        return dataReadOutPut;
-//    }
-//
-//    public class DataReadOutPut{
-//        private int cacheChunkIndexPos;
-//        private int cacheChunkBytePos;
-//        private int bufferAvailableBytes;
-//
-//        public int getCacheChunkIndexPos() {
-//            return cacheChunkIndexPos;
-//        }
-//
-//        public int getCacheChunkBytePos() {
-//            return cacheChunkBytePos;
-//        }
-//
-//        public int getBufferAvailableBytes() {
-//            return bufferAvailableBytes;
-//        }
-//    }
 
-    boolean acquireReadOnMaster(long timeout) throws InterruptedException {
+    protected boolean acquireReadOnMaster(long timeout) throws InterruptedException {
         return tryLockInternal(buildMasterKey(),LockType.READ,timeout);
     }
 
-    void releaseReadOnMaster(){
+    protected void releaseReadOnMaster(){
         releaseLockInternal(buildMasterKey(),LockType.READ);
     }
 
-    boolean acquireExclusiveWriteOnMaster(long timeout) throws InterruptedException {
+    protected boolean acquireExclusiveWriteOnMaster(long timeout) throws InterruptedException {
         return tryLockInternal(buildMasterKey(),LockType.WRITE,timeout);
     }
 
-    void releaseExclusiveWriteOnMaster(){
+    protected void releaseExclusiveWriteOnMaster(){
         releaseLockInternal(buildMasterKey(),LockType.WRITE);
     }
 
@@ -163,7 +79,7 @@ import net.sf.ehcache.Element;
             throw new IllegalArgumentException("LockType not supported");
     }
 
-    EhcacheStreamMaster getMasterIndexValue(){
+    protected EhcacheStreamMaster getMasterIndexValue(){
         EhcacheStreamMaster cacheMasterIndexValue = null;
         Element masterIndexElement = null;
         if(null != (masterIndexElement = getMasterIndexElement())) {
@@ -173,7 +89,7 @@ import net.sf.ehcache.Element;
         return cacheMasterIndexValue;
     }
 
-    EhcacheStreamValue getChunkValue(int chunkIndex){
+    protected EhcacheStreamValue getChunkValue(int chunkIndex){
         EhcacheStreamValue chunkValue = null;
         Element chunkElem;
         if(null != (chunkElem = getChunkElement(chunkIndex)))
@@ -182,21 +98,21 @@ import net.sf.ehcache.Element;
         return chunkValue;
     }
 
-    void putChunkValue(int chunkIndex, byte[] chunkPayload){
+    protected void putChunkValue(int chunkIndex, byte[] chunkPayload){
         cache.put(new Element(new EhcacheStreamKey(cacheKey, chunkIndex), new EhcacheStreamValue(chunkPayload)));
     }
 
     //clear all the chunks for this key...
     //for now, since we really don't know how many chunks keys are there, simple looping on 10,000 first combinations
     //maybe it'd be best to loop through all the keys and delete the needed ones...
-    void clearAllChunks() {
+    protected void clearAllChunks() {
         //remove all the chunk entries
         for(int i = 0; i < 10000; i++){
             cache.remove(new EhcacheStreamKey(cacheKey, i));
         }
     }
 
-    void clearChunksForKey(EhcacheStreamMaster ehcacheStreamMasterIndex) {
+    protected void clearChunksForKey(EhcacheStreamMaster ehcacheStreamMasterIndex) {
         if(null != ehcacheStreamMasterIndex){
             //remove all the chunk entries
             for(int i = 0; i < ehcacheStreamMasterIndex.getChunkCounter(); i++){
@@ -213,7 +129,7 @@ import net.sf.ehcache.Element;
         return new EhcacheStreamKey(cacheKey, chunkIndex);
     }
 
-    Element getMasterIndexElement() {
+    protected Element getMasterIndexElement() {
         return cache.get(buildMasterKey());
     }
 
@@ -248,7 +164,7 @@ import net.sf.ehcache.Element;
      * @return     true if the Element was replaced
      *
      */
-    boolean replaceEhcacheStreamMaster(Element currentEhcacheStreamMasterElement, EhcacheStreamMaster newEhcacheStreamMaster) {
+    protected boolean replaceEhcacheStreamMaster(Element currentEhcacheStreamMasterElement, EhcacheStreamMaster newEhcacheStreamMaster) {
         boolean returnValue = false;
         if(null != currentEhcacheStreamMasterElement) {
             if(null != newEhcacheStreamMaster) {
@@ -275,7 +191,7 @@ import net.sf.ehcache.Element;
      * @return     The Element previously cached for this key, or null if no Element was cached
      *
      */
-    boolean replaceEhcacheStreamMaster(EhcacheStreamMaster newEhcacheStreamMaster) {
+    protected boolean replaceEhcacheStreamMaster(EhcacheStreamMaster newEhcacheStreamMaster) {
         //replace old writeable element with new one using CAS operation for consistency
         Element previous = cache.replace(new Element(buildMasterKey(), newEhcacheStreamMaster));
         return (previous != null);

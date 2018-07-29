@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by Fabien Sanglier on 5/6/15.
  */
 
-/*package protected*/ class EhcacheStreamMaster implements Serializable {
+public class EhcacheStreamMaster implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private final AtomicInteger chunkCounter;

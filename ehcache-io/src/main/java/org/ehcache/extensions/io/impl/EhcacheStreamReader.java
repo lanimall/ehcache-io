@@ -1,13 +1,17 @@
 package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
+import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.impl.BaseEhcacheStream;
+import org.ehcache.extensions.io.impl.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.EhcacheStreamValue;
 
 import java.io.IOException;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
-public class EhcacheStreamReader extends BaseEhcacheStream {
+/*package protected*/ class EhcacheStreamReader extends BaseEhcacheStream {
 
     protected volatile EhcacheStreamMaster currentStreamMaster;
 
@@ -27,14 +31,21 @@ public class EhcacheStreamReader extends BaseEhcacheStream {
         super(cache, cacheKey);
     }
 
-    public void open() throws IOException {
+    //TODO: implement something better to return a better size
+    //this is meant to be a general estimate without guarantees
+    public int getSize() {
+        EhcacheStreamMaster temp = getMasterIndexValue();
+        return (null == temp)? 0: 1;
+    }
+
+    public void open() throws EhcacheStreamException {
         if(!isOpen) {
             synchronized (this.getClass()) {
                 if (!isOpen) {
                     try {
                         acquireReadOnMaster(LOCK_TIMEOUT);
                     } catch (InterruptedException e) {
-                        throw new IOException("Could not acquire the internal ehcache read lock", e);
+                        throw new EhcacheStreamException("Could not acquire the internal ehcache read lock", e);
                     }
 
                     this.currentStreamMaster = getMasterIndexValue();
@@ -45,22 +56,22 @@ public class EhcacheStreamReader extends BaseEhcacheStream {
         }
     }
 
-    public void close() throws IOException {
+    public void close() throws EhcacheStreamException {
         if(!isOpen)
-            throw new IOException("EhcacheStreamWriter is not open...");
+            throw new EhcacheStreamException("EhcacheStreamWriter is not open...");
 
         synchronized (this.getClass()) {
             if(!isOpen)
-                throw new IOException("EhcacheStreamWriter is not open...");
+                throw new EhcacheStreamException("EhcacheStreamWriter is not open...");
 
             releaseReadOnMaster();
             isOpen = false;
         }
     }
 
-    public int read(byte[] outBuf, int bufferBytePos) throws IOException {
+    public int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException {
         if(!isOpen)
-            throw new IOException("EhcacheStreamReader is not open...call open() first.");
+            throw new EhcacheStreamException("EhcacheStreamReader is not open...call open() first.");
 
         int byteCopied = 0;
 
@@ -89,7 +100,7 @@ public class EhcacheStreamReader extends BaseEhcacheStream {
                 }
             } else {
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new IOException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCounter() + "] boundaries. Make sure the cache values are not evicted");
+                throw new EhcacheStreamException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCounter() + "] boundaries. Make sure the cache values are not evicted");
             }
         }
 

@@ -1,7 +1,6 @@
-package org.ehcache.extensions.io;
+package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
-import org.ehcache.extensions.io.impl.EhcacheStreamWriter;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -10,7 +9,7 @@ import java.io.OutputStream;
  * Created by Fabien Sanglier on 5/4/15.
  */
 public class EhcacheOutputStream extends OutputStream {
-    private static int DEFAULT_BUFFER_SIZE = 5 * 1024 * 1024; // 5MB
+    private static int DEFAULT_BUFFER_SIZE = 1 * 1024 * 1024; // 1MB
     private static boolean OVERRIDE_DEFAULT = true;
 
     /**
