@@ -3,6 +3,7 @@ package org.ehcache.extensions.io;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
+import org.ehcache.extensions.io.impl.EhcacheInputStream;
 import org.junit.*;
 
 import java.io.*;
@@ -33,11 +34,14 @@ public abstract class EhcacheStreamingTestsBase {
     protected static final Path OUT_FILE_PATH = FileSystems.getDefault().getPath(TESTS_DIR_PATH.toString(), "sample_big_file_out.txt");
     public static NumberFormat formatD = new DecimalFormat("#.###");
 
+    protected static CacheManager cm;
     protected Cache cache;
+
     protected static final String cache_key = "some_key";
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
+        cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, DEFAULT_CACHE_PATH));
         generateBigFile();
     }
 
@@ -74,11 +78,15 @@ public abstract class EhcacheStreamingTestsBase {
     public static void oneTimeTearDown() throws Exception {
         //remove input file
         Files.delete(IN_FILE_PATH);
+
+        if(null != cm)
+            cm.shutdown();
+
+        cm = null;
     }
 
     @Before
     public void setUp() throws Exception {
-        CacheManager cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, DEFAULT_CACHE_PATH));
         String cacheName = System.getProperty(ENV_CACHE_NAME, DEFAULT_CACHE_NAME);
         try {
             cache = cm.getCache(cacheName);
@@ -93,13 +101,16 @@ public abstract class EhcacheStreamingTestsBase {
         if (cache == null) {
             throw new IllegalArgumentException("Could not find the cache " + cacheName);
         }
+
+        //empty the cache
+        cache.removeAll();
     }
 
     @After
-    public void tearDown() throws Exception {
-        CacheManager cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, null));
-        if(null != cm)
-            cm.shutdown();
+    public void cleanUp(){
+        if(null != cache)
+            cache.removeAll();
+        cache = null;
     }
 
     public long getFileChecksumFromCache() throws IOException {
@@ -127,7 +138,7 @@ public abstract class EhcacheStreamingTestsBase {
         return outputChecksum;
     }
 
-    private CacheManager getCacheManager(String cacheManagerName, String resourcePath) {
+    private static CacheManager getCacheManager(String cacheManagerName, String resourcePath) {
         CacheManager cm = null;
         if (null == (cm = CacheManager.getCacheManager(cacheManagerName))) {
             String configLocationToLoad = null;
@@ -143,9 +154,9 @@ public abstract class EhcacheStreamingTestsBase {
                     if (configLocationToLoad.indexOf("file:") > -1) {
                         inputStream = new FileInputStream(configLocationToLoad.substring("file:".length()));
                     } else if (configLocationToLoad.indexOf("classpath:") > -1) {
-                        inputStream = this.getClass().getClassLoader().getResourceAsStream(configLocationToLoad.substring("classpath:".length()));
+                        inputStream = EhcacheStreamingTestsBase.class.getClassLoader().getResourceAsStream(configLocationToLoad.substring("classpath:".length()));
                     } else { //default to classpath if no prefix is specified
-                        inputStream = this.getClass().getClassLoader().getResourceAsStream(configLocationToLoad);
+                        inputStream = EhcacheStreamingTestsBase.class.getClassLoader().getResourceAsStream(configLocationToLoad);
                     }
 
                     if (inputStream == null) {

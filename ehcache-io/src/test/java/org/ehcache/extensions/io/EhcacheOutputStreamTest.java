@@ -56,7 +56,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key,override),new CRC32())
+                CheckedOutputStream os = new CheckedOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key, override),new CRC32())
         )
         {
             start = System.nanoTime();;
@@ -148,7 +148,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key, override),new CRC32())
+                CheckedOutputStream os = new CheckedOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key, override),new CRC32())
         )
         {
             start = System.nanoTime();;
@@ -240,7 +240,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(new EhcacheOutputStream(cache, cache_key, override),new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key, override),new CRC32());
                 ByteArrayOutputStream bos = new ByteArrayOutputStream(new Double(IN_FILE_SIZE * 1.2).intValue())
         )
         {
