@@ -9,8 +9,8 @@ import java.io.OutputStream;
  * Created by Fabien Sanglier on 5/4/15.
  */
 public class EhcacheOutputStream extends OutputStream {
-    private static int DEFAULT_BUFFER_SIZE = 1 * 1024 * 1024; // 1MB
-    private static boolean OVERRIDE_DEFAULT = true;
+    public static int DEFAULT_BUFFER_SIZE = 1 * 1024 * 1024; // 1MB
+    public static boolean OVERRIDE_DEFAULT = true;
 
     /**
      * The internal buffer where data is stored.
@@ -45,7 +45,7 @@ public class EhcacheOutputStream extends OutputStream {
      * @param   cache   the underlying cache to copy data to
      */
     public EhcacheOutputStream(Cache cache, Object cacheKey, boolean override) {
-        this(cache, cacheKey, override, DEFAULT_BUFFER_SIZE);
+        this(cache, cacheKey, DEFAULT_BUFFER_SIZE, override);
     }
 
     /**
@@ -56,7 +56,7 @@ public class EhcacheOutputStream extends OutputStream {
      * @param   bufferSize   the buffer size.
      * @exception IOException If the underlying openWrites operation is not successful
      */
-    public EhcacheOutputStream(Cache cache, Object cacheKey, boolean override, int bufferSize) {
+    public EhcacheOutputStream(Cache cache, Object cacheKey, int bufferSize, boolean override) {
         if (bufferSize <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }

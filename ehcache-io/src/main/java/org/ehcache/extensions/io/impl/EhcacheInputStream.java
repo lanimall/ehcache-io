@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Created by Fabien Sanglier on 5/4/15.
  */
 public class EhcacheInputStream extends InputStream {
-    private static int DEFAULT_BUFFER_SIZE = 512 * 1024; // 512kb
+    public static int DEFAULT_BUFFER_SIZE = 512 * 1024; // 512kb
 
     /**
      * The internal buffer array where the data is stored.
