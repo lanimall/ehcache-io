@@ -4,10 +4,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
@@ -47,16 +44,22 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         }
     }
 
-    public long testCopyFileToCacheByteByByte(boolean override) throws IOException {
+    public long testCopyFileToCacheByteByByte(Boolean override) throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
 
         System.out.println("============ testCopyFileToCacheByteByByte With Override=" + override + " ====================");
 
+        OutputStream ehcacheOutputStream = null;
+        if(null == override)
+            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key);
+        else
+            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key, override.booleanValue());
+
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key, override),new CRC32())
+                CheckedOutputStream os = new CheckedOutputStream(ehcacheOutputStream,new CRC32())
         )
         {
             start = System.nanoTime();;
@@ -73,6 +76,18 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
 
         return outputChecksum;
+    }
+
+    @Test
+    public void testCopyFileToCacheByteByByteDefaults() throws IOException {
+        long outputChecksum = testCopyFileToCacheByteByByte(null); //this should be same as override!!
+
+        //get the file from cache again
+        long checksumFromCache = getFileChecksumFromCache();
+
+        Assert.assertEquals(checksumFromCache, outputChecksum);
+        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertTrue(cache.getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
     @Test
@@ -138,7 +153,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         }
     }
 
-    public long testCopyFileToCacheWithBuffer(boolean override) throws IOException {
+    public long testCopyFileToCacheWithBuffer(Boolean override) throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
@@ -146,9 +161,15 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         System.out.println("============ testCopyFileToCacheWithBuffer With Override=" + override + " ====================");
 
+        OutputStream ehcacheOutputStream = null;
+        if(null == override)
+            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key);
+        else
+            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key, override.booleanValue());
+
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key, override),new CRC32())
+                CheckedOutputStream os = new CheckedOutputStream(ehcacheOutputStream,new CRC32())
         )
         {
             start = System.nanoTime();;
@@ -165,6 +186,18 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
 
         return outputChecksum;
+    }
+
+    @Test
+    public void testCopyFileToCacheWithBufferDefaults() throws IOException {
+        long outputChecksum = testCopyFileToCacheWithBuffer(null); //this should be same as override!!
+
+        //get the file from cache again
+        long checksumFromCache = getFileChecksumFromCache();
+
+        Assert.assertEquals(checksumFromCache, outputChecksum);
+        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertTrue(cache.getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
     @Test
@@ -231,16 +264,22 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         }
     }
 
-    public long testCopyFileToCacheInOneShot(boolean override) throws IOException {
+    public long testCopyFileToCacheInOneShot(Boolean override) throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
 
         System.out.println("============ testCopyFileToCacheInOneShot ====================");
 
+        OutputStream ehcacheOutputStream = null;
+        if(null == override)
+            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key);
+        else
+            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key, override.booleanValue());
+
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key, override),new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(ehcacheOutputStream,new CRC32());
                 ByteArrayOutputStream bos = new ByteArrayOutputStream(new Double(IN_FILE_SIZE * 1.2).intValue())
         )
         {
@@ -262,6 +301,18 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(inputChecksum, outputChecksum);
 
         return outputChecksum;
+    }
+
+    @Test
+    public void testCopyFileToCacheInOneShotDefaults() throws IOException {
+        long outputChecksum = testCopyFileToCacheInOneShot(null); //this should be same as override!!
+
+        //get the file from cache again
+        long checksumFromCache = getFileChecksumFromCache();
+
+        Assert.assertEquals(checksumFromCache, outputChecksum);
+        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertTrue(cache.getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
     @Test
