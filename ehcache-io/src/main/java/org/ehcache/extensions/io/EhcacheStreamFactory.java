@@ -45,7 +45,7 @@ public class EhcacheStreamFactory {
         ouputStreamBufferSize = (outputStreamBufferSizeInternal > 0)?new Integer(outputStreamBufferSizeInternal):null;
     }
 
-    private static boolean checkInputStreamNotEmpty(EhcacheInputStream stream) throws EhcacheStreamException {
+    public static boolean checkInputStreamNotEmpty(EhcacheInputStream stream) throws EhcacheStreamException {
         int streamSize = 0;
         try {
             streamSize = stream.available();
