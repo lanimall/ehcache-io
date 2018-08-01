@@ -12,7 +12,7 @@
     <artifactId>ehcache-io</artifactId>
 
     <properties>
-        <slf4j.version>1.6.1</slf4j.version>
+        <slf4j.version>1.7.1</slf4j.version>
         <maven-surefire-plugin>2.9</maven-surefire-plugin>
         <maven-surefire-plugin-args>-Xmx1280m -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
     </properties>
@@ -23,42 +23,28 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
-            <scope>test</scope>
-        </dependency>
-
-        <dependency>
-            <groupId>ch.qos.logback</groupId>
-            <artifactId>logback-classic</artifactId>
-            <version>1.1.1</version>
-            <scope>test</scope>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 
     <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-surefire-plugin</artifactId>
-                <version>${maven-surefire-plugin}</version>
-                <configuration>
-                    <argLine>${maven-surefire-plugin-args}</argLine>
-                    <includes>
-                        <include>**/EhcacheStreamTestSuite.class</include>
-                        <include>**/EhcacheStreamTestSuiteLocalOffheap.class</include>
-                    </includes>
-                </configuration>
-            </plugin>
-        </plugins>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-surefire-plugin</artifactId>
+                    <version>${maven-surefire-plugin}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 
     <profiles>
         <profile>
-            <id>ehcache-2.10</id>
+            <id>ehcache</id>
             <properties>
-                <ehcache.version>2.10.5</ehcache.version>
-                <toolkit.version>4.3.5</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache-oss.xml</net.sf.ehcache.configurationResourceName>
+                <ehcache.version>2.10.2</ehcache.version>
+                <toolkit.version>4.3.2</toolkit.version>
             </properties>
             <dependencies>
                 <!-- EhCache -->
@@ -66,21 +52,35 @@
                     <groupId>net.sf.ehcache</groupId>
                     <artifactId>ehcache</artifactId>
                     <version>${ehcache.version}</version>
+                    <scope>provided</scope>
                 </dependency>
                 <dependency>
                     <groupId>org.terracotta</groupId>
                     <artifactId>terracotta-toolkit-runtime</artifactId>
                     <version>${toolkit.version}</version>
+                    <scope>provided</scope>
                 </dependency>
             </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>${maven-surefire-plugin-args}</argLine>
+                            <includes>
+                                <include>**/EhcacheStreamTestSuite.class</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
         <profile>
-            <id>ehcache-2.10-ee</id>
+            <id>ehcache-ee</id>
             <properties>
                 <ehcache.version>2.10.4.3.15</ehcache.version>
                 <toolkit.version>4.3.4.3.15</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
                 <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
             </properties>
             <dependencies>
@@ -89,105 +89,31 @@
                     <groupId>net.sf.ehcache</groupId>
                     <artifactId>ehcache-ee</artifactId>
                     <version>${ehcache.version}</version>
+                    <scope>provided</scope>
                 </dependency>
                 <dependency>
                     <groupId>org.terracotta</groupId>
                     <artifactId>terracotta-toolkit-runtime-ee</artifactId>
                     <version>${toolkit.version}</version>
+                    <scope>provided</scope>
                 </dependency>
             </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.9-ee</id>
-            <properties>
-                <ehcache.version>2.9.1</ehcache.version>
-                <toolkit.version>4.2.1</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
-                <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-ee</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.terracotta</groupId>
-                    <artifactId>terracotta-toolkit-runtime-ee</artifactId>
-                    <version>${toolkit.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.7-ee</id>
-            <properties>
-                <ehcache.version>2.7.5</ehcache.version>
-                <toolkit.version>4.0.5</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
-                <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-ee</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.terracotta</groupId>
-                    <artifactId>terracotta-toolkit-runtime-ee</artifactId>
-                    <version>${toolkit.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.8-ee</id>
-            <properties>
-                <ehcache.version>2.8.3</ehcache.version>
-                <toolkit.version>4.1.3</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
-                <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-ee</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.terracotta</groupId>
-                    <artifactId>terracotta-toolkit-runtime-ee</artifactId>
-                    <version>${toolkit.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.6</id>
-            <properties>
-                <ehcache.version>2.6.8</ehcache.version>
-                <ehcache-terracotta.version>2.6.8</ehcache-terracotta.version>
-                <slf4j.version>1.6.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache3x.xml</net.sf.ehcache.configurationResourceName>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-core</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-terracotta</artifactId>
-                    <version>${ehcache-terracotta.version}</version>
-                </dependency>
-            </dependencies>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <argLine>${maven-surefire-plugin-args}</argLine>
+                            <includes>
+                                <include>**/EhcacheStreamTestSuite.class</include>
+                                <include>**/EhcacheStreamTestSuiteLocalOffheap.class</include>
+                                <include>**/EhcacheStreamTestSuiteDistributed.class</include>
+                            </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
 </project>

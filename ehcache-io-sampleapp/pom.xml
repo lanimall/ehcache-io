@@ -9,9 +9,9 @@
     <packaging>jar</packaging>
 
     <properties>
-        <slf4j.version>1.6.1</slf4j.version>
         <maven.compiler.source>1.7</maven.compiler.source>
         <maven.compiler.target>1.7</maven.compiler.target>
+        <slf4j.version>1.7.1</slf4j.version>
     </properties>
 
     <dependencies>
@@ -35,27 +35,12 @@
         </dependency>
     </dependencies>
 
-    <build>
-        <plugins>
-            <plugin>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>2.3.1</version>
-                <configuration>
-                    <source>${maven.compiler.source}</source>
-                    <target>${maven.compiler.target}</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
-
     <profiles>
         <profile>
-            <id>ehcache-2.10</id>
+            <id>ehcache</id>
             <properties>
-                <ehcache.version>2.10.5</ehcache.version>
-                <toolkit.version>4.3.5</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache-oss.xml</net.sf.ehcache.configurationResourceName>
+                <ehcache.version>2.10.2</ehcache.version>
+                <toolkit.version>4.3.2</toolkit.version>
             </properties>
             <dependencies>
                 <!-- EhCache -->
@@ -72,12 +57,10 @@
             </dependencies>
         </profile>
         <profile>
-            <id>ehcache-2.10-ee</id>
+            <id>ehcache-ee</id>
             <properties>
                 <ehcache.version>2.10.4.3.15</ehcache.version>
                 <toolkit.version>4.3.4.3.15</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
                 <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
             </properties>
             <dependencies>
@@ -91,98 +74,6 @@
                     <groupId>org.terracotta</groupId>
                     <artifactId>terracotta-toolkit-runtime-ee</artifactId>
                     <version>${toolkit.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.9-ee</id>
-            <properties>
-                <ehcache.version>2.9.1</ehcache.version>
-                <toolkit.version>4.2.1</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
-                <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-ee</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.terracotta</groupId>
-                    <artifactId>terracotta-toolkit-runtime-ee</artifactId>
-                    <version>${toolkit.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.7-ee</id>
-            <properties>
-                <ehcache.version>2.7.5</ehcache.version>
-                <toolkit.version>4.0.5</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
-                <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-ee</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.terracotta</groupId>
-                    <artifactId>terracotta-toolkit-runtime-ee</artifactId>
-                    <version>${toolkit.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.8-ee</id>
-            <properties>
-                <ehcache.version>2.8.3</ehcache.version>
-                <toolkit.version>4.1.3</toolkit.version>
-                <slf4j.version>1.7.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache.xml</net.sf.ehcache.configurationResourceName>
-                <maven-surefire-plugin-args>-Xmx1280m -Dcom.tc.productkey.path=${user.home}/terracotta-license.key -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-ee</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-                <dependency>
-                    <groupId>org.terracotta</groupId>
-                    <artifactId>terracotta-toolkit-runtime-ee</artifactId>
-                    <version>${toolkit.version}</version>
-                </dependency>
-            </dependencies>
-        </profile>
-        <profile>
-            <id>ehcache-2.6</id>
-            <properties>
-                <ehcache.version>2.6.8</ehcache.version>
-                <ehcache-terracotta.version>2.6.8</ehcache-terracotta.version>
-                <slf4j.version>1.6.1</slf4j.version>
-                <net.sf.ehcache.configurationResourceName>classpath:ehcache3x.xml</net.sf.ehcache.configurationResourceName>
-            </properties>
-            <dependencies>
-                <!-- EhCache -->
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-core</artifactId>
-                    <version>${ehcache.version}</version>
-                </dependency>
-
-                <dependency>
-                    <groupId>net.sf.ehcache</groupId>
-                    <artifactId>ehcache-terracotta</artifactId>
-                    <version>${ehcache-terracotta.version}</version>
                 </dependency>
             </dependencies>
         </profile>
