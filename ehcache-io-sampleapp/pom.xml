@@ -38,6 +38,9 @@
     <profiles>
         <profile>
             <id>ehcache</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
             <properties>
                 <ehcache.version>2.10.2</ehcache.version>
                 <toolkit.version>4.3.2</toolkit.version>

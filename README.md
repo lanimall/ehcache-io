@@ -19,6 +19,18 @@ The 2 main rationale for using these streaming classes are:
  But when you're using a "streaming" construct, only the bytes (or chunks of bytes) passing through are loaded in JVM Heap. 
  So for example, you could stream a 1GB file in Ehcache even if the client heap is 512MB.
 
+## Building
+
+```java
+mvn clean package
+```
+
+If you want to run the EE Tests (eg. Offheap or Terracotta clustering), then use the ehcache-ee profile.
+
+```java
+mvn clean package -P ehcache-ee
+```
+
 ## Usage / Features:
 
 Both Input/Output Streams can be acquired from the factory "EhcacheStreamFactory" with 2 main static calls, 
