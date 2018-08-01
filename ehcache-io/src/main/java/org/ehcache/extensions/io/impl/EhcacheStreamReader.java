@@ -54,19 +54,23 @@ import java.io.IOException;
                 }
             }
         }
+
+        if (!isOpen)
+            throw new EhcacheStreamException("EhcacheStreamReader should be open at this point, something happened.");
     }
 
     public void close() throws EhcacheStreamException {
-        if(!isOpen)
-            throw new EhcacheStreamException("EhcacheStreamWriter is not open...");
-
-        synchronized (this.getClass()) {
-            if(!isOpen)
-                throw new EhcacheStreamException("EhcacheStreamWriter is not open...");
-
-            releaseReadOnMaster();
-            isOpen = false;
+        if(isOpen) {
+            synchronized (this.getClass()) {
+                if (isOpen) {
+                    releaseReadOnMaster();
+                    isOpen = false;
+                }
+            }
         }
+
+        if (isOpen)
+            throw new EhcacheStreamException("EhcacheStreamReader should be closed at this point, something happened.");
     }
 
     public int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException {

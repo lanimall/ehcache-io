@@ -71,26 +71,30 @@ import java.util.Arrays;
                 }
             }
         }
+
+        if (!isOpen)
+            throw new EhcacheStreamException("EhcacheStreamWriter should be opened at this point, something happened.");
     }
 
     public void close() throws EhcacheStreamException {
-        if(!isOpen)
-            throw new EhcacheStreamException("EhcacheStreamWriter is not opened...");
-
-        synchronized (this.getClass()) {
-            if(!isOpen)
-                throw new EhcacheStreamException("EhcacheStreamWriter is not opened...");
-
-            //finalize the EhcacheStreamMaster value by saving it in cache
-            //EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
-            if (null != currentStreamMaster) {
-                currentStreamMaster.setAvailable();
-                if(!replaceEhcacheStreamMaster(currentStreamMaster))
-                    throw new EhcacheStreamException("Could not close the ehcache stream index properly.");
+        if(isOpen) {
+            synchronized (this.getClass()) {
+                if(isOpen) {
+                    //finalize the EhcacheStreamMaster value by saving it in cache
+                    //EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
+                    if (null != currentStreamMaster) {
+                        currentStreamMaster.setAvailable();
+                        if (!replaceEhcacheStreamMaster(currentStreamMaster))
+                            throw new EhcacheStreamException("Could not close the ehcache stream index properly.");
+                    }
+                    releaseExclusiveWriteOnMaster();
+                    isOpen = false;
+                }
             }
-            releaseExclusiveWriteOnMaster();
-            isOpen = false;
         }
+
+        if (isOpen)
+            throw new EhcacheStreamException("EhcacheStreamWriter should be closed at this point, something happened.");
     }
 
     /**
