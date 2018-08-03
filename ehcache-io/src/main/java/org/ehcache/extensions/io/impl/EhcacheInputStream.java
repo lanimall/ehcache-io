@@ -11,8 +11,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
  * Created by Fabien Sanglier on 5/4/15.
  */
 public class EhcacheInputStream extends InputStream {
-    public static int DEFAULT_BUFFER_SIZE = 512 * 1024; // 512kb
-
     /**
      * The internal buffer array where the data is stored.
      */
@@ -45,32 +43,25 @@ public class EhcacheInputStream extends InputStream {
      * The Internal Ehcache streaming access layer
      */
     protected final EhcacheStreamReader ehcacheStreamReader;
-
-    /**
-     * Creates a new Ehcache Input Stream to read data from a cache key
-     *
-     * @param   cache       the underlying cache to access
-     * @param   cacheKey    the underlying cache key to read data from
-     */
-    public EhcacheInputStream(Cache cache, Object cacheKey) {
-        this(cache,cacheKey,DEFAULT_BUFFER_SIZE);
-    }
+    protected long ehcacheStreamReaderOpenTimeout;
 
     /**
      * Creates a new buffered output stream to write data to a cache
      * with the specified buffer size.
      *
-     * @param   cache       the underlying cache to access
-     * @param   cacheKey    the underlying cache key to read data from
-     * @param   size        the buffer size.
+     * @param   cache           the underlying cache to access
+     * @param   cacheKey        the underlying cache key to read data from
+     * @param   size            the buffer size.
+     * @param   openTimeout     the timeout for the stream reader open
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(Cache cache, Object cacheKey, int size) {
+    public EhcacheInputStream(Cache cache, Object cacheKey, int size, long openTimeout) {
         if (size <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
         this.buf = new byte[size];
         this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
+        this.ehcacheStreamReaderOpenTimeout = openTimeout;
     }
 
     @Override
@@ -79,7 +70,7 @@ public class EhcacheInputStream extends InputStream {
     }
 
     private void tryOpenInternalReader() throws IOException{
-        ehcacheStreamReader.open();
+        ehcacheStreamReader.tryOpen(ehcacheStreamReaderOpenTimeout);
     }
 
     private void closeInternalReader() throws IOException {

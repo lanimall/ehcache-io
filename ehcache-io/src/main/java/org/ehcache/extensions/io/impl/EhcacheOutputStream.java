@@ -9,8 +9,6 @@ import java.io.OutputStream;
  * Created by Fabien Sanglier on 5/4/15.
  */
 public class EhcacheOutputStream extends OutputStream {
-    public static int DEFAULT_BUFFER_SIZE = 1 * 1024 * 1024; // 1MB
-    public static boolean OVERRIDE_DEFAULT = true;
 
     /**
      * The internal buffer where data is stored.
@@ -29,43 +27,31 @@ public class EhcacheOutputStream extends OutputStream {
      * The Internal Ehcache streaming access layer
      */
     protected EhcacheStreamWriter ehcacheStreamWriter;
-
-    /**
-     * Creates a new buffered output stream to write data to a cache
-     *
-     * @param   cache   the underlying cache to copy data to
-     */
-    public EhcacheOutputStream(Cache cache, Object cacheKey) {
-        this(cache, cacheKey, OVERRIDE_DEFAULT);
-    }
-
-    /**
-     * Creates a new buffered output stream to write data to a cache
-     *
-     * @param   cache   the underlying cache to copy data to
-     */
-    public EhcacheOutputStream(Cache cache, Object cacheKey, boolean override) {
-        this(cache, cacheKey, DEFAULT_BUFFER_SIZE, override);
-    }
+    protected long ehcacheStreamWriterOpenTimeout;
 
     /**
      * Creates a new buffered output stream to write data to a cache
      * with the specified buffer size.
      *
-     * @param   cache   the underlying cache to copy data to
-     * @param   bufferSize   the buffer size.
-     * @exception IOException If the underlying openWrites operation is not successful
+     * @param   cache           the underlying cache to copy data to
+     * @param   cacheKey        the underlying cache key to read data from
+     * @param   size            the buffer size.
+     * @param   override        the mode in which to write the bytes (either override previous value, or append to previous value)
+     * @param   openTimeout     the timeout for the stream writer open operation
+     *
+     * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheOutputStream(Cache cache, Object cacheKey, int bufferSize, boolean override) {
-        if (bufferSize <= 0) {
+    public EhcacheOutputStream(Cache cache, Object cacheKey, int size, boolean override, long openTimeout) {
+        if (size <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
-        this.buf = new byte[bufferSize];
+        this.buf = new byte[size];
         this.ehcacheStreamWriter = new EhcacheStreamWriter(cache, cacheKey, override);
+        this.ehcacheStreamWriterOpenTimeout = openTimeout;
     }
 
     private void tryOpenInternalWriter() throws IOException{
-        ehcacheStreamWriter.open();
+        ehcacheStreamWriter.tryOpen(ehcacheStreamWriterOpenTimeout);
     }
 
     private void closeInternalWriter() throws IOException {
