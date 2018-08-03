@@ -15,10 +15,11 @@ Essentially, this implementation creates 2 new Ehcache-specific stream classes w
 
 The 2 main rationale for using these streaming classes are:
  * Plug-ability: You can plug these Ehcache stream into the extensive library of java.io streams (eg. File streams, socket streams, pipe streans, Checksum streams, Gzip streams, etc…)
- * JVM Memory control: When dealing with large files, you can overload local JVM memory very easily if you're loading them in heap (which standard Ehcache library would do). 
+ * JVM Memory control: When dealing with large files, you can overload local JVM memory very easily if you're loading them in heap. 
  But when you're using a "streaming" construct, only the bytes (or chunks of bytes) passing through are loaded in JVM Heap. 
  So for example, you could stream a 1GB file in Ehcache even if the client heap is 512MB.
- * Ability to append to an existing cache key without the need to bring the current cached object back to heap (essentially, set override=false on the Ehcache OutputStream and it will simply append new data to the key)
+ * Ability to append to an existing cache key without the need to bring the current cached object back to heap. 
+ Essentially, set override=false on the Ehcache OutputStream and you'll have the ability to append new data to the value identified by the key
 
 ## Building
 
