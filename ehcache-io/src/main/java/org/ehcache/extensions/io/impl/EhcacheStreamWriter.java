@@ -1,10 +1,7 @@
 package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
-import net.sf.ehcache.Element;
 import org.ehcache.extensions.io.EhcacheStreamException;
-import org.ehcache.extensions.io.impl.BaseEhcacheStream;
-import org.ehcache.extensions.io.impl.EhcacheStreamMaster;
 
 import java.io.Closeable;
 import java.util.Arrays;
@@ -28,43 +25,41 @@ import java.util.Arrays;
         this.override = override;
     }
 
-    public void open() throws EhcacheStreamException {
+    public void tryOpen(long timeout) throws EhcacheStreamException {
         if(!isOpen) {
             synchronized (this.getClass()) {
                 if (!isOpen) {
                     try {
-                        acquireExclusiveWriteOnMaster(LOCK_TIMEOUT);
+                        ehcacheStreamUtils.acquireExclusiveWriteOnMaster(timeout);
                     } catch (InterruptedException e) {
                         throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
                     }
 
                     //get the master index from cache, unless override is set
-                    Element oldMasterIndexElement = getMasterIndexElement();
-                    EhcacheStreamMaster oldMasterIndex = null;
-                    if(null != oldMasterIndexElement) {
-                        oldMasterIndex = (EhcacheStreamMaster)oldMasterIndexElement.getObjectValue();
+                    EhcacheStreamMaster oldStreamMaster = ehcacheStreamUtils.getStreamMasterFromCache();
+                    if(null != oldStreamMaster) {
                         if (!override) {
-                            this.currentStreamMaster = oldMasterIndex;
+                            this.currentStreamMaster = oldStreamMaster;
                             //maybe set it to write in the cache...
                         } else {
                             this.currentStreamMaster = null;
                         }
                     }
 
-                    //then we get the index to know where we are in the writes
+                    //If current stream master is null, create a new one
                     if (null == currentStreamMaster) {
                         //set a new EhcacheStreamMasterIndex in write mode
                         EhcacheStreamMaster newStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
 
-                        boolean replaced = replaceEhcacheStreamMaster(oldMasterIndexElement, newStreamMaster);
+                        boolean replaced = ehcacheStreamUtils.replaceEhcacheStreamMaster(oldStreamMaster, newStreamMaster);
                         if(!replaced)
-                            throw new EhcacheStreamException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
+                            throw new EhcacheStreamException("Concurrent write not allowed - Current cache entry with key[" + ehcacheStreamUtils.getCacheKey() + "] is currently being written...");
 
                         //if previous cas operation successful, create a new EhcacheStreamMasterIndex for currentStreamMasterIndex (to avoid soft references issues to the cached value above)
                         currentStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
 
                         //clear the chunks for the old master...
-                        clearChunksForKey(oldMasterIndex);
+                        ehcacheStreamUtils.clearChunksForKey(oldStreamMaster);
                     }
 
                     isOpen = true;
@@ -81,13 +76,13 @@ import java.util.Arrays;
             synchronized (this.getClass()) {
                 if(isOpen) {
                     //finalize the EhcacheStreamMaster value by saving it in cache
-                    //EhcacheStreamMaster currentStreamMaster = getMasterIndexValue();
+                    //EhcacheStreamMaster currentStreamMaster = getStreamMasterFromCache();
                     if (null != currentStreamMaster) {
                         currentStreamMaster.setAvailable();
-                        if (!replaceEhcacheStreamMaster(currentStreamMaster))
+                        if (!ehcacheStreamUtils.replaceEhcacheStreamMaster(currentStreamMaster))
                             throw new EhcacheStreamException("Could not close the ehcache stream index properly.");
                     }
-                    releaseExclusiveWriteOnMaster();
+                    ehcacheStreamUtils.releaseExclusiveWriteOnMaster();
                     isOpen = false;
                 }
             }
@@ -110,7 +105,7 @@ import java.util.Arrays;
 
         //put and increment stream index
         if(count > 0) {
-            putChunkValue(currentStreamMaster.getAndIncrementChunkCounter(), Arrays.copyOf(buf, count));
+            ehcacheStreamUtils.putChunkValue(currentStreamMaster.getAndIncrementChunkCounter(), Arrays.copyOf(buf, count));
         }
     }
 }

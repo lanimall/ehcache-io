@@ -2,11 +2,6 @@ package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
 import org.ehcache.extensions.io.EhcacheStreamException;
-import org.ehcache.extensions.io.impl.BaseEhcacheStream;
-import org.ehcache.extensions.io.impl.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.EhcacheStreamValue;
-
-import java.io.IOException;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
@@ -34,21 +29,21 @@ import java.io.IOException;
     //TODO: implement something better to return a better size
     //this is meant to be a general estimate without guarantees
     public int getSize() {
-        EhcacheStreamMaster temp = getMasterIndexValue();
+        EhcacheStreamMaster temp = ehcacheStreamUtils.getStreamMasterFromCache();
         return (null == temp)? 0: 1;
     }
 
-    public void open() throws EhcacheStreamException {
+    public void tryOpen(long timeout) throws EhcacheStreamException {
         if(!isOpen) {
             synchronized (this.getClass()) {
                 if (!isOpen) {
                     try {
-                        acquireReadOnMaster(LOCK_TIMEOUT);
+                        ehcacheStreamUtils.acquireReadOnMaster(timeout);
                     } catch (InterruptedException e) {
                         throw new EhcacheStreamException("Could not acquire the internal ehcache read lock", e);
                     }
 
-                    this.currentStreamMaster = getMasterIndexValue();
+                    this.currentStreamMaster = ehcacheStreamUtils.getStreamMasterFromCache();
 
                     isOpen = true;
                 }
@@ -63,7 +58,7 @@ import java.io.IOException;
         if(isOpen) {
             synchronized (this.getClass()) {
                 if (isOpen) {
-                    releaseReadOnMaster();
+                    ehcacheStreamUtils.releaseReadOnMaster();
                     isOpen = false;
                 }
             }
@@ -82,7 +77,7 @@ import java.io.IOException;
         //then we get the index to know where we are in the writes
         if(null != currentStreamMaster && cacheChunkIndexPos < this.currentStreamMaster.getChunkCounter()){
             //get chunk from cache
-            EhcacheStreamValue cacheChunkValue = getChunkValue(cacheChunkIndexPos);
+            EhcacheStreamValue cacheChunkValue = ehcacheStreamUtils.getChunkValue(cacheChunkIndexPos);
             if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
                 byte[] cacheChunk = cacheChunkValue.getChunk();
 
