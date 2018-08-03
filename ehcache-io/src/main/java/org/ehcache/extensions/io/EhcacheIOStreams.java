@@ -66,9 +66,13 @@ public class EhcacheIOStreams {
     }
 
     public static void removeStreamEntry(Cache cache, Object cacheKey) throws EhcacheStreamException {
+        removeStreamEntry(cache, cacheKey, streamOpenTimeouts);
+    }
+
+    public static void removeStreamEntry(Cache cache, Object cacheKey, long openTimeout) throws EhcacheStreamException {
         checkCacheValid(cache);
 
-        new EhcacheStreamUtils(cache,cacheKey).removeEhcacheStreamEntry(streamOpenTimeouts);
+        new EhcacheStreamUtils(cache,cacheKey).removeEhcacheStreamEntry(openTimeout);
     }
 
     //////////////////////////// InputStream
