@@ -51,11 +51,11 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         System.out.println("============ testCopyFileToCacheByteByByte With Override=" + override + " ====================");
 
-        OutputStream ehcacheOutputStream = null;
+        OutputStream ehcacheOutputStream;
         if(null == override)
-            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key);
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cache_key);
         else
-            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key, override.booleanValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cache_key, override.booleanValue());
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
@@ -163,9 +163,9 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         OutputStream ehcacheOutputStream = null;
         if(null == override)
-            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key);
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cache_key);
         else
-            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key, override.booleanValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cache_key, override.booleanValue());
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
@@ -273,9 +273,9 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         OutputStream ehcacheOutputStream = null;
         if(null == override)
-            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key);
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cache_key);
         else
-            ehcacheOutputStream = EhcacheStreamFactory.getOutputStream(cache, cache_key, override.booleanValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cache_key, override.booleanValue());
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());

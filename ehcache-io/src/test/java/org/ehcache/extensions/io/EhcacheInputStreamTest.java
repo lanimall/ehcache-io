@@ -30,7 +30,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(EhcacheStreamFactory.getOutputStream(cache, cache_key, false),new CRC32())
+                CheckedOutputStream os = new CheckedOutputStream(EhcacheIOStreams.getOutputStream(cache, cache_key),new CRC32())
         )
         {
             start = System.nanoTime();
@@ -65,7 +65,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
 
         try (
-                CheckedInputStream is = new CheckedInputStream(EhcacheStreamFactory.getInputStream(cache, cache_key, inBufferSize),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, cache_key, false, inBufferSize),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
@@ -100,7 +100,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
 
         try (
-                CheckedInputStream is = new CheckedInputStream(EhcacheStreamFactory.getInputStream(cache, cache_key, inBufferSize),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, cache_key, false, inBufferSize),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
@@ -133,7 +133,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
 
         try (
-                CheckedInputStream is = new CheckedInputStream(EhcacheStreamFactory.getInputStream(cache, cache_key),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, cache_key),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
@@ -165,7 +165,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
 
         try (
-                CheckedInputStream is = new CheckedInputStream(EhcacheStreamFactory.getInputStream(cache, cache_key),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, cache_key),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
@@ -199,7 +199,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
         final String cacheKey = "something-else";
 
-        InputStream is = EhcacheStreamFactory.getInputStream(cache, cacheKey, true);
+        InputStream is = EhcacheIOStreams.getInputStream(cache, cacheKey, true);
         Assert.assertEquals(is, null);
     }
 
@@ -212,7 +212,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         final String cacheKey = "something-else";
 
         try (
-                CheckedInputStream is = new CheckedInputStream(EhcacheStreamFactory.getInputStream(cache, cacheKey, false),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, cacheKey, false),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {

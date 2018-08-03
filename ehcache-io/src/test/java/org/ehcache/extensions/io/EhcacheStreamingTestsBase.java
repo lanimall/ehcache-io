@@ -121,7 +121,7 @@ public abstract class EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
 
         try (
-                CheckedInputStream is = new CheckedInputStream(new EhcacheInputStream(cache, cache_key, inBufferSize),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, cache_key, false, inBufferSize),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
         )
         {
