@@ -1,5 +1,7 @@
 package org.ehcache.extensions.io;
 
+import org.ehcache.extensions.io.impl.EhcacheInputStreamTest;
+import org.ehcache.extensions.io.impl.EhcacheOutputStreamTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;

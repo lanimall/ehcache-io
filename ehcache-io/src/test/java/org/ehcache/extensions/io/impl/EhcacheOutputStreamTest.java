@@ -1,5 +1,7 @@
-package org.ehcache.extensions.io;
+package org.ehcache.extensions.io.impl;
 
+import org.ehcache.extensions.io.EhcacheIOStreams;
+import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
