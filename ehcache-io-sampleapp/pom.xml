@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ehcache.extensions.io</groupId>
     <artifactId>ehcache-io-testclient</artifactId>
-    <version>1.0-rc2-snapshot</version>
+    <version>1.0-rc2-snapshot_6</version>
     <packaging>jar</packaging>
 
     <properties>
@@ -18,7 +18,7 @@
         <dependency>
             <groupId>org.ehcache.extensions.io</groupId>
             <artifactId>ehcache-io</artifactId>
-            <version>1.0-rc2-snapshot</version>
+            <version>1.0-rc2-snapshot_6</version>
         </dependency>
 
         <!-- SLF4J -->
