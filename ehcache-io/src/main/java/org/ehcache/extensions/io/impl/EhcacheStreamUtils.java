@@ -32,6 +32,65 @@ public class EhcacheStreamUtils {
         return cacheKey;
     }
 
+    /////////////////////////////////
+    ////   public accessors
+    /////////////////////////////////
+
+    public synchronized boolean removeEhcacheStreamEntry(long timeout) throws EhcacheStreamException {
+        boolean removed = false;
+        try {
+            try {
+                acquireExclusiveWriteOnMaster(timeout);
+            } catch (InterruptedException e) {
+                throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
+            }
+
+            EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache();
+            removed = replaceEhcacheStreamMaster(ehcacheStreamMaster, null);
+            if(removed)
+                clearChunksForKey(ehcacheStreamMaster);
+
+            //check that the master entry is actually removed
+            if(null != getStreamMasterFromCache())
+                throw new EhcacheStreamException("Master Entry was not removed as expected");
+
+            //check that the otherchunks are also removed
+            EhcacheStreamValue[] chunkValues = getStreamChunks();
+            if(null != chunkValues && chunkValues.length > 0)
+                throw new EhcacheStreamException("Some chunk entries were not removed as expected");
+        } finally {
+            releaseExclusiveWriteOnMaster();
+        }
+
+        return removed;
+    }
+
+    public EhcacheStreamMaster getStreamMasterFromCache(){
+        EhcacheStreamMaster cacheMasterIndexValue = null;
+        Element masterIndexElement = null;
+        if(null != (masterIndexElement = getStreamMasterElement())) {
+            cacheMasterIndexValue = (EhcacheStreamMaster)masterIndexElement.getObjectValue();
+        }
+
+        return cacheMasterIndexValue;
+    }
+
+    public EhcacheStreamValue[] getStreamChunks(){
+        EhcacheStreamValue[] chunkValues = null;
+        EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache();
+        if(null != ehcacheStreamMaster){
+            chunkValues = new EhcacheStreamValue[ehcacheStreamMaster.getChunkCounter()];
+            for(int i = 0; i < ehcacheStreamMaster.getChunkCounter(); i++){
+                chunkValues[i] = getChunkValue(i);
+            }
+        }
+        return chunkValues;
+    }
+
+    /////////////////////////////////
+    ////   End public accessors
+    /////////////////////////////////
+
     private enum LockType {
         READ,
         WRITE
@@ -77,16 +136,6 @@ public class EhcacheStreamUtils {
             throw new IllegalArgumentException("LockType not supported");
     }
 
-    public EhcacheStreamMaster getStreamMasterFromCache(){
-        EhcacheStreamMaster cacheMasterIndexValue = null;
-        Element masterIndexElement = null;
-        if(null != (masterIndexElement = getStreamMasterElement())) {
-            cacheMasterIndexValue = (EhcacheStreamMaster)masterIndexElement.getObjectValue();
-        }
-
-        return cacheMasterIndexValue;
-    }
-
     protected EhcacheStreamValue getChunkValue(int chunkIndex){
         EhcacheStreamValue chunkValue = null;
         Element chunkElem;
@@ -98,16 +147,6 @@ public class EhcacheStreamUtils {
 
     protected void putChunkValue(int chunkIndex, byte[] chunkPayload){
         cache.put(new Element(new EhcacheStreamKey(cacheKey, chunkIndex), new EhcacheStreamValue(chunkPayload)));
-    }
-
-    //clear all the chunks for this key...
-    //for now, since we really don't know how many chunks keys are there, simple looping on 10,000 first combinations
-    //maybe it'd be best to loop through all the keys and delete the needed ones...
-    protected void clearAllChunks() {
-        //remove all the chunk entries
-        for(int i = 0; i < 10000; i++){
-            cache.remove(new EhcacheStreamKey(cacheKey, i));
-        }
     }
 
     protected void clearChunksForKey(EhcacheStreamMaster ehcacheStreamMasterIndex) {
@@ -137,22 +176,6 @@ public class EhcacheStreamUtils {
 
     private Element getChunkElement(int chunkIndex) {
         return cache.get(buildChunkKey(chunkIndex));
-    }
-
-    public synchronized void removeEhcacheStreamEntry(long timeout) throws EhcacheStreamException {
-        try {
-            try {
-                acquireExclusiveWriteOnMaster(timeout);
-            } catch (InterruptedException e) {
-                throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
-            }
-
-            EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache();
-            if(replaceEhcacheStreamMaster(ehcacheStreamMaster, null))
-                clearChunksForKey(ehcacheStreamMaster);
-        } finally {
-            releaseExclusiveWriteOnMaster();
-        }
     }
 
     /**

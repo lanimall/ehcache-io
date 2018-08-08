@@ -59,20 +59,48 @@ public class EhcacheIOStreams {
 
     //////////////////////////// Public Utils
 
+    /**
+     * Creates a new buffered output stream to write data to a cache
+     * with the specified buffer size.
+     *
+     * @param       cache           the underlying cache to access
+     * @param       cacheKey        the underlying cache key to read data from
+     * @return      true if entry exists
+     * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null.
+     */
     public static boolean checkStreamEntryExist(Cache cache, Object cacheKey) throws EhcacheStreamException {
         checkValid(cache, cacheKey);
 
         return null != new EhcacheStreamUtils(cache,cacheKey).getStreamMasterFromCache();
     }
 
-    public static void removeStreamEntry(Cache cache, Object cacheKey) throws EhcacheStreamException {
-        removeStreamEntry(cache, cacheKey, streamOpenTimeouts);
+    /**
+     * Creates a new buffered output stream to write data to a cache
+     * with the specified buffer size.
+     *
+     * @param       cache           the underlying cache to access
+     * @param       cacheKey        the underlying cache key to read data from
+     * @return      true if the value was removed
+     * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the remove operation was not successful
+     */
+    public static boolean removeStreamEntry(Cache cache, Object cacheKey) throws EhcacheStreamException {
+        return removeStreamEntry(cache, cacheKey, streamOpenTimeouts);
     }
 
-    public static void removeStreamEntry(Cache cache, Object cacheKey, long openTimeout) throws EhcacheStreamException {
+    /**
+     * Creates a new buffered output stream to write data to a cache
+     * with the specified buffer size.
+     *
+     * @param       cache           the underlying cache to access
+     * @param       cacheKey        the underlying cache key to read data from
+     * @param       openTimeout     the timeout for the stream reader open
+     * @return      true if the value was removed
+     * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the remove operation was not successful
+     */
+    public static boolean removeStreamEntry(Cache cache, Object cacheKey, long openTimeout) throws EhcacheStreamException {
         checkValid(cache, cacheKey);
 
-        new EhcacheStreamUtils(cache,cacheKey).removeEhcacheStreamEntry(openTimeout);
+        return new EhcacheStreamUtils(cache,cacheKey).removeEhcacheStreamEntry(openTimeout);
     }
 
     //////////////////////////// InputStream
