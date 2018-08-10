@@ -2,6 +2,7 @@ package org.ehcache.extensions.io;
 
 import org.ehcache.extensions.io.impl.EhcacheInputStreamTest;
 import org.ehcache.extensions.io.impl.EhcacheOutputStreamTest;
+import org.ehcache.extensions.io.impl.EhcacheStreamUtilsTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -14,7 +15,8 @@ import org.junit.runners.Suite;
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
         EhcacheInputStreamTest.class,
-        EhcacheOutputStreamTest.class
+        EhcacheOutputStreamTest.class,
+        EhcacheStreamUtilsTest.class
         })
 public class EhcacheStreamTestSuiteLocalOffheap {
     @BeforeClass
@@ -22,6 +24,7 @@ public class EhcacheStreamTestSuiteLocalOffheap {
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_localoffheap.xml");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsOffheapTest");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStoreOffheap");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "string");
     }
 
     @AfterClass
@@ -29,5 +32,6 @@ public class EhcacheStreamTestSuiteLocalOffheap {
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME);
+        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
     }
 }

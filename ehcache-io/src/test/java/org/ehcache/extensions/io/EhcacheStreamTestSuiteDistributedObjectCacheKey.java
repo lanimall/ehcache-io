@@ -18,13 +18,13 @@ import org.junit.runners.Suite;
         EhcacheOutputStreamTest.class,
         EhcacheStreamUtilsTest.class
         })
-public class EhcacheStreamTestSuiteDistributed {
+public class EhcacheStreamTestSuiteDistributedObjectCacheKey {
     @BeforeClass
     public static void setup() throws Exception {
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_distributed.xml");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsDistributedTest");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStoreDistributed");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "string");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "object");
     }
 
     @AfterClass
