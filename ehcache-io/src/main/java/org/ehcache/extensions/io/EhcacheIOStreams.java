@@ -89,10 +89,10 @@ public class EhcacheIOStreams {
      * @return     List of stream entry keys in cache
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
-    public static List getStreamEntryKeys(Ehcache cache) throws EhcacheStreamException {
+    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys) throws EhcacheStreamException {
         checkValid(cache);
 
-        return new EhcacheStreamUtils(cache).getAllStreamEntryKeys(DEFAULT_GETALLKEYS_EXPIRATION_CHECK);
+        return new EhcacheStreamUtils(cache).getAllStreamEntryKeys(excludeExpiredKeys);
     }
 
     /**
