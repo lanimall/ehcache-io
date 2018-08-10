@@ -1,8 +1,14 @@
 package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
+import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
 import org.ehcache.extensions.io.EhcacheStreamException;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Iterator;
+import java.util.List;
 
 /**
  * Created by fabien.sanglier on 8/2/18.
@@ -11,80 +17,103 @@ public class EhcacheStreamUtils {
     /*
      * The Internal Ehcache cache object
      */
-    final Cache cache;
+    final Ehcache cache;
 
-    /*
-     * The Ehcache cache key object the data should get written to
-     */
-    final Object cacheKey;
-
-    public EhcacheStreamUtils(Cache cache, Object cacheKey) {
+    public EhcacheStreamUtils(Ehcache cache) {
         //TODO: we should check if the cache is not null but maybe enforce "Pinning"?? (because otherwise cache chunks can disappear and that would mess up the data consistency...)
         this.cache = cache;
-        this.cacheKey = cacheKey;
     }
 
-    protected Cache getCache() {
+    protected Ehcache getCache() {
         return cache;
-    }
-
-    protected Object getCacheKey() {
-        return cacheKey;
     }
 
     /////////////////////////////////
     ////   public accessors
     /////////////////////////////////
 
-    public synchronized boolean removeEhcacheStreamEntry(long timeout) throws EhcacheStreamException {
+    /**
+     * Remove a Stream entry from cache
+     *
+     * @param      cacheKey  the public cache key for this stream entry
+     * @param      timeout   the timeout to acquire the write lock on that cachekey
+     * @return     true if Stream entry was removed
+     * @exception   EhcacheStreamException
+     *
+     */
+    public synchronized boolean removeStreamEntry(final Object cacheKey, long timeout) throws EhcacheStreamException {
         boolean removed = false;
         try {
             try {
-                acquireExclusiveWriteOnMaster(timeout);
+                acquireExclusiveWriteOnMaster(cacheKey, timeout);
             } catch (InterruptedException e) {
                 throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
             }
 
-            EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache();
-            removed = replaceEhcacheStreamMaster(ehcacheStreamMaster, null);
+            //get stream master before removal
+            EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache(cacheKey);
+
+            //remove stream master from cache (this op is the most important for consistency)
+            removed = removeIfPresentEhcacheStreamMaster(cacheKey, ehcacheStreamMaster);
+
+            // if success removal, clean up the chunks...
+            // if that fails it's not good for space usage, but data will still be inconsistent.
+            // and we'll catch this issue in the next verification steps...
             if(removed)
-                clearChunksForKey(ehcacheStreamMaster);
+                clearChunksFromStreamMaster(cacheKey, ehcacheStreamMaster);
 
             //check that the master entry is actually removed
-            if(null != getStreamMasterFromCache())
+            if(null != getStreamMasterFromCache(cacheKey))
                 throw new EhcacheStreamException("Master Entry was not removed as expected");
 
-            //check that the otherchunks are also removed
-            EhcacheStreamValue[] chunkValues = getStreamChunks();
+            //check that the other chunks are also removed
+            EhcacheStreamValue[] chunkValues = getStreamChunksFromStreamMaster(cacheKey, ehcacheStreamMaster);
             if(null != chunkValues && chunkValues.length > 0)
                 throw new EhcacheStreamException("Some chunk entries were not removed as expected");
         } finally {
-            releaseExclusiveWriteOnMaster();
+            releaseExclusiveWriteOnMaster(cacheKey);
         }
 
         return removed;
     }
 
-    public EhcacheStreamMaster getStreamMasterFromCache(){
-        EhcacheStreamMaster cacheMasterIndexValue = null;
-        Element masterIndexElement = null;
-        if(null != (masterIndexElement = getStreamMasterElement())) {
-            cacheMasterIndexValue = (EhcacheStreamMaster)masterIndexElement.getObjectValue();
-        }
-
-        return cacheMasterIndexValue;
+    /**
+     * Check if a Stream entry exist in cache
+     *
+     * @param      cacheKey  the public cache key for this stream entry
+     * @return     true if Stream entry is in cache
+     *
+     */
+    public boolean containsStreamEntry(final Object cacheKey) {
+        return null != getStreamMasterFromCache(cacheKey);
     }
 
-    public EhcacheStreamValue[] getStreamChunks(){
-        EhcacheStreamValue[] chunkValues = null;
-        EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache();
-        if(null != ehcacheStreamMaster){
-            chunkValues = new EhcacheStreamValue[ehcacheStreamMaster.getChunkCounter()];
-            for(int i = 0; i < ehcacheStreamMaster.getChunkCounter(); i++){
-                chunkValues[i] = getChunkValue(i);
+    /**
+     * Get a list of all the public keys (the key objects used by the client apps) in cache
+     *
+     * @param       checkForExpiry        if true, returns only the keys that are not expired. NOTE: this could take much longer time if cache is large.
+     * @return      A list of public key objects
+     */
+    public List getAllStreamEntryKeys(boolean checkForExpiry){
+        List publicKeys;
+        List internalKeys = (checkForExpiry)?cache.getKeysWithExpiryCheck():cache.getKeys();
+
+        if(null != internalKeys && internalKeys.size() > 0) {
+            publicKeys = new ArrayList(internalKeys.size());
+            Iterator it = internalKeys.iterator();
+            while( it.hasNext() ) {
+                Object cacheKey = it.next();
+                if( null != cacheKey
+                        && cacheKey.getClass().equals(EhcacheStreamKey.class)
+                        && ((EhcacheStreamKey)cacheKey).getChunkIndex() == EhcacheStreamKey.MASTER_INDEX){
+                    publicKeys.add(((EhcacheStreamKey)cacheKey).getCacheKey());
+                }
             }
+        } else {
+            publicKeys = Collections.emptyList();
         }
-        return chunkValues;
+
+        return publicKeys;
     }
 
     /////////////////////////////////
@@ -96,20 +125,20 @@ public class EhcacheStreamUtils {
         WRITE
     }
 
-    protected boolean acquireReadOnMaster(long timeout) throws InterruptedException {
-        return tryLockInternal(buildMasterKey(),LockType.READ,timeout);
+    protected boolean acquireReadOnMaster(final Object cacheKey, long timeout) throws InterruptedException {
+        return tryLockInternal(buildMasterKey(cacheKey),LockType.READ,timeout);
     }
 
-    protected void releaseReadOnMaster(){
-        releaseLockInternal(buildMasterKey(),LockType.READ);
+    protected void releaseReadOnMaster(final Object cacheKey){
+        releaseLockInternal(buildMasterKey(cacheKey),LockType.READ);
     }
 
-    protected boolean acquireExclusiveWriteOnMaster(long timeout) throws InterruptedException {
-        return tryLockInternal(buildMasterKey(),LockType.WRITE,timeout);
+    protected boolean acquireExclusiveWriteOnMaster(final Object cacheKey, long timeout) throws InterruptedException {
+        return tryLockInternal(buildMasterKey(cacheKey),LockType.WRITE,timeout);
     }
 
-    protected void releaseExclusiveWriteOnMaster(){
-        releaseLockInternal(buildMasterKey(),LockType.WRITE);
+    protected void releaseExclusiveWriteOnMaster(final Object cacheKey){
+        releaseLockInternal(buildMasterKey(cacheKey),LockType.WRITE);
     }
 
     private boolean tryLockInternal(Object lockKey, LockType lockType, long timeout) throws InterruptedException {
@@ -136,46 +165,81 @@ public class EhcacheStreamUtils {
             throw new IllegalArgumentException("LockType not supported");
     }
 
-    protected EhcacheStreamValue getChunkValue(int chunkIndex){
+    protected EhcacheStreamValue getChunkValue(final Object cacheKey, int chunkIndex){
         EhcacheStreamValue chunkValue = null;
         Element chunkElem;
-        if(null != (chunkElem = getChunkElement(chunkIndex)))
+        if(null != (chunkElem = getChunkElement(cacheKey, chunkIndex)))
             chunkValue = (EhcacheStreamValue)chunkElem.getObjectValue();
 
         return chunkValue;
     }
 
-    protected void putChunkValue(int chunkIndex, byte[] chunkPayload){
+    protected void putChunkValue(final Object cacheKey, int chunkIndex, byte[] chunkPayload){
         cache.put(new Element(new EhcacheStreamKey(cacheKey, chunkIndex), new EhcacheStreamValue(chunkPayload)));
     }
 
-    protected void clearChunksForKey(EhcacheStreamMaster ehcacheStreamMasterIndex) {
+    private EhcacheStreamKey buildMasterKey(final Object cacheKey){
+        return buildChunkKey(cacheKey, EhcacheStreamKey.MASTER_INDEX);
+    }
+
+    private EhcacheStreamKey buildChunkKey(final Object cacheKey, final int chunkIndex){
+        return new EhcacheStreamKey(cacheKey, chunkIndex);
+    }
+
+    protected Element buildStreamMasterElement(final Object cacheKey, EhcacheStreamMaster ehcacheStreamMaster) {
+        return new Element(buildMasterKey(cacheKey), ehcacheStreamMaster);
+    }
+
+    protected Element getStreamMasterElement(final Object cacheKey) {
+        return cache.get(buildMasterKey(cacheKey));
+    }
+
+    private Element getChunkElement(final Object cacheKey, int chunkIndex) {
+        return cache.get(buildChunkKey(cacheKey, chunkIndex));
+    }
+
+    protected EhcacheStreamMaster getStreamMasterFromCache(final Object cacheKey){
+        EhcacheStreamMaster cacheMasterIndexValue = null;
+        Element masterIndexElement = null;
+        if(null != (masterIndexElement = getStreamMasterElement(cacheKey))) {
+            cacheMasterIndexValue = (EhcacheStreamMaster)masterIndexElement.getObjectValue();
+        }
+
+        return cacheMasterIndexValue;
+    }
+
+    protected EhcacheStreamValue[] getStreamChunksFromCache(final Object cacheKey){
+        return getStreamChunksFromStreamMaster(cacheKey, getStreamMasterFromCache(cacheKey));
+    }
+
+    protected EhcacheStreamValue[] getStreamChunksFromStreamMaster(final Object cacheKey, final EhcacheStreamMaster ehcacheStreamMaster){
+        List chunkValues = null;
+        if(null != ehcacheStreamMaster){
+            chunkValues = new ArrayList(ehcacheStreamMaster.getChunkCounter());
+            for(int i = 0; i < ehcacheStreamMaster.getChunkCounter(); i++){
+                EhcacheStreamValue chunkValue = getChunkValue(cacheKey, i);
+                if(null != chunkValue)
+                    chunkValues.add(chunkValue);
+            }
+        }
+
+        if(null == chunkValues)
+            chunkValues = Collections.emptyList();
+
+        return (EhcacheStreamValue[])chunkValues.toArray(new EhcacheStreamValue[chunkValues.size()]);
+    }
+
+    protected void clearChunksFromCacheKey(final Object cacheKey) {
+        clearChunksFromStreamMaster(cacheKey, getStreamMasterFromCache(cacheKey));
+    }
+
+    protected void clearChunksFromStreamMaster(final Object cacheKey, final EhcacheStreamMaster ehcacheStreamMasterIndex) {
         if(null != ehcacheStreamMasterIndex){
             //remove all the chunk entries
             for(int i = 0; i < ehcacheStreamMasterIndex.getChunkCounter(); i++){
                 cache.remove(new EhcacheStreamKey(cacheKey, i));
             }
         }
-    }
-
-    private EhcacheStreamKey buildMasterKey(){
-        return buildChunkKey(EhcacheStreamKey.MASTER_INDEX);
-    }
-
-    private EhcacheStreamKey buildChunkKey(int chunkIndex){
-        return new EhcacheStreamKey(cacheKey, chunkIndex);
-    }
-
-    protected Element buildStreamMasterElement(EhcacheStreamMaster ehcacheStreamMaster) {
-        return new Element(buildMasterKey(), ehcacheStreamMaster);
-    }
-
-    protected Element getStreamMasterElement() {
-        return cache.get(buildMasterKey());
-    }
-
-    private Element getChunkElement(int chunkIndex) {
-        return cache.get(buildChunkKey(chunkIndex));
     }
 
     /**
@@ -187,20 +251,14 @@ public class EhcacheStreamUtils {
      * @return     true if the Element was replaced
      *
      */
-    protected boolean replaceEhcacheStreamMaster(EhcacheStreamMaster oldEhcacheStreamMaster, EhcacheStreamMaster newEhcacheStreamMaster) {
+    protected boolean replaceIfEqualEhcacheStreamMaster(final Object cacheKey, EhcacheStreamMaster oldEhcacheStreamMaster, EhcacheStreamMaster newEhcacheStreamMaster) {
         boolean returnValue = false;
         if(null != oldEhcacheStreamMaster) {
-            if(null != newEhcacheStreamMaster) {
-                //replace old writeable element with new one using CAS operation for consistency
-                returnValue = cache.replace(buildStreamMasterElement(oldEhcacheStreamMaster) , buildStreamMasterElement(newEhcacheStreamMaster));
-            } else { // if null, let's understand this as a remove of current cache value
-                returnValue = cache.removeElement(buildStreamMasterElement(oldEhcacheStreamMaster));
-            }
+            //replace old writeable element with new one using CAS operation for consistency
+            returnValue = cache.replace(buildStreamMasterElement(cacheKey, oldEhcacheStreamMaster) , buildStreamMasterElement(cacheKey, newEhcacheStreamMaster));
         } else {
-            if (null != newEhcacheStreamMaster) { //only add a new entry if the object to add is not null...otherwise do nothing
-                Element previousElement = cache.putIfAbsent(buildStreamMasterElement(newEhcacheStreamMaster));
-                returnValue = (previousElement == null);
-            }
+            Element previousElement = cache.putIfAbsent(buildStreamMasterElement(cacheKey, newEhcacheStreamMaster));
+            returnValue = (previousElement == null);
         }
 
         return returnValue;
@@ -214,10 +272,23 @@ public class EhcacheStreamUtils {
      * @return     The Element previously cached for this key, or null if no Element was cached
      *
      */
-    protected boolean replaceEhcacheStreamMaster(EhcacheStreamMaster newEhcacheStreamMaster) {
+    protected boolean replaceIfPresentEhcacheStreamMaster(final Object cacheKey, EhcacheStreamMaster newEhcacheStreamMaster) {
         //replace old writeable element with new one using CAS operation for consistency
-        Element previous = cache.replace(buildStreamMasterElement(newEhcacheStreamMaster));
+        Element previous = cache.replace(buildStreamMasterElement(cacheKey, newEhcacheStreamMaster));
         return (previous != null);
+    }
+
+    /**
+     * Perform a CAS operation on the MasterIndex object
+     * Replace the cached element only if an Element is currently cached for this key
+     *
+     * @param      cacheKey  the master cache key for this stream entry
+     * @param      oldEhcacheStreamMaster  the new MasterIndex object to put in cache
+     * @return     The Element previously cached for this key, or null if no Element was cached
+     *
+     */
+    protected boolean removeIfPresentEhcacheStreamMaster(final Object cacheKey, EhcacheStreamMaster oldEhcacheStreamMaster) {
+        return cache.removeElement(buildStreamMasterElement(cacheKey, oldEhcacheStreamMaster));
     }
 }
 
