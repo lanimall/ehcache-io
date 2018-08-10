@@ -1,6 +1,7 @@
 package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
+import net.sf.ehcache.Ehcache;
 
 /**
  * Created by FabienSanglier on 5/6/15.
@@ -8,9 +9,20 @@ import net.sf.ehcache.Cache;
 
 public abstract class BaseEhcacheStream {
 
-    protected final EhcacheStreamUtils ehcacheStreamUtils;
+    private final EhcacheStreamUtils ehcacheStreamUtils;
 
-    protected BaseEhcacheStream(Cache cache, Object cacheKey) {
-        this.ehcacheStreamUtils = new EhcacheStreamUtils(cache, cacheKey);
+    private final Object cacheKey;
+
+    protected BaseEhcacheStream(Ehcache cache, Object cacheKey) {
+        this.ehcacheStreamUtils = new EhcacheStreamUtils(cache);
+        this.cacheKey = cacheKey;
+    }
+
+    public EhcacheStreamUtils getEhcacheStreamUtils() {
+        return ehcacheStreamUtils;
+    }
+
+    public Object getCacheKey() {
+        return cacheKey;
     }
 }
