@@ -5,7 +5,7 @@
     <parent>
         <artifactId>ehcache-io-parent</artifactId>
         <groupId>org.ehcache.extensions.io</groupId>
-        <version>1.0-rc2-snapshot_6</version>
+        <version>1.0-rc2-snapshot_7</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -54,9 +54,6 @@
     <profiles>
         <profile>
             <id>ehcache</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
             <properties>
                 <ehcache.version>2.10.2</ehcache.version>
                 <toolkit.version>4.3.2</toolkit.version>
