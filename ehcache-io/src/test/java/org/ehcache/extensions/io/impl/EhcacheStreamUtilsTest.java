@@ -1,76 +1,115 @@
 package org.ehcache.extensions.io.impl;
 
-import org.junit.Test;
+import org.ehcache.extensions.io.EhcacheIOStreams;
+import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
+import org.junit.*;
 
-public class EhcacheStreamUtilsTest{
+import java.io.BufferedInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.zip.CRC32;
+import java.util.zip.CheckedInputStream;
+import java.util.zip.CheckedOutputStream;
 
-    @Test
-    public void testAcquireReadOnMaster() throws Exception {
+public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
+    @BeforeClass
+    public static void oneTimeSetup() throws Exception {
+        cacheStart();
+        generateBigInputFile();
+    }
+
+    @AfterClass
+    public static void oneTimeTearDown() throws Exception {
+        cacheShutdown();
+        cleanBigInputFile();
+    }
+
+    @Before
+    public void setup() throws Exception {
+        cacheSetUp();
+    }
+
+    @After
+    public void cleanup() throws IOException {
+        cacheCleanUp();
     }
 
     @Test
-    public void testReleaseReadOnMaster() throws Exception {
+    public void testRemoveExistingStreamEntry() throws Exception {
+        long openTimeout = 10000L;
 
+        Assert.assertTrue(getCache().getSize() == 0);
+
+        copyFileToCache(getCacheKey());
+
+        Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
+
+        boolean removed = new EhcacheStreamUtils(getCache()).removeStreamEntry(getCacheKey(), openTimeout);
+
+        Assert.assertTrue(removed);
+        Assert.assertTrue(getCache().getSize() == 0);
     }
 
     @Test
-    public void testAcquireExclusiveWriteOnMaster() throws Exception {
+    public void testRemoveNonExistingStreamEntry() throws Exception {
+        long openTimeout = 10000L;
+        Assert.assertTrue(getCache().getSize() == 0);
 
+        boolean removed = new EhcacheStreamUtils(getCache()).removeStreamEntry(getCacheKey(), openTimeout);
+
+        Assert.assertFalse(removed);
+        Assert.assertTrue(getCache().getSize() == 0);
     }
 
     @Test
-    public void testReleaseExclusiveWriteOnMaster() throws Exception {
+    public void testContainsExistingStreamEntry() throws Exception {
+        copyFileToCache(getCacheKey());
 
+        Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
+
+        boolean found = new EhcacheStreamUtils(getCache()).containsStreamEntry(getCacheKey());
+
+        Assert.assertTrue(found);
     }
 
     @Test
-    public void testGetStreamMasterFromCache() throws Exception {
+    public void testContainsNonExistingStreamEntry() throws Exception {
+        Assert.assertTrue(getCache().getSize() == 0);
 
+        boolean found = new EhcacheStreamUtils(getCache()).containsStreamEntry(getCacheKey());
+
+        Assert.assertFalse(found);
     }
 
     @Test
-    public void testGetChunkValues() throws Exception {
+    public void testGetAllStreamEntryKeys() throws Exception {
+        boolean expirationCheck = false;
 
+        copyFileToCache(getCacheKey());
+
+        Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
+
+        List keys = new EhcacheStreamUtils(getCache()).getAllStreamEntryKeys(expirationCheck);
+
+        Assert.assertTrue(null != keys);
+        Assert.assertTrue(keys.size() == 1);
+        Assert.assertTrue(keys.get(0).equals(getCacheKey()));
     }
 
     @Test
-    public void testGetChunkValue() throws Exception {
+    public void testGetAllStreamEntryKeysExpirationCheck() throws Exception {
+        boolean expirationCheck = true;
 
-    }
+        copyFileToCache(getCacheKey());
 
-    @Test
-    public void testPutChunkValue() throws Exception {
+        Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
 
-    }
+        List keys = new EhcacheStreamUtils(getCache()).getAllStreamEntryKeys(expirationCheck);
 
-    @Test
-    public void testClearChunksForKey() throws Exception {
-
-    }
-
-    @Test
-    public void testBuildStreamMasterElement() throws Exception {
-
-    }
-
-    @Test
-    public void testGetStreamMasterElement() throws Exception {
-
-    }
-
-    @Test
-    public void testRemoveEhcacheStreamEntry() throws Exception {
-
-    }
-
-    @Test
-    public void testReplaceEhcacheStreamMaster() throws Exception {
-
-    }
-
-    @Test
-    public void testReplaceEhcacheStreamMaster1() throws Exception {
-
+        Assert.assertTrue(null != keys);
+        Assert.assertTrue(keys.size() == 1);
+        Assert.assertTrue(keys.get(0).equals(getCacheKey()));
     }
 }
