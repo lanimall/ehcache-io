@@ -18,6 +18,14 @@ public class EhcacheStreamKey implements Serializable {
         this.chunkIndex = chunkIndex;
     }
 
+    public Object getCacheKey() {
+        return cacheKey;
+    }
+
+    public int getChunkIndex() {
+        return chunkIndex;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
