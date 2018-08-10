@@ -1,6 +1,7 @@
 package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
+import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 
 import java.io.IOException;
@@ -55,7 +56,7 @@ public class EhcacheInputStream extends InputStream {
      * @param   openTimeout     the timeout for the stream reader open
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(Cache cache, Object cacheKey, int size, long openTimeout) {
+    public EhcacheInputStream(Ehcache cache, Object cacheKey, int size, long openTimeout) {
         if (size <= 0) {
             throw new IllegalArgumentException("Buffer size <= 0");
         }
