@@ -14,24 +14,12 @@ import java.util.List;
  * Created by fabien.sanglier on 7/27/18.
  */
 public class EhcacheIOStreams {
-    public static String PROP_INPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.inputstream.buffersize";
-    public static String PROP_OUTPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.outputstream.buffersize";
-    public static String PROP_OUTPUTSTREAM_OVERRIDE = "ehcache.extension.io.outputstream.override";
-    public static String PROP_OPEN_TIMEOUTS = "ehcache.extension.io.streams.opentimeout";
-    public static String PROP_ALLOW_NULLSTREAM = "ehcache.extension.io.streams.allownull";
-
-    private static int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 1 * 1024 * 1024; // 1MB
-    private static boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
-    private static int DEFAULT_INPUTSTREAM_BUFFER_SIZE = 512 * 1024; // 512kb
-    private static final long DEFAULT_OPEN_TIMEOUT = 10000;
-    private static boolean DEFAULT_ALLOW_NULL_STREAM = false;
-    private static boolean DEFAULT_GETALLKEYS_EXPIRATION_CHECK = false;
-
-    private static final Integer inputStreamBufferSize = getPropertyAsInt(PROP_INPUTSTREAM_BUFFERSIZE, DEFAULT_INPUTSTREAM_BUFFER_SIZE);
-    private static final Integer outputStreamBufferSize = getPropertyAsInt(PROP_OUTPUTSTREAM_BUFFERSIZE, DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
-    private static final Long streamOpenTimeouts = getPropertyAsLong(PROP_OPEN_TIMEOUTS, DEFAULT_OPEN_TIMEOUT);
-    private static final Boolean streamAllowNulls = getPropertyAsBoolean(PROP_ALLOW_NULLSTREAM, DEFAULT_ALLOW_NULL_STREAM);
-    private static final Boolean outputStreamDefaultOverride = getPropertyAsBoolean(PROP_OUTPUTSTREAM_OVERRIDE, DEFAULT_OUTPUTSTREAM_OVERRIDE);
+    private static final Integer inputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_INPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_BUFFER_SIZE);
+    private static final Integer outputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
+    private static final Long inputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_OPEN_TIMEOUT);
+    private static final Long outputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT);
+    private static final Boolean inputStreamAllowNulls = getPropertyAsBoolean(EhcacheStreamUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM);
+    private static final Boolean outputStreamDefaultOverride = getPropertyAsBoolean(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OVERRIDE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OVERRIDE);
 
     private static long getPropertyAsLong(String key, long defaultVal) {
         String valStr = System.getProperty(key, new Long(defaultVal).toString());
@@ -104,7 +92,7 @@ public class EhcacheIOStreams {
      * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the remove operation was not successful
      */
     public static boolean removeStreamEntry(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return removeStreamEntry(cache, cacheKey, streamOpenTimeouts);
+        return removeStreamEntry(cache, cacheKey, outputStreamOpenTimeout);
     }
 
     /**
@@ -125,7 +113,7 @@ public class EhcacheIOStreams {
     //////////////////////////// InputStream
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, streamAllowNulls);
+        return getInputStream(cache, cacheKey, inputStreamAllowNulls);
     }
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream) throws EhcacheStreamException {
@@ -133,7 +121,7 @@ public class EhcacheIOStreams {
     }
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, allowNullStream, bufferSize, streamOpenTimeouts);
+        return getInputStream(cache, cacheKey, allowNullStream, bufferSize, inputStreamOpenTimeout);
     }
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize, long openTimeout) throws EhcacheStreamException {
@@ -161,7 +149,7 @@ public class EhcacheIOStreams {
     }
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize) throws EhcacheStreamException {
-        return getOutputStream(cache, cacheKey, override, bufferSize, streamOpenTimeouts);
+        return getOutputStream(cache, cacheKey, override, bufferSize, outputStreamOpenTimeout);
     }
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize, long openTimeout) throws EhcacheStreamException {
