@@ -3,6 +3,7 @@ package org.ehcache.extensions.io.impl;
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
+import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamException;
 
 import java.util.ArrayList;
@@ -14,6 +15,23 @@ import java.util.List;
  * Created by fabien.sanglier on 8/2/18.
  */
 public class EhcacheStreamUtils {
+    public static String PROP_INPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.inputstream.buffersize";
+    public static String PROP_INPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.inputstream.opentimeout";
+    public static String PROP_INPUTSTREAM_ALLOW_NULLSTREAM = "ehcache.extension.io.inputstream.allownull";
+
+    public static String PROP_OUTPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.outputstream.buffersize";
+    public static String PROP_OUTPUTSTREAM_OVERRIDE = "ehcache.extension.io.outputstream.override";
+    public static String PROP_OUTPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.outputstream.opentimeout";
+
+
+    public static int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 1 * 1024 * 1024; // 1MB
+    public static boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
+    public static int DEFAULT_INPUTSTREAM_BUFFER_SIZE = 512 * 1024; // 512kb
+    public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 5000L;
+    public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
+    public static boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
+    public static boolean DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP = true;
+
     /*
      * The Internal Ehcache cache object
      */
@@ -130,7 +148,11 @@ public class EhcacheStreamUtils {
     }
 
     protected void releaseReadOnMaster(final Object cacheKey){
-        releaseLockInternal(buildMasterKey(cacheKey),LockType.READ);
+        releaseReadOnMaster(cacheKey, EhcacheStreamUtils.DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP);
+    }
+
+    protected void releaseReadOnMaster(final Object cacheKey, boolean checkOnlyForCurrentThread){
+        releaseLockInternal(buildMasterKey(cacheKey),LockType.READ, checkOnlyForCurrentThread);
     }
 
     protected boolean acquireExclusiveWriteOnMaster(final Object cacheKey, long timeout) throws InterruptedException {
@@ -138,7 +160,11 @@ public class EhcacheStreamUtils {
     }
 
     protected void releaseExclusiveWriteOnMaster(final Object cacheKey){
-        releaseLockInternal(buildMasterKey(cacheKey),LockType.WRITE);
+        releaseExclusiveWriteOnMaster(cacheKey, EhcacheStreamUtils.DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP);
+    }
+
+    protected void releaseExclusiveWriteOnMaster(final Object cacheKey, boolean checkOnlyForCurrentThread){
+        releaseLockInternal(buildMasterKey(cacheKey),LockType.WRITE, checkOnlyForCurrentThread);
     }
 
     private boolean tryLockInternal(Object lockKey, LockType lockType, long timeout) throws InterruptedException {
@@ -150,17 +176,23 @@ public class EhcacheStreamUtils {
         else
             throw new IllegalArgumentException("LockType not supported");
 
-        if (isLocked) {
-            return true;
-        }
-        return false;
+        return isLocked;
     }
 
-    private void releaseLockInternal(Object lockKey, LockType lockType) {
-        if(lockType == LockType.READ)
-            cache.releaseReadLockOnKey(lockKey);
-        else if(lockType == LockType.WRITE)
-            cache.releaseWriteLockOnKey(lockKey);
+    private void releaseLockInternal(Object lockKey, LockType lockType, boolean checkLockedByCurrentThread) {
+        if(lockType == LockType.READ) {
+            try {
+                // isReadLockedByCurrentThread throws a "UnsupportedOperationException Querying of read lock is not supported" for standalone ehcache
+                // so in that case, release the lock anyway
+                if (!checkLockedByCurrentThread || checkLockedByCurrentThread && cache.isReadLockedByCurrentThread(lockKey))
+                    cache.releaseReadLockOnKey(lockKey);
+            } catch (UnsupportedOperationException uex){
+                cache.releaseReadLockOnKey(lockKey);
+            }
+        } else if(lockType == LockType.WRITE) {
+            if(!checkLockedByCurrentThread || checkLockedByCurrentThread && cache.isWriteLockedByCurrentThread(lockKey))
+                cache.releaseWriteLockOnKey(lockKey);
+        }
         else
             throw new IllegalArgumentException("LockType not supported");
     }
