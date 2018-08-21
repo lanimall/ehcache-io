@@ -2,6 +2,7 @@ package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
+import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamException;
 
 import java.io.Closeable;
@@ -31,7 +32,9 @@ import java.util.Arrays;
             synchronized (this.getClass()) {
                 if (!isOpen) {
                     try {
-                        getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
+                        boolean locked = getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
+                        if(!locked)
+                            throw new EhcacheStreamException("Could not acquire the internal ehcache write lock within timeout = " + timeout);
                     } catch (InterruptedException e) {
                         throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
                     }
@@ -69,7 +72,7 @@ import java.util.Arrays;
         }
 
         if (!isOpen)
-            throw new EhcacheStreamException("EhcacheStreamWriter should be opened at this point, something happened.");
+            throw new EhcacheStreamException("EhcacheStreamWriter should be opened at this point: something unexpected happened.");
     }
 
     public void close() throws EhcacheStreamException {
@@ -90,7 +93,7 @@ import java.util.Arrays;
         }
 
         if (isOpen)
-            throw new EhcacheStreamException("EhcacheStreamWriter should be closed at this point, something happened.");
+            throw new EhcacheStreamException("EhcacheStreamWriter should be closed at this point: something unexpected happened.");
     }
 
     /**

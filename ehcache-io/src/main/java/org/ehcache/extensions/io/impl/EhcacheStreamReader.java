@@ -2,6 +2,7 @@ package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
+import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamException;
 
 /**
@@ -39,7 +40,9 @@ import org.ehcache.extensions.io.EhcacheStreamException;
             synchronized (this.getClass()) {
                 if (!isOpen) {
                     try {
-                        getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
+                        boolean locked = getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
+                        if(!locked)
+                            throw new EhcacheStreamException("Could not acquire the internal ehcache read lock within timeout = " + timeout);
                     } catch (InterruptedException e) {
                         throw new EhcacheStreamException("Could not acquire the internal ehcache read lock", e);
                     }
@@ -52,7 +55,7 @@ import org.ehcache.extensions.io.EhcacheStreamException;
         }
 
         if (!isOpen)
-            throw new EhcacheStreamException("EhcacheStreamReader should be open at this point, something happened.");
+            throw new EhcacheStreamException("EhcacheStreamReader should be open at this point: something unexpected happened.");
     }
 
     public void close() throws EhcacheStreamException {
@@ -66,7 +69,7 @@ import org.ehcache.extensions.io.EhcacheStreamException;
         }
 
         if (isOpen)
-            throw new EhcacheStreamException("EhcacheStreamReader should be closed at this point, something happened.");
+            throw new EhcacheStreamException("EhcacheStreamReader should be closed at this point: something unexpected happened.");
     }
 
     public int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException {
