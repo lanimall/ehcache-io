@@ -124,6 +124,17 @@ public class EhcacheIOStreams {
         return getInputStream(cache, cacheKey, allowNullStream, bufferSize, inputStreamOpenTimeout);
     }
 
+    /**
+     * Get an InputStream object backed by Ehcache.
+     *
+     * @param       cache           the underlying cache to access
+     * @param       cacheKey        the underlying cache key to read data from
+     * @param       allowNullStream flag to specify if this method should return NULL when the cache does not contain the underlying cache key to read data from.
+     * @param       bufferSize      the outputStream underlying buffer size. This essentially specify a max size for each of the underlying cache "chunk entries" created in Ehcache.
+     * @param       openTimeout     the timeout for the stream exclusive open operation (write lock timeout)
+     * @return      a valid InputStream object
+     * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the EhcacheInputStream creation was not successful
+     */
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize, long openTimeout) throws EhcacheStreamException {
         checkValid(cache, cacheKey);
 
@@ -152,6 +163,17 @@ public class EhcacheIOStreams {
         return getOutputStream(cache, cacheKey, override, bufferSize, outputStreamOpenTimeout);
     }
 
+    /**
+     * Get an OutputStream object backed by Ehcache.
+     *
+     * @param       cache           the underlying cache to access
+     * @param       cacheKey        the underlying cache key to read data from
+     * @param       override        flag to specify if the new data should completely override the currently stored data, or if it should append to the existing stored data.
+     * @param       bufferSize      the outputStream underlying buffer size. This essentially specify a max size for each of the underlying cache "chunk entries" created in Ehcache.
+     * @param       openTimeout     the timeout for the stream exclusive open operation (write lock timeout)
+     * @return      a Valid OutputStream object
+     * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the EhcacheOutputStream creation was not successful
+     */
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize, long openTimeout) throws EhcacheStreamException {
         checkValid(cache, cacheKey);
 
