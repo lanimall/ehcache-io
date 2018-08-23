@@ -56,9 +56,9 @@ public class EhcacheInputStream extends InputStream {
      * @param   openTimeout     the timeout for the stream reader open
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(Ehcache cache, Object cacheKey, int size, long openTimeout) {
+    public EhcacheInputStream(Ehcache cache, Object cacheKey, int size, long openTimeout) throws EhcacheStreamException {
         if (size <= 0) {
-            throw new IllegalArgumentException("Buffer size <= 0");
+            throw new EhcacheStreamException(new IllegalArgumentException("Buffer size <= 0"));
         }
         this.buf = new byte[size];
         this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);

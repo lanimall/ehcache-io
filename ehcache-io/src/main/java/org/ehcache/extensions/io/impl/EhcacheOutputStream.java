@@ -2,6 +2,7 @@ package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
+import org.ehcache.extensions.io.EhcacheStreamException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -42,9 +43,9 @@ public class EhcacheOutputStream extends OutputStream {
      *
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheOutputStream(Ehcache cache, Object cacheKey, int size, boolean override, long openTimeout) {
+    public EhcacheOutputStream(Ehcache cache, Object cacheKey, int size, boolean override, long openTimeout) throws EhcacheStreamException {
         if (size <= 0) {
-            throw new IllegalArgumentException("Buffer size <= 0");
+            throw new EhcacheStreamException(new IllegalArgumentException("Buffer size <= 0"));
         }
         this.buf = new byte[size];
         this.ehcacheStreamWriter = new EhcacheStreamWriter(cache, cacheKey, override);
