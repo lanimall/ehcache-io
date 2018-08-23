@@ -62,11 +62,7 @@ public class EhcacheStreamUtils {
     public synchronized boolean removeStreamEntry(final Object cacheKey, long timeout) throws EhcacheStreamException {
         boolean removed = false;
         try {
-            try {
-                acquireExclusiveWriteOnMaster(cacheKey, timeout);
-            } catch (InterruptedException e) {
-                throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
-            }
+            acquireExclusiveWriteOnMaster(cacheKey, timeout);
 
             //get stream master before removal
             EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache(cacheKey);
@@ -143,8 +139,15 @@ public class EhcacheStreamUtils {
         WRITE
     }
 
-    protected boolean acquireReadOnMaster(final Object cacheKey, long timeout) throws InterruptedException {
-        return tryLockInternal(buildMasterKey(cacheKey),LockType.READ,timeout);
+    protected void acquireReadOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamException {
+        EhcacheStreamKey key = buildMasterKey(cacheKey);
+        try {
+            boolean locked = tryLockInternal(key,LockType.READ,timeout);
+            if(!locked)
+                throw new EhcacheStreamException("Could not acquire the internal ehcache read lock on key [" + key.toString() + "] within timeout [" + timeout + "ms]");
+        } catch (InterruptedException e) {
+            throw new EhcacheStreamException("Unexpected interrupt error: Could not acquire the internal ehcache read lock", e);
+        }
     }
 
     protected void releaseReadOnMaster(final Object cacheKey){
@@ -155,8 +158,15 @@ public class EhcacheStreamUtils {
         releaseLockInternal(buildMasterKey(cacheKey),LockType.READ, checkOnlyForCurrentThread);
     }
 
-    protected boolean acquireExclusiveWriteOnMaster(final Object cacheKey, long timeout) throws InterruptedException {
-        return tryLockInternal(buildMasterKey(cacheKey),LockType.WRITE,timeout);
+    protected void acquireExclusiveWriteOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamException {
+        EhcacheStreamKey key = buildMasterKey(cacheKey);
+        try {
+            boolean locked = tryLockInternal(key, LockType.WRITE, timeout);
+            if(!locked)
+                throw new EhcacheStreamException("Could not acquire the internal ehcache write lock on key [" + key.toString() + "] within timeout [" + timeout + "ms]");
+        } catch (InterruptedException e) {
+            throw new EhcacheStreamException("Unexpected interrupt error: Could not acquire the internal ehcache write lock", e);
+        }
     }
 
     protected void releaseExclusiveWriteOnMaster(final Object cacheKey){

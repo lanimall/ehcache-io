@@ -31,13 +31,7 @@ import java.util.Arrays;
         if(!isOpen) {
             synchronized (this.getClass()) {
                 if (!isOpen) {
-                    try {
-                        boolean locked = getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
-                        if(!locked)
-                            throw new EhcacheStreamException("Could not acquire the internal ehcache write lock within timeout = " + timeout);
-                    } catch (InterruptedException e) {
-                        throw new EhcacheStreamException("Could not acquire the internal ehcache write lock", e);
-                    }
+                    getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
 
                     //get the master index from cache, unless override is set
                     EhcacheStreamMaster oldStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());

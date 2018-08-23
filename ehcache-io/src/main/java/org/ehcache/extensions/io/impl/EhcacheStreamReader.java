@@ -39,13 +39,7 @@ import org.ehcache.extensions.io.EhcacheStreamException;
         if(!isOpen) {
             synchronized (this.getClass()) {
                 if (!isOpen) {
-                    try {
-                        boolean locked = getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
-                        if(!locked)
-                            throw new EhcacheStreamException("Could not acquire the internal ehcache read lock within timeout = " + timeout);
-                    } catch (InterruptedException e) {
-                        throw new EhcacheStreamException("Could not acquire the internal ehcache read lock", e);
-                    }
+                    getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
 
                     this.currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
 
