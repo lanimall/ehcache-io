@@ -2,23 +2,43 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <parent>
-        <artifactId>ehcache-io-parent</artifactId>
-        <groupId>org.ehcache.extensions.io</groupId>
-        <version>1.0</version>
-    </parent>
-    <modelVersion>4.0.0</modelVersion>
 
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.ehcache.extensions.io</groupId>
     <artifactId>ehcache-io</artifactId>
+    <version>1.0</version>
 
     <properties>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j.version>1.7.1</slf4j.version>
+        <junit.version>4.11</junit.version>
+        <maven.compiler.source>1.7</maven.compiler.source>
+        <maven.compiler.target>1.7</maven.compiler.target>
         <maven-surefire-plugin>2.9</maven-surefire-plugin>
         <maven-surefire-plugin-args>-Xmx1280m -XX:MaxDirectMemorySize=10G</maven-surefire-plugin-args>
     </properties>
 
+    <developers>
+        <developer>
+            <id>fabien.sanglier</id>
+            <name>Fabien Sanglier</name>
+            <email>fsanglie@terracottatech.com</email>
+            <url>http://www.terracotta.org</url>
+            <organization>Terracotta, Inc.</organization>
+            <organizationUrl>http://www.terracotta.org</organizationUrl>
+            <timezone>-6</timezone>
+        </developer>
+    </developers>
+
     <dependencies>
-        <!-- SLF4J -->
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+            <version>${junit.version}</version>
+            <type>jar</type>
+            <scope>test</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
@@ -38,6 +58,27 @@
             </plugins>
         </pluginManagement>
         <plugins>
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.3.1</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.1.0</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                            <addDefaultSpecificationEntries>true</addDefaultSpecificationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
@@ -108,6 +149,54 @@
                                 <include>**/EhcacheStreamTestSuiteLocalOffheap.class</include>
                                 <include>**/EhcacheStreamTestSuiteDistributed.class</include>
                             </includes>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+        <profile>
+            <id>Java6</id>
+            <properties>
+                <maven.compiler.target>1.6</maven.compiler.target>
+            </properties>
+        </profile>
+        <profile>
+            <id>Java7</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <maven.compiler.target>1.7</maven.compiler.target>
+            </properties>
+        </profile>
+        <profile>
+            <id>Java8</id>
+            <properties>
+                <maven.compiler.target>1.8</maven.compiler.target>
+            </properties>
+        </profile>
+        <profile>
+            <id>Toolchain</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-toolchains-plugin</artifactId>
+                        <version>1.1</version>
+                        <executions>
+                            <execution>
+                                <goals>
+                                    <goal>toolchain</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <toolchains>
+                                <jdk>
+                                    <version>${maven.compiler.target}</version>
+                                    <vendor>sun</vendor>
+                                </jdk>
+                            </toolchains>
                         </configuration>
                     </plugin>
                 </plugins>
