@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Values version="2.0">
+  <value name="node_type">interface</value>
+  <value name="node_subtype">unknown</value>
+  <value name="node_nsName">wx.ehcache_io.services</value>
+  <value name="is_public">false</value>
+  <value name="encodeutf8">true</value>
+  <value name="shared">c3RhdGljIGludCBjb3B5QnVmZmVyU2l6ZSA9IDEyOCoxMDI0OyAvL2NvcHkgYnVmZmVyCgpwdWJs
+aWMgc3RhdGljIHZvaWQgdmFsaWRhdGVQYXJhbXMoU3RyaW5nIGNhY2hlTWFuYWdlck5hbWUpIHRo
+cm93cyBTZXJ2aWNlRXhjZXB0aW9uIHsKCWlmIChjYWNoZU1hbmFnZXJOYW1lID09IG51bGwgfHwg
+Y2FjaGVNYW5hZ2VyTmFtZS50cmltKCkubGVuZ3RoKCkgPT0gMCkKCQl0aHJvdyBuZXcgU2Vydmlj
+ZUV4Y2VwdGlvbigiY2FjaGVNYW5hZ2VyTmFtZSBtYXkgbm90IGJlIGVtcHR5Iik7CgllbHNlCgkJ
+cmV0dXJuOwp9CgpwdWJsaWMgc3RhdGljIHZvaWQgdmFsaWRhdGVQYXJhbXMoU3RyaW5nIGNhY2hl
+TWFuYWdlck5hbWUsIFN0cmluZyBjYWNoZU5hbWUpIHRocm93cyBTZXJ2aWNlRXhjZXB0aW9uIHsK
+CXZhbGlkYXRlUGFyYW1zKGNhY2hlTWFuYWdlck5hbWUpOwoJaWYgKGNhY2hlTmFtZSA9PSBudWxs
+IHx8IGNhY2hlTmFtZS50cmltKCkubGVuZ3RoKCkgPT0gMCkKCQl0aHJvdyBuZXcgU2VydmljZUV4
+Y2VwdGlvbigiY2FjaGVOYW1lIG1heSBub3QgYmUgZW1wdHkiKTsKCWVsc2UKCQlyZXR1cm47Cn0K
+CnB1YmxpYyBzdGF0aWMgQ2FjaGVNYW5hZ2VyIGdldENhY2hlTWFuYWdlcihTdHJpbmcgY2FjaGVN
+YW5hZ2VyTmFtZSkgdGhyb3dzIFNlcnZpY2VFeGNlcHRpb24gewoJdmFsaWRhdGVQYXJhbXMoY2Fj
+aGVNYW5hZ2VyTmFtZSk7CglDYWNoZU1hbmFnZXIgY2FjaGVNYW5hZ2VyID0gQ2FjaGVNYW5hZ2Vy
+VXRpbC5nZXRDYWNoZU1hbmFnZXIoY2FjaGVNYW5hZ2VyTmFtZSk7CglpZiAobnVsbCA9PSBjYWNo
+ZU1hbmFnZXIpCgkJdGhyb3cgbmV3IElsbGVnYWxBcmd1bWVudEV4Y2VwdGlvbigiQ2FjaGVNYW5h
+Z2VyIGlzIG51bGwuLi5DaGVjayB5b3VyIGNvbmZpZ3VyYXRpb24uIik7CgoJcmV0dXJuIGNhY2hl
+TWFuYWdlcjsKfQoKcHVibGljIHN0YXRpYyBDYWNoZSBnZXRDYWNoZShTdHJpbmcgY2FjaGVNYW5h
+Z2VyTmFtZSwgU3RyaW5nIGNhY2hlTmFtZSkgdGhyb3dzIFNlcnZpY2VFeGNlcHRpb24gewoJQ2Fj
+aGUgY2FjaGUgPSBudWxsOwoJdmFsaWRhdGVQYXJhbXMoY2FjaGVNYW5hZ2VyTmFtZSwgY2FjaGVO
+YW1lKTsKCWlmIChDYWNoZU1hbmFnZXJDb25maWcuY2FjaGVNYW5hZ2VyQWxpdmUoY2FjaGVNYW5h
+Z2VyTmFtZSkpIHsKCQlDYWNoZU1hbmFnZXIgY2FjaGVNYW5hZ2VyID0gZ2V0Q2FjaGVNYW5hZ2Vy
+KGNhY2hlTWFuYWdlck5hbWUpOwoJCWNhY2hlID0gY2FjaGVNYW5hZ2VyLmdldENhY2hlKGNhY2hl
+TmFtZSk7CgkJaWYgKGNhY2hlID09IG51bGwpCgkJCXRocm93IG5ldyBTZXJ2aWNlRXhjZXB0aW9u
+KCJDYWNoZSAiICsgY2FjaGVOYW1lICsgIiBpcyBub3QgZm91bmQuIik7Cgl9IGVsc2UgewoJCXRo
+cm93IG5ldyBTZXJ2aWNlRXhjZXB0aW9uKCJDYWNoZU1hbm1hZ2VyIFsiICsgY2FjaGVNYW5hZ2Vy
+TmFtZSArICJdIGlzIG5vdCBzdGFydGVkLiIpOwoJfQoJcmV0dXJuIGNhY2hlOwp9CgpzdGF0aWMg
+dm9pZCBwaXBlU3RyZWFtc0J5dGVCeUJ5dGUoSW5wdXRTdHJlYW0gaXMsIE91dHB1dFN0cmVhbSBv
+cykgdGhyb3dzIElPRXhjZXB0aW9uIHsKICAgIGludCBuOwogICAgd2hpbGUgKChuID0gaXMucmVh
+ZCgpKSA+IC0xKSB7CiAgICAgICAgb3Mud3JpdGUobik7CiAgICB9Cn0KCnN0YXRpYyB2b2lkIHBp
+cGVTdHJlYW1zV2l0aEJ1ZmZlcihJbnB1dFN0cmVhbSBpcywgT3V0cHV0U3RyZWFtIG9zLCBpbnQg
+YnVmZmVyU2l6ZSkgdGhyb3dzIElPRXhjZXB0aW9uIHsKICAgIGludCBuOwogICAgYnl0ZVtdIGJ1
+ZmZlciA9IG5ldyBieXRlW2J1ZmZlclNpemVdOwogICAgd2hpbGUgKChuID0gaXMucmVhZChidWZm
+ZXIpKSA+IC0xKSB7CiAgICAgICAgb3Mud3JpdGUoYnVmZmVyLCAwLCBuKTsgICAvLyBEb24ndCBh
+bGxvdyBhbnkgZXh0cmEgYnl0ZXMgdG8gY3JlZXAgaW4sIGZpbmFsIHdyaXRlCiAgICB9Cn0KCnN0
+YXRpYyB2b2lkIGNsb3NlU3RyZWFtKENsb3NlYWJsZSBzdHJlYW0pIHRocm93cyBTZXJ2aWNlRXhj
+ZXB0aW9uIHsKCWlmKG51bGwgIT0gc3RyZWFtKXsKCQl0cnkgewoJCQlzdHJlYW0uY2xvc2UoKTsK
+CQl9IGNhdGNoIChJT0V4Y2VwdGlvbiBlKSB7CgkJCXRocm93IG5ldyBTZXJ2aWNlRXhjZXB0aW9u
+KGUpOwoJCX0KCX0KfQ==</value>
+  <value name="extends"></value>
+  <array name="implements" type="value" depth="1">
+  </array>
+  <array name="imports" type="value" depth="1">
+    <value>java.io.*</value>
+    <value>net.sf.ehcache.Cache</value>
+    <value>net.sf.ehcache.CacheException</value>
+    <value>net.sf.ehcache.CacheManager</value>
+    <value>org.ehcache.extensions.io.EhcacheIOStreams</value>
+    <value>com.wm.app.b2b.server.cache.CacheManagerUtil</value>
+    <value>com.wm.app.b2b.server.cache.config.CacheManagerConfig</value>
+    <value>java.util.List</value>
+    <value>java.util.zip.*</value>
+  </array>
+</Values>

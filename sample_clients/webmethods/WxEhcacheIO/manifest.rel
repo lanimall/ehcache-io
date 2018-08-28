@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Values version="2.0">
+  <value name="name">WxEhcacheIO</value>
+  <value name="version">1.0</value>
+  <value name="build"></value>
+  <value name="patch_nums"></value>
+  <value name="description"></value>
+  <value name="target_pkg_version">1.0</value>
+  <value name="jvm_version">1.8.0_151</value>
+  <value name="source_server_version">9.12.0.0</value>
+  <value name="target_server_version">9.12.0.0</value>
+  <value name="time">2018-08-28 19:56:57 UTC</value>
+  <value name="type">full</value>
+  <null name="retainPatchHistory"/>
+  <value name="target_pkg_name">WxEhcacheIO</value>
+  <value name="publisher">ip-172-30-1-179.ec2.internal</value>
+  <array name="files_to_delete" type="value" depth="1">
+  </array>
+</Values>
