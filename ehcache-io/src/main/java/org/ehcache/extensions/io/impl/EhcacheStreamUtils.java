@@ -177,7 +177,7 @@ public class EhcacheStreamUtils {
         releaseLockInternal(buildMasterKey(cacheKey),LockType.WRITE, checkOnlyForCurrentThread);
     }
 
-    private boolean tryLockInternal(Object lockKey, LockType lockType, long timeout) throws InterruptedException {
+    private synchronized boolean tryLockInternal(Object lockKey, LockType lockType, long timeout) throws InterruptedException {
         boolean isLocked = false;
         if(lockType == LockType.READ)
             isLocked = cache.tryReadLockOnKey(lockKey, timeout);
@@ -189,7 +189,7 @@ public class EhcacheStreamUtils {
         return isLocked;
     }
 
-    private void releaseLockInternal(Object lockKey, LockType lockType, boolean checkLockedByCurrentThread) {
+    private synchronized void releaseLockInternal(Object lockKey, LockType lockType, boolean checkLockedByCurrentThread) {
         if(lockType == LockType.READ) {
             try {
                 // isReadLockedByCurrentThread throws a "UnsupportedOperationException Querying of read lock is not supported" for standalone ehcache
