@@ -80,13 +80,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                     exceptionCounter.incrementAndGet();
 
                 System.out.println(String.format("Thread [%s] - %s", getName(), e.getMessage()));
-                e.printStackTrace();
             } catch (Exception e) {
                 if(null != exceptionCounter)
                     exceptionCounter.incrementAndGet();
 
                 System.out.println(String.format("Thread [%s] - %s", getName(), e.getMessage()));
-                e.printStackTrace();
                 throw new IllegalStateException("Something unexpected happened", e);
             } finally{
                 doneLatch.countDown();
