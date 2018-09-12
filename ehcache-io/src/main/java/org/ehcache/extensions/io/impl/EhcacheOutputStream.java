@@ -28,8 +28,8 @@ public class EhcacheOutputStream extends OutputStream {
     /**
      * The Internal Ehcache streaming access layer
      */
-    protected EhcacheStreamWriter ehcacheStreamWriter;
-    protected long ehcacheStreamWriterOpenTimeout;
+    protected final EhcacheStreamWriter ehcacheStreamWriter;
+    protected final long ehcacheStreamWriterOpenTimeout;
 
     /**
      * Creates a new buffered output stream to write data to a cache

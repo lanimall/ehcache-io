@@ -44,7 +44,7 @@ public class EhcacheInputStream extends InputStream {
      * The Internal Ehcache streaming access layer
      */
     protected final EhcacheStreamReader ehcacheStreamReader;
-    protected long ehcacheStreamReaderOpenTimeout;
+    protected final long ehcacheStreamReaderOpenTimeout;
 
     /**
      * Creates a new buffered output stream to write data to a cache

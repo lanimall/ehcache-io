@@ -10,17 +10,17 @@ import org.ehcache.extensions.io.EhcacheStreamException;
  */
 /*package protected*/ class EhcacheStreamReader extends BaseEhcacheStream {
 
-    protected volatile EhcacheStreamMaster currentStreamMaster;
+    protected EhcacheStreamMaster currentStreamMaster;
 
     /*
      * The current position in the ehcache value chunk list.
      */
-    protected volatile int cacheChunkIndexPos = 0;
+    protected int cacheChunkIndexPos = 0;
 
     /*
      * The current offset in the ehcache value chunk
      */
-    protected volatile int cacheChunkBytePos = 0;
+    protected int cacheChunkBytePos = 0;
 
     private volatile boolean isOpen = false;
 
@@ -36,16 +36,12 @@ import org.ehcache.extensions.io.EhcacheStreamException;
     }
 
     public void tryOpen(long timeout) throws EhcacheStreamException {
-        if(!isOpen) {
-            synchronized (this.getClass()) {
-                if (!isOpen) {
-                    getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
+        if (!isOpen) {
+            getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
 
-                    this.currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+            this.currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
 
-                    isOpen = true;
-                }
-            }
+            isOpen = true;
         }
 
         if (!isOpen)
@@ -53,13 +49,9 @@ import org.ehcache.extensions.io.EhcacheStreamException;
     }
 
     public void close() throws EhcacheStreamException {
-        if(isOpen) {
-            synchronized (this.getClass()) {
-                if (isOpen) {
-                    getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
-                    isOpen = false;
-                }
-            }
+        if (isOpen) {
+            getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+            isOpen = false;
         }
 
         if (isOpen)
