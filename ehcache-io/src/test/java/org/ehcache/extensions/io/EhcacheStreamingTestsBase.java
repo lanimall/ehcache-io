@@ -44,7 +44,39 @@ public abstract class EhcacheStreamingTestsBase {
     private static final String CACHEKEY_TYPE_STRING = "somekey";
     private static final Object CACHEKEY_TYPE_CUSTOMOBJECT = CustomPublicKey.generateRandom();
 
-    private static class CustomPublicKey {
+    public class EhcacheInputStreamParams{
+        public final Ehcache cache;
+        public final Object cacheKey;
+        public final boolean allowNullStream;
+        public final int bufferSize;
+        public final long openTimeout;
+
+        public EhcacheInputStreamParams(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize, long openTimeout) {
+            this.cache = cache;
+            this.cacheKey = cacheKey;
+            this.allowNullStream = allowNullStream;
+            this.bufferSize = bufferSize;
+            this.openTimeout = openTimeout;
+        }
+    }
+
+    public class EhcacheOuputStreamParams{
+        public final Ehcache cache;
+        public final Object cacheKey;
+        public final boolean override;
+        public final int bufferSize;
+        public final long openTimeout;
+
+        public EhcacheOuputStreamParams(Ehcache cache, Object cacheKey, boolean override, int bufferSize, long openTimeout) {
+            this.cache = cache;
+            this.cacheKey = cacheKey;
+            this.override = override;
+            this.bufferSize = bufferSize;
+            this.openTimeout = openTimeout;
+        }
+    }
+
+    private static class CustomPublicKey implements Serializable {
         private String att1;
         private Long att2;
         private Integer att3;
@@ -124,10 +156,12 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public static void cacheStart() throws Exception {
+        System.out.println("============ cacheStart ====================");
         cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, DEFAULT_CACHE_PATH));
     }
 
     public static void cacheShutdown() throws Exception {
+        System.out.println("============ cacheShutdown ====================");
         if(null != cm)
             cm.shutdown();
 
@@ -135,6 +169,8 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public void cacheSetUp() throws Exception {
+        System.out.println("============ cacheSetUp ====================");
+
         String cacheName = System.getProperty(ENV_CACHE_NAME, DEFAULT_CACHE_NAME);
         try {
             cache = cm.getCache(cacheName);
@@ -155,6 +191,7 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public void cacheCleanUp(){
+        System.out.println("============ cacheCleanUp ====================");
         if(null != cache)
             cache.removeAll();
         cache = null;

@@ -1,9 +1,6 @@
 package org.ehcache.extensions.io;
 
-import org.ehcache.extensions.io.impl.EhcacheInputStreamTest;
-import org.ehcache.extensions.io.impl.EhcacheOutputStreamTest;
-import org.ehcache.extensions.io.impl.EhcacheStreamUtils;
-import org.ehcache.extensions.io.impl.EhcacheStreamUtilsTest;
+import org.ehcache.extensions.io.impl.*;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
@@ -17,7 +14,8 @@ import org.junit.runners.Suite;
 @Suite.SuiteClasses({
         EhcacheInputStreamTest.class,
         EhcacheOutputStreamTest.class,
-        EhcacheStreamUtilsTest.class
+        EhcacheStreamUtilsTest.class,
+        EhcacheStreamConcurrentTest.class
         })
 public class EhcacheStreamTestSuite {
     @BeforeClass
