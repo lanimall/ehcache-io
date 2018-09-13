@@ -33,6 +33,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
+        System.out.println("============ Starting EhcacheStreamConcurrentTest ====================");
         cacheStart();
         generateBigInputFile();
     }
@@ -41,6 +42,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     public static void oneTimeTearDown() throws Exception {
         cacheShutdown();
         cleanBigInputFile();
+        System.out.println("============ Finished EhcacheStreamConcurrentTest ====================");
     }
 
     @Before
@@ -240,10 +242,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long writerSleepBeforeMillis = 0L;
         final long writerSleepDuringMillis = 10000L;
         final long writerSleepAfterMillis = 100L;
+        final boolean override = true;
 
         addWriteCallable(
                 new EhcacheOutputStreamTestParams(
-                        getCache(), getCacheKey(), true, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
+                        getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
                 )
         );
 
@@ -251,10 +254,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long readerSleepBeforeMillis = 5000L;
         final long readerSleepDuringMillis = 0L;
         final long readerSleepAfterMillis = 100L;
+        final boolean allowNullStream = false;
 
         addReadCallable(
                 new EhcacheInputStreamTestParams(
-                        getCache(), getCacheKey(), false, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
+                        getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
                 )
         );
 
@@ -270,10 +274,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long writerSleepBeforeMillis = 5000L;
         final long writerSleepDuringMillis = 0L;
         final long writerSleepAfterMillis = 100L;
+        final boolean override = true;
 
         addWriteCallable(
                 new EhcacheOutputStreamTestParams(
-                        getCache(), getCacheKey(), true, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
+                        getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
                 )
         );
 
@@ -281,10 +286,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long readerSleepBeforeMillis = 0L;
         final long readerSleepDuringMillis = 10000L;
         final long readerSleepAfterMillis = 100L;
+        final boolean allowNullStream = false;
 
         addReadCallable(
                 new EhcacheInputStreamTestParams(
-                        getCache(), getCacheKey(), false, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
+                        getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
                 )
         );
 
@@ -295,8 +301,9 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testMultipleReadsNoProblem() throws IOException, InterruptedException {
-        int threadCount = 10;
+    public void testMultipleReads() throws IOException, InterruptedException {
+        final int threadCount = 10;
+        final boolean allowNullStream = false;
 
         for(int i = 0; i < threadCount; i++) {
             final long ehcacheReadOpenTimeout = 1000L; //small timeout...should be enough even under high reads
@@ -306,7 +313,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
             addReadCallable(
                     new EhcacheInputStreamTestParams(
-                            getCache(), getCacheKey(), false, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
+                            getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
                     )
             );
         }
@@ -319,8 +326,9 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testMultipleWritesEnoughWaitTime() throws IOException, InterruptedException {
-        int threadCount = 10;
+    public void testMultipleWritesOverwriteEnoughWaitTime() throws IOException, InterruptedException {
+        final int threadCount = 10;
+        final boolean override = true;
 
         for(int i = 0; i < threadCount; i++) {
             final long ehcacheWriteOpenTimeout = 200000L; //long enough timeout
@@ -330,7 +338,32 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
             addWriteCallable(
                     new EhcacheOutputStreamTestParams(
-                            getCache(), getCacheKey(), true, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
+                            getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
+                    )
+            );
+        }
+
+        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions));
+
+        for(int i = 0; i < threadCount; i++) {
+            Assert.assertEquals(0, exceptions.get(i).get()); // read thread should have 0 exception
+        }
+    }
+
+    @Test
+    public void testMultipleWritesAppendEnoughWaitTime() throws IOException, InterruptedException {
+        final int threadCount = 5;
+        final boolean override = false;
+
+        for(int i = 0; i < threadCount; i++) {
+            final long ehcacheWriteOpenTimeout = 200000L; //long enough timeout
+            final long writerSleepBeforeMillis = 0L;
+            final long writerSleepDuringMillis = 5000L;
+            final long writerSleepAfterMillis = 100L;
+
+            addWriteCallable(
+                    new EhcacheOutputStreamTestParams(
+                            getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
                     )
             );
         }
@@ -348,10 +381,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long writerSleepBeforeMillis = 0L;
         final long writerSleepDuringMillis = 10000L;
         final long writerSleepAfterMillis = 100L;
+        final boolean override = true;
 
         addWriteCallable(
                 new EhcacheOutputStreamTestParams(
-                        getCache(), getCacheKey(), true, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
+                        getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
                 )
         );
 
@@ -359,10 +393,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long readerSleepBeforeMillis = 2000L;
         final long readerSleepDuringMillis = 0L;
         final long readerSleepAfterMillis = 100L;
+        final boolean allowNullStream = false;
 
         addReadCallable(
                 new EhcacheInputStreamTestParams(
-                        getCache(), getCacheKey(), false, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
+                        getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
                 )
         );
 
@@ -378,10 +413,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long writerSleepBeforeMillis = 2000L;
         final long writerSleepDuringMillis = 0L;
         final long writerSleepAfterMillis = 100L;
+        final boolean override = true;
 
         addWriteCallable(
                 new EhcacheOutputStreamTestParams(
-                        getCache(), getCacheKey(), true, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
+                        getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeMillis, writerSleepDuringMillis, writerSleepAfterMillis
                 )
         );
 
@@ -389,10 +425,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long readerSleepBeforeMillis = 0L;
         final long readerSleepDuringMillis = 10000L;
         final long readerSleepAfterMillis = 100L;
+        final boolean allowNullStream = false;
 
         addReadCallable(
                 new EhcacheInputStreamTestParams(
-                        getCache(), getCacheKey(), false, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
+                        getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeMillis, readerSleepDuringMillis, readerSleepAfterMillis
                 )
         );
 
