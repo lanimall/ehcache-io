@@ -14,12 +14,12 @@ import java.util.List;
  * Created by fabien.sanglier on 7/27/18.
  */
 public class EhcacheIOStreams {
-    private static final Integer inputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_INPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_BUFFER_SIZE);
-    private static final Integer outputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
-    private static final Long inputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_OPEN_TIMEOUT);
-    private static final Long outputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT);
-    private static final Boolean inputStreamAllowNulls = getPropertyAsBoolean(EhcacheStreamUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM);
-    private static final Boolean outputStreamDefaultOverride = getPropertyAsBoolean(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OVERRIDE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OVERRIDE);
+    public static final Integer inputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_INPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_BUFFER_SIZE);
+    public static final Integer outputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
+    public static final Long inputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_OPEN_TIMEOUT);
+    public static final Long outputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT);
+    public static final Boolean inputStreamAllowNulls = getPropertyAsBoolean(EhcacheStreamUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM);
+    public static final Boolean outputStreamDefaultOverride = getPropertyAsBoolean(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OVERRIDE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OVERRIDE);
 
     private static long getPropertyAsLong(String key, long defaultVal) {
         String valStr = System.getProperty(key, new Long(defaultVal).toString());
