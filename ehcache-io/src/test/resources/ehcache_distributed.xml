@@ -5,7 +5,7 @@
 
     <diskStore path="java.io.tmpdir"/>
 
-    <terracottaConfig url="localhost:9510" rejoin="false" />
+    <terracottaConfig url="localhost:9510" rejoin="true" />
 
     <defaultCache eternal="false" maxElementsInMemory="100000"
                   timeToIdleSeconds="120" timeToLiveSeconds="120" maxElementsOnDisk="1000000"/>
