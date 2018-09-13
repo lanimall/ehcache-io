@@ -1,23 +1,18 @@
 package org.ehcache.extensions.io.impl;
 
-import net.sf.ehcache.Cache;
+import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
-import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamException;
 
 import java.io.Closeable;
 import java.util.Arrays;
-import java.util.Objects;
-import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
 /*package protected*/ class EhcacheStreamWriter extends BaseEhcacheStream implements Closeable {
 
-    /*
-     * The current position in the ehcache value chunk list.
-     */
+    private EhcacheStreamMaster initialOpenedStreamMaster;
     private EhcacheStreamMaster currentStreamMaster;
 
     private final boolean override;
@@ -34,31 +29,46 @@ import java.util.concurrent.locks.ReentrantLock;
             //always try to acquire the lock first
             getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
 
-            //if we're here, we've successfully acquired the lock
+            //if we're here, we've successfully acquired the lock -- otherwise, a EhcacheStreamException would have been thrown
             //now, get the master index from cache, unless override is set
-            EhcacheStreamMaster oldStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-            if(null != oldStreamMaster) {
-                if (!override) {
-                    this.currentStreamMaster = new EhcacheStreamMaster(oldStreamMaster.getChunkCounter(), EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+            EhcacheStreamMaster oldStreamMaster = null;
+            try {
+                oldStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+
+                EhcacheStreamMaster newOpenStreamMaster = null;
+                if(null != oldStreamMaster) {
+                    if (!override) {
+                        newOpenStreamMaster = new EhcacheStreamMaster(oldStreamMaster.getChunkCounter(), EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                    } else {
+                        newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                    }
                 } else {
-                    this.currentStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                    newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
                 }
-            } else {
-                this.currentStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+
+                boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), oldStreamMaster, newOpenStreamMaster);
+                if (!replaced)
+                    throw new EhcacheStreamException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
+
+                //save (deep copy) the newOpenStreamMaster for later usage (for CAS replace) when we close
+                this.initialOpenedStreamMaster = new EhcacheStreamMaster(newOpenStreamMaster);
+
+                //clear the chunks for the old master to keep things clean...
+                if(null != oldStreamMaster && newOpenStreamMaster.getChunkCounter() == 0)
+                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), oldStreamMaster);
+
+                //if the previous cas operation was successful, save (deep copy) the value from the cache into a instance variable
+                EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+                this.currentStreamMaster = (null != ehcacheStreamMasterFromCache)?new EhcacheStreamMaster(ehcacheStreamMasterFromCache):null;
+
+                //at this point, it's really open with consistency in cache
+                isOpen = true;
+            } catch (Exception exc){
+                //release lock
+                getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
+                isOpen = false;
+                throw exc;
             }
-
-            boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), oldStreamMaster, currentStreamMaster);
-            if(!replaced)
-                throw new EhcacheStreamException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
-
-            //if previous cas operation successful, get the right reference from the cache
-            currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-
-            //clear the chunks for the old master...
-            if(null != oldStreamMaster && currentStreamMaster.getChunkCounter() == 0)
-                getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), oldStreamMaster);
-
-            isOpen = true;
         }
 
         if (!isOpen)
@@ -68,12 +78,19 @@ import java.util.concurrent.locks.ReentrantLock;
     public void close() throws EhcacheStreamException {
         if(isOpen) {
             //finalize the EhcacheStreamMaster value by saving it in cache
+            EhcacheStreamMaster finalStreamMaster;
             if (null != currentStreamMaster) {
-                currentStreamMaster.setAvailable();
-                if (!getEhcacheStreamUtils().replaceIfPresentEhcacheStreamMaster(getCacheKey(), currentStreamMaster))
-                    throw new EhcacheStreamException("Could not close the ehcache stream index properly.");
+                finalStreamMaster = new EhcacheStreamMaster(currentStreamMaster.getChunkCounter(), EhcacheStreamMaster.StreamOpStatus.AVAILABLE);
+            } else {
+                finalStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.AVAILABLE);
             }
+
+            boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialOpenedStreamMaster, finalStreamMaster);
+            if (!replaced)
+                throw new EhcacheStreamException("Could not close the ehcache stream index properly.");
+
             getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
+
             isOpen = false;
         }
 

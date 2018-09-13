@@ -39,9 +39,17 @@ import org.ehcache.extensions.io.EhcacheStreamException;
         if (!isOpen) {
             getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
 
-            this.currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+            try {
+                EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+                this.currentStreamMaster = (null != ehcacheStreamMasterFromCache)?new EhcacheStreamMaster(ehcacheStreamMasterFromCache):null;
 
-            isOpen = true;
+                isOpen = true;
+            } catch (Exception exc){
+                //release lock
+                getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+                isOpen = false;
+                throw exc;
+            }
         }
 
         if (!isOpen)
