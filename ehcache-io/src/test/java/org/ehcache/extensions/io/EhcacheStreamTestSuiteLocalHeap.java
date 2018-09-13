@@ -10,14 +10,7 @@ import org.junit.runners.Suite;
  * Created by FabienSanglier on 5/6/15.
  */
 
-@RunWith(Suite.class)
-@Suite.SuiteClasses({
-        EhcacheInputStreamTest.class,
-        EhcacheOutputStreamTest.class,
-        EhcacheStreamUtilsTest.class,
-        EhcacheStreamConcurrentTest.class
-        })
-public class EhcacheStreamTestSuiteObjectCacheKey {
+public class EhcacheStreamTestSuiteLocalHeap extends EhcacheStreamTestSuiteBase {
     @BeforeClass
     public static void setup() throws Exception {
         int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
@@ -25,7 +18,7 @@ public class EhcacheStreamTestSuiteObjectCacheKey {
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_localheap.xml");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsTest");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStore");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "object");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "string");
     }
 
     @AfterClass
