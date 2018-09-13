@@ -24,10 +24,10 @@ public class EhcacheStreamUtils {
     public static String PROP_OUTPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.outputstream.opentimeout";
 
 
-    public static int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 1 * 1024 * 1024; // 1MB
+    public static int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 128 * 1024; // 128kb
     public static boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
     public static int DEFAULT_INPUTSTREAM_BUFFER_SIZE = 512 * 1024; // 512kb
-    public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 5000L;
+    public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 10000L;
     public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
     public static boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
     public static boolean DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP = true;
