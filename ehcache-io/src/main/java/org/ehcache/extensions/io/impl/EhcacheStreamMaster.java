@@ -23,6 +23,11 @@ public class EhcacheStreamMaster implements Serializable {
         this.status = status;
     }
 
+    public EhcacheStreamMaster(EhcacheStreamMaster master) {
+        this.chunkCounter = new AtomicInteger(master.chunkCounter.intValue());
+        this.status = master.status;
+    }
+
     public enum StreamOpStatus {
         CURRENT_WRITE, AVAILABLE
     }
