@@ -16,16 +16,16 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
+        System.out.println("============ Starting EhcacheOutputStreamTest ====================");
         cacheStart();
-
         generateBigInputFile();
     }
 
     @AfterClass
     public static void oneTimeTearDown() throws Exception {
         cacheShutdown();
-
         cleanBigInputFile();
+        System.out.println("============ Finished EhcacheOutputStreamTest ====================");
     }
 
     @Before
@@ -41,7 +41,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         inputFileCheckSum = -1L;
     }
 
-    public long testCopyFileToCacheByteByByte(Boolean override) throws IOException {
+    public long testCopyFileToCacheByteByByte(Boolean override, Integer bufferSize) throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
@@ -49,10 +49,16 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         System.out.println("============ testCopyFileToCacheByteByByte With Override=" + override + " ====================");
 
         OutputStream ehcacheOutputStream;
-        if(null == override)
+        if(null == override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey());
-        else
+        else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
+        else if (null == override && null != bufferSize)
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), EhcacheIOStreams.outputStreamDefaultOverride, bufferSize.intValue());
+        else if (null != override && null != bufferSize)
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
+        else
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey());
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
@@ -77,7 +83,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteDefaults() throws IOException {
-        long outputChecksum = testCopyFileToCacheByteByByte(null); //this should be same as override!!
+        long outputChecksum = testCopyFileToCacheByteByByte(null, null); //this should be same as override!!
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -89,7 +95,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteOverride() throws IOException {
-        long outputChecksum = testCopyFileToCacheByteByByte(true);
+        long outputChecksum = testCopyFileToCacheByteByByte(true, null);
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -101,7 +107,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteAppend() throws IOException {
-        long outputChecksum = testCopyFileToCacheByteByByte(false);
+        long outputChecksum = testCopyFileToCacheByteByByte(false, null);
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -119,7 +125,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         int initialCacheSizeAfter1 = getCache().getSize();
 
         for(int i=0;i<copyIterations;i++) {
-            testCopyFileToCacheByteByByte(true);
+            testCopyFileToCacheByteByByte(true, null);
 
             //get the file from cache again
             long checksumFromCache = readFileFromCache(getCacheKey());
@@ -138,7 +144,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         int initialCacheSizeAfter1 = getCache().getSize();
 
         for(int i=0;i<copyIterations;i++) {
-            testCopyFileToCacheByteByByte(false);
+            testCopyFileToCacheByteByByte(false, null);
 
             //get the file from cache again
             long checksumFromCache = readFileFromCache(getCacheKey());
@@ -150,7 +156,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         }
     }
 
-    public long testCopyFileToCacheWithBuffer(Boolean override) throws IOException {
+    public long testCopyFileToCacheWithBuffer(Boolean override, Integer bufferSize) throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
@@ -158,11 +164,17 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
         System.out.println("============ testCopyFileToCacheWithBuffer With Override=" + override + " ====================");
 
-        OutputStream ehcacheOutputStream = null;
-        if(null == override)
+        OutputStream ehcacheOutputStream;
+        if(null == override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey());
-        else
+        else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
+        else if (null == override && null != bufferSize)
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), EhcacheIOStreams.outputStreamDefaultOverride, bufferSize.intValue());
+        else if (null != override && null != bufferSize)
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
+        else
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey());
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
@@ -187,7 +199,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferDefaults() throws IOException {
-        long outputChecksum = testCopyFileToCacheWithBuffer(null); //this should be same as override!!
+        long outputChecksum = testCopyFileToCacheWithBuffer(null, null); //this should be same as override!!
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -199,7 +211,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferOverride() throws IOException {
-        long outputChecksum = testCopyFileToCacheWithBuffer(true);
+        long outputChecksum = testCopyFileToCacheWithBuffer(true, null);
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -211,7 +223,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferAppend() throws IOException {
-        long outputChecksum = testCopyFileToCacheWithBuffer(false);
+        long outputChecksum = testCopyFileToCacheWithBuffer(false, null);
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -229,7 +241,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         int initialCacheSizeAfter1 = getCache().getSize();
 
         for(int i=0;i<copyIterations;i++) {
-            testCopyFileToCacheWithBuffer(true);
+            testCopyFileToCacheWithBuffer(true, null);
 
             //get the file from cache again
             long checksumFromCache = readFileFromCache(getCacheKey());
@@ -248,7 +260,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         int initialCacheSizeAfter1 = getCache().getSize();
 
         for(int i=0;i<copyIterations;i++) {
-            testCopyFileToCacheWithBuffer(false);
+            testCopyFileToCacheWithBuffer(false, null);
 
             //get the file from cache again
             long checksumFromCache = readFileFromCache(getCacheKey());
@@ -261,18 +273,24 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         }
     }
 
-    public long testCopyFileToCacheInOneShot(Boolean override) throws IOException {
+    public long testCopyFileToCacheInOneShot(Boolean override, Integer bufferSize) throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
 
         System.out.println("============ testCopyFileToCacheInOneShot ====================");
 
-        OutputStream ehcacheOutputStream = null;
-        if(null == override)
+        OutputStream ehcacheOutputStream;
+        if(null == override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey());
-        else
+        else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
+        else if (null == override && null != bufferSize)
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), EhcacheIOStreams.outputStreamDefaultOverride, bufferSize.intValue());
+        else if (null != override && null != bufferSize)
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
+        else
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey());
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
@@ -302,7 +320,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotDefaults() throws IOException {
-        long outputChecksum = testCopyFileToCacheInOneShot(null); //this should be same as override!!
+        long outputChecksum = testCopyFileToCacheInOneShot(null, null); //this should be same as override!!
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -314,7 +332,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotOverride() throws IOException {
-        long outputChecksum = testCopyFileToCacheInOneShot(true);
+        long outputChecksum = testCopyFileToCacheInOneShot(true, null);
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -326,7 +344,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotAppend() throws IOException {
-        long outputChecksum = testCopyFileToCacheInOneShot(false);
+        long outputChecksum = testCopyFileToCacheInOneShot(false, null);
 
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
@@ -344,7 +362,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         int initialCacheSizeAfter1 = getCache().getSize();
 
         for(int i=0;i<copyIterations;i++) {
-            testCopyFileToCacheInOneShot(true);
+            testCopyFileToCacheInOneShot(true, null);
 
             //get the file from cache again
             long checksumFromCache = readFileFromCache(getCacheKey());
@@ -363,7 +381,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         int initialCacheSizeAfter1 = getCache().getSize();
 
         for(int i=0;i<copyIterations;i++) {
-            testCopyFileToCacheInOneShot(false);
+            testCopyFileToCacheInOneShot(false, null);
 
             //get the file from cache again
             long checksumFromCache = readFileFromCache(getCacheKey());

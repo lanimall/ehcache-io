@@ -19,16 +19,16 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
+        System.out.println("============ Starting EhcacheInputStreamTest ====================");
         cacheStart();
-
         generateBigInputFile();
     }
 
     @AfterClass
     public static void oneTimeTearDown() throws Exception {
         cacheShutdown();
-
         cleanBigInputFile();
+        System.out.println("============ Finished EhcacheInputStreamTest ====================");
     }
 
     @Before
