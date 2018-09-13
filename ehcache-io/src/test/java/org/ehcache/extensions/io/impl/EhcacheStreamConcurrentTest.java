@@ -240,7 +240,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     public void testReadDuringWriteEnoughTime() throws EhcacheStreamException, InterruptedException {
         final long ehcacheWriteOpenTimeout = 1000L;
         final long writerSleepBeforeMillis = 0L;
-        final long writerSleepDuringMillis = 10000L;
+        final long writerSleepDuringMillis = 5000L;
         final long writerSleepAfterMillis = 100L;
         final boolean override = true;
 
@@ -251,7 +251,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         );
 
         final long ehcacheReadOpenTimeout = 200000L;
-        final long readerSleepBeforeMillis = 5000L;
+        final long readerSleepBeforeMillis = 1000L;
         final long readerSleepDuringMillis = 0L;
         final long readerSleepAfterMillis = 100L;
         final boolean allowNullStream = false;
@@ -271,7 +271,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     @Test
     public void testWriteDuringReadEnoughWaitTime() throws IOException, InterruptedException {
         final long ehcacheWriteOpenTimeout = 200000L;
-        final long writerSleepBeforeMillis = 5000L;
+        final long writerSleepBeforeMillis = 1000L;
         final long writerSleepDuringMillis = 0L;
         final long writerSleepAfterMillis = 100L;
         final boolean override = true;
@@ -284,7 +284,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         final long ehcacheReadOpenTimeout = 1000L;
         final long readerSleepBeforeMillis = 0L;
-        final long readerSleepDuringMillis = 10000L;
+        final long readerSleepDuringMillis = 5000L;
         final long readerSleepAfterMillis = 100L;
         final boolean allowNullStream = false;
 
@@ -308,7 +308,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         for(int i = 0; i < threadCount; i++) {
             final long ehcacheReadOpenTimeout = 1000L; //small timeout...should be enough even under high reads
             final long readerSleepBeforeMillis = 0L;
-            final long readerSleepDuringMillis = 10000L;
+            final long readerSleepDuringMillis = 2000L;
             final long readerSleepAfterMillis = 100L;
 
             addReadCallable(
@@ -333,7 +333,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         for(int i = 0; i < threadCount; i++) {
             final long ehcacheWriteOpenTimeout = 200000L; //long enough timeout
             final long writerSleepBeforeMillis = 0L;
-            final long writerSleepDuringMillis = 5000L;
+            final long writerSleepDuringMillis = 2000L;
             final long writerSleepAfterMillis = 100L;
 
             addWriteCallable(
@@ -358,7 +358,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         for(int i = 0; i < threadCount; i++) {
             final long ehcacheWriteOpenTimeout = 200000L; //long enough timeout
             final long writerSleepBeforeMillis = 0L;
-            final long writerSleepDuringMillis = 5000L;
+            final long writerSleepDuringMillis = 2000L;
             final long writerSleepAfterMillis = 100L;
 
             addWriteCallable(
@@ -379,7 +379,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     public void testReadCannotAcquireDuringWrite() throws IOException, InterruptedException {
         final long ehcacheWriteOpenTimeout = 1000L;
         final long writerSleepBeforeMillis = 0L;
-        final long writerSleepDuringMillis = 10000L;
+        final long writerSleepDuringMillis = 5000L;
         final long writerSleepAfterMillis = 100L;
         final boolean override = true;
 
@@ -390,7 +390,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         );
 
         final long ehcacheReadOpenTimeout = 2000L;
-        final long readerSleepBeforeMillis = 2000L;
+        final long readerSleepBeforeMillis = 1000L;
         final long readerSleepDuringMillis = 0L;
         final long readerSleepAfterMillis = 100L;
         final boolean allowNullStream = false;
@@ -409,8 +409,8 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testWriteCannotAcquireDuringRead() throws IOException, InterruptedException {
-        final long ehcacheWriteOpenTimeout = 5000L;
-        final long writerSleepBeforeMillis = 2000L;
+        final long ehcacheWriteOpenTimeout = 2000L;
+        final long writerSleepBeforeMillis = 1000L;
         final long writerSleepDuringMillis = 0L;
         final long writerSleepAfterMillis = 100L;
         final boolean override = true;
@@ -423,7 +423,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         final long ehcacheReadOpenTimeout = 1000L;
         final long readerSleepBeforeMillis = 0L;
-        final long readerSleepDuringMillis = 10000L;
+        final long readerSleepDuringMillis = 5000L;
         final long readerSleepAfterMillis = 100L;
         final boolean allowNullStream = false;
 
