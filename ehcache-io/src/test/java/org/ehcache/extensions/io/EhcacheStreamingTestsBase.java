@@ -1,11 +1,9 @@
 package org.ehcache.extensions.io;
 
-import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
-import org.ehcache.extensions.io.impl.EhcacheInputStream;
-import org.junit.*;
+import org.junit.Assert;
 
 import java.io.*;
 import java.nio.file.FileSystems;
