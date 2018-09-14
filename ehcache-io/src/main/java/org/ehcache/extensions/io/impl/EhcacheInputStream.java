@@ -1,6 +1,5 @@
 package org.ehcache.extensions.io.impl;
 
-import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 
