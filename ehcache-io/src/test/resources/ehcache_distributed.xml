@@ -18,6 +18,10 @@
         <pinning store="inCache"></pinning>
 
         <!-- should be set to strong to keep consistent across the cluster -->
-        <terracotta consistency="strong"></terracotta>
+        <terracotta consistency="strong">
+            <nonstop immediateTimeout="false" timeoutMillis="30000">
+                <timeoutBehavior type="exception" />
+            </nonstop>
+        </terracotta>
     </cache>
 </ehcache>
