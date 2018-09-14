@@ -27,7 +27,7 @@ public class EhcacheOutputStream extends OutputStream {
     /**
      * The Internal Ehcache streaming access layer
      */
-    protected final EhcacheStreamWriter ehcacheStreamWriter;
+    protected final EhcacheStreamWriterWithSingleLock ehcacheStreamWriter;
     protected final long ehcacheStreamWriterOpenTimeout;
 
     /**
@@ -47,7 +47,7 @@ public class EhcacheOutputStream extends OutputStream {
             throw new EhcacheStreamException(new IllegalArgumentException("Buffer size <= 0"));
         }
         this.buf = new byte[size];
-        this.ehcacheStreamWriter = new EhcacheStreamWriter(cache, cacheKey, override);
+        this.ehcacheStreamWriter = new EhcacheStreamWriterWithSingleLock(cache, cacheKey, override);
         this.ehcacheStreamWriterOpenTimeout = openTimeout;
     }
 

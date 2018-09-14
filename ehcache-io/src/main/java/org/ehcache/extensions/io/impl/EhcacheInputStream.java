@@ -42,7 +42,7 @@ public class EhcacheInputStream extends InputStream {
     /*
      * The Internal Ehcache streaming access layer
      */
-    protected final EhcacheStreamReader ehcacheStreamReader;
+    protected final EhcacheStreamReaderNoLock ehcacheStreamReader;
     protected final long ehcacheStreamReaderOpenTimeout;
 
     /**
@@ -60,7 +60,7 @@ public class EhcacheInputStream extends InputStream {
             throw new EhcacheStreamException(new IllegalArgumentException("Buffer size <= 0"));
         }
         this.buf = new byte[size];
-        this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
+        this.ehcacheStreamReader = new EhcacheStreamReaderNoLock(cache,cacheKey);
         this.ehcacheStreamReaderOpenTimeout = openTimeout;
     }
 
