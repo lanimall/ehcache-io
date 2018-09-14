@@ -4,7 +4,6 @@ import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.junit.*;
 
-import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;

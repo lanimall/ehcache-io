@@ -1,16 +1,10 @@
 package org.ehcache.extensions.io.impl;
 
-import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.junit.*;
 
-import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.util.List;
-import java.util.zip.CRC32;
-import java.util.zip.CheckedInputStream;
-import java.util.zip.CheckedOutputStream;
 
 public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
