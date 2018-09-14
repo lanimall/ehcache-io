@@ -1,14 +1,14 @@
 package org.ehcache.extensions.io.impl;
 
-import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
-import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamException;
+
+import java.io.Closeable;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
-/*package protected*/ class EhcacheStreamReader extends BaseEhcacheStream {
+/*package protected*/ class EhcacheStreamReader extends BaseEhcacheStream implements Closeable {
 
     protected EhcacheStreamMaster currentStreamMaster;
 
@@ -37,7 +37,8 @@ import org.ehcache.extensions.io.EhcacheStreamException;
 
     public void tryOpen(long timeout) throws EhcacheStreamException {
         if (!isOpen) {
-            getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
+            if(!EhcacheStreamUtils.inputStreamDontUseReadLock)
+                getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
 
             try {
                 EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
@@ -46,7 +47,9 @@ import org.ehcache.extensions.io.EhcacheStreamException;
                 isOpen = true;
             } catch (Exception exc){
                 //release lock
-                getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+                if(!EhcacheStreamUtils.inputStreamDontUseReadLock)
+                    getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+
                 isOpen = false;
                 throw exc;
             }
@@ -56,9 +59,11 @@ import org.ehcache.extensions.io.EhcacheStreamException;
             throw new EhcacheStreamException("EhcacheStreamReader should be open at this point: something unexpected happened.");
     }
 
+    @Override
     public void close() throws EhcacheStreamException {
         if (isOpen) {
-            getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+            if(!EhcacheStreamUtils.inputStreamDontUseReadLock)
+                getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
             isOpen = false;
         }
 

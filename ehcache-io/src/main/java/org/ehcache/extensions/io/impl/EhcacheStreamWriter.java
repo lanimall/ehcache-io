@@ -1,6 +1,5 @@
 package org.ehcache.extensions.io.impl;
 
-import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 
@@ -24,10 +23,11 @@ import java.util.Arrays;
         this.override = override;
     }
 
-    public void tryOpen(long timeout) throws EhcacheStreamException {
+    public void tryOpen(final long timeout) throws EhcacheStreamException {
         if (!isOpen) {
             //always try to acquire the lock first
-            getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
+            if(!EhcacheStreamUtils.outputStreamDontUseWriteLock)
+                getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
 
             //if we're here, we've successfully acquired the lock -- otherwise, a EhcacheStreamException would have been thrown
             //now, get the master index from cache, unless override is set
@@ -65,7 +65,8 @@ import java.util.Arrays;
                 isOpen = true;
             } catch (Exception exc){
                 //release lock
-                getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
+                if(!EhcacheStreamUtils.outputStreamDontUseWriteLock)
+                    getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
                 isOpen = false;
                 throw exc;
             }
@@ -75,6 +76,7 @@ import java.util.Arrays;
             throw new EhcacheStreamException("EhcacheStreamWriter should be opened at this point: something unexpected happened.");
     }
 
+    @Override
     public void close() throws EhcacheStreamException {
         if(isOpen) {
             //finalize the EhcacheStreamMaster value by saving it in cache
@@ -89,7 +91,8 @@ import java.util.Arrays;
             if (!replaced)
                 throw new EhcacheStreamException("Could not close the ehcache stream index properly.");
 
-            getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
+            if(!EhcacheStreamUtils.outputStreamDontUseWriteLock)
+                getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
 
             isOpen = false;
         }
