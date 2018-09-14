@@ -1,6 +1,5 @@
 package org.ehcache.extensions.io;
 
-import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.impl.EhcacheInputStream;
 import org.ehcache.extensions.io.impl.EhcacheOutputStream;
@@ -14,39 +13,6 @@ import java.util.List;
  * Created by fabien.sanglier on 7/27/18.
  */
 public class EhcacheIOStreams {
-    public static final Integer inputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_INPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_BUFFER_SIZE);
-    public static final Integer outputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
-    public static final Long inputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_OPEN_TIMEOUT);
-    public static final Long outputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT);
-    public static final Boolean inputStreamAllowNulls = getPropertyAsBoolean(EhcacheStreamUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM);
-    public static final Boolean outputStreamDefaultOverride = getPropertyAsBoolean(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OVERRIDE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OVERRIDE);
-
-    private static long getPropertyAsLong(String key, long defaultVal) {
-        String valStr = System.getProperty(key, new Long(defaultVal).toString());
-        long val;
-        try {
-            val = Long.parseLong(valStr);
-        } catch (NumberFormatException nfe) {
-            val = defaultVal;
-        }
-        return val;
-    }
-
-    private static int getPropertyAsInt(String key, int defaultVal) {
-        String valStr = System.getProperty(key, new Integer(defaultVal).toString());
-        int val;
-        try {
-            val = Integer.parseInt(valStr);
-        } catch (NumberFormatException nfe) {
-            val = defaultVal;
-        }
-        return val;
-    }
-
-    private static boolean getPropertyAsBoolean(String key, boolean defaultVal) {
-        String valStr = System.getProperty(key, new Boolean(defaultVal).toString());
-        return Boolean.parseBoolean(valStr);
-    }
 
     //////////////////////////// Public Utils
 
@@ -92,7 +58,7 @@ public class EhcacheIOStreams {
      * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the remove operation was not successful
      */
     public static boolean removeStreamEntry(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return removeStreamEntry(cache, cacheKey, outputStreamOpenTimeout);
+        return removeStreamEntry(cache, cacheKey, EhcacheStreamUtils.outputStreamOpenTimeout);
     }
 
     /**
@@ -113,15 +79,15 @@ public class EhcacheIOStreams {
     //////////////////////////// InputStream
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, inputStreamAllowNulls);
+        return getInputStream(cache, cacheKey, EhcacheStreamUtils.inputStreamAllowNulls);
     }
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, allowNullStream, inputStreamBufferSize);
+        return getInputStream(cache, cacheKey, allowNullStream, EhcacheStreamUtils.inputStreamBufferSize);
     }
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, allowNullStream, bufferSize, inputStreamOpenTimeout);
+        return getInputStream(cache, cacheKey, allowNullStream, bufferSize, EhcacheStreamUtils.inputStreamOpenTimeout);
     }
 
     /**
@@ -152,15 +118,15 @@ public class EhcacheIOStreams {
     //////////////////////////// OutputStream
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return getOutputStream(cache, cacheKey, outputStreamDefaultOverride);
+        return getOutputStream(cache, cacheKey, EhcacheStreamUtils.outputStreamDefaultOverride);
     }
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override) throws EhcacheStreamException {
-        return getOutputStream(cache, cacheKey, override, outputStreamBufferSize);
+        return getOutputStream(cache, cacheKey, override, EhcacheStreamUtils.outputStreamBufferSize);
     }
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize) throws EhcacheStreamException {
-        return getOutputStream(cache, cacheKey, override, bufferSize, outputStreamOpenTimeout);
+        return getOutputStream(cache, cacheKey, override, bufferSize, EhcacheStreamUtils.outputStreamOpenTimeout);
     }
 
     /**
