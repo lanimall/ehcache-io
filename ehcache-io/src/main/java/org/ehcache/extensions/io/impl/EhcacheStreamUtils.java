@@ -15,8 +15,6 @@ import java.util.List;
 public class EhcacheStreamUtils {
     public static final Integer inputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_INPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_BUFFER_SIZE);
     public static final Integer outputStreamBufferSize = getPropertyAsInt(EhcacheStreamUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
-    public static final Boolean inputStreamDontUseReadLock = getPropertyAsBoolean(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_LOCK_DISABLE, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_OPEN_LOCK_DISABLE);
-    public static final Boolean outputStreamDontUseWriteLock = getPropertyAsBoolean(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OPEN_LOCK_DISABLE, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OPEN_LOCK_DISABLE);
 
     public static final Long inputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_INPUTSTREAM_OPEN_TIMEOUT);
     public static final Long outputStreamOpenTimeout = getPropertyAsLong(EhcacheStreamUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, EhcacheStreamUtils.DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT);
@@ -31,16 +29,13 @@ public class EhcacheStreamUtils {
     public static final String PROP_OUTPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.outputstream.buffersize";
     public static final String PROP_OUTPUTSTREAM_OVERRIDE = "ehcache.extension.io.outputstream.override";
     public static final String PROP_OUTPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.outputstream.opentimeout";
-    public static final String PROP_OUTPUTSTREAM_OPEN_LOCK_DISABLE = "ehcache.extension.io.outputstream.openlock.disable";
 
 
     public static final int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 128 * 1024; // 128kb
     public static final boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
     public static final int DEFAULT_INPUTSTREAM_BUFFER_SIZE = 512 * 1024; // 512kb
     public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 10000L;
-    public static final boolean DEFAULT_OUTPUTSTREAM_OPEN_LOCK_DISABLE = false;
     public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
-    public static final boolean DEFAULT_INPUTSTREAM_OPEN_LOCK_DISABLE = false;
     public static final boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
     public static final boolean DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP = true;
 
