@@ -1,5 +1,6 @@
 package org.ehcache.extensions.io.impl;
 
+import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
 import org.ehcache.extensions.io.EhcacheStreamException;
@@ -255,8 +256,14 @@ public class EhcacheStreamUtils {
         return chunkValue;
     }
 
-    protected void putChunkValue(final Object cacheKey, int chunkIndex, byte[] chunkPayload){
+    protected void putChunkValue(final Object cacheKey, int chunkIndex, byte[] chunkPayload) throws CacheException {
         cache.put(new Element(new EhcacheStreamKey(cacheKey, chunkIndex), new EhcacheStreamValue(chunkPayload)));
+    }
+
+    //CAS
+    protected boolean putChunkValueIfAbsent(final Object cacheKey, int chunkIndex, byte[] chunkPayload) throws CacheException {
+        Element previous = cache.putIfAbsent(new Element(new EhcacheStreamKey(cacheKey, chunkIndex), new EhcacheStreamValue(chunkPayload)));
+        return (previous != null);
     }
 
     private EhcacheStreamKey buildMasterKey(final Object cacheKey){
@@ -271,11 +278,11 @@ public class EhcacheStreamUtils {
         return new Element(buildMasterKey(cacheKey), ehcacheStreamMaster);
     }
 
-    protected Element getStreamMasterElement(final Object cacheKey) {
+    protected Element getStreamMasterElement(final Object cacheKey) throws CacheException {
         return cache.get(buildMasterKey(cacheKey));
     }
 
-    private Element getChunkElement(final Object cacheKey, int chunkIndex) {
+    private Element getChunkElement(final Object cacheKey, int chunkIndex) throws CacheException {
         return cache.get(buildChunkKey(cacheKey, chunkIndex));
     }
 
@@ -296,8 +303,8 @@ public class EhcacheStreamUtils {
     protected EhcacheStreamValue[] getStreamChunksFromStreamMaster(final Object cacheKey, final EhcacheStreamMaster ehcacheStreamMaster){
         List chunkValues = null;
         if(null != ehcacheStreamMaster){
-            chunkValues = new ArrayList(ehcacheStreamMaster.getChunkCounter());
-            for(int i = 0; i < ehcacheStreamMaster.getChunkCounter(); i++){
+            chunkValues = new ArrayList(ehcacheStreamMaster.getChunkCount());
+            for(int i = 0; i < ehcacheStreamMaster.getChunkCount(); i++){
                 EhcacheStreamValue chunkValue = getChunkValue(cacheKey, i);
                 if(null != chunkValue)
                     chunkValues.add(chunkValue);
@@ -317,7 +324,7 @@ public class EhcacheStreamUtils {
     protected void clearChunksFromStreamMaster(final Object cacheKey, final EhcacheStreamMaster ehcacheStreamMasterIndex) {
         if(null != ehcacheStreamMasterIndex){
             //remove all the chunk entries
-            for(int i = 0; i < ehcacheStreamMasterIndex.getChunkCounter(); i++){
+            for(int i = 0; i < ehcacheStreamMasterIndex.getChunkCount(); i++){
                 cache.remove(new EhcacheStreamKey(cacheKey, i));
             }
         }
@@ -333,16 +340,16 @@ public class EhcacheStreamUtils {
      *
      */
     protected boolean replaceIfEqualEhcacheStreamMaster(final Object cacheKey, EhcacheStreamMaster oldEhcacheStreamMaster, EhcacheStreamMaster newEhcacheStreamMaster) {
-        boolean returnValue = false;
+        boolean replaced = false;
         if(null != oldEhcacheStreamMaster) {
             //replace old writeable element with new one using CAS operation for consistency
-            returnValue = cache.replace(buildStreamMasterElement(cacheKey, oldEhcacheStreamMaster) , buildStreamMasterElement(cacheKey, newEhcacheStreamMaster));
+            replaced = cache.replace(buildStreamMasterElement(cacheKey, oldEhcacheStreamMaster) , buildStreamMasterElement(cacheKey, newEhcacheStreamMaster));
         } else {
             Element previousElement = cache.putIfAbsent(buildStreamMasterElement(cacheKey, newEhcacheStreamMaster));
-            returnValue = (previousElement == null);
+            replaced = (previousElement == null);
         }
 
-        return returnValue;
+        return replaced;
     }
 
     /**
