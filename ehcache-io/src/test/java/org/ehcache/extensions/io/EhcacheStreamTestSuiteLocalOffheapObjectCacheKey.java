@@ -1,13 +1,7 @@
 package org.ehcache.extensions.io;
 
-import org.ehcache.extensions.io.impl.EhcacheInputStreamTest;
-import org.ehcache.extensions.io.impl.EhcacheOutputStreamTest;
-import org.ehcache.extensions.io.impl.EhcacheStreamConcurrentTest;
-import org.ehcache.extensions.io.impl.EhcacheStreamUtilsTest;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
-import org.junit.runner.RunWith;
-import org.junit.runners.Suite;
 
 /**
  * Created by FabienSanglier on 5/6/15.
