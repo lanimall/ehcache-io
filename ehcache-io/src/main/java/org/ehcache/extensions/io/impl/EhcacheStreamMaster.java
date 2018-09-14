@@ -1,5 +1,6 @@
 package org.ehcache.extensions.io.impl;
 
+import java.io.Closeable;
 import java.io.Serializable;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -7,50 +8,111 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Created by Fabien Sanglier on 5/6/15.
  */
 
-public class EhcacheStreamMaster implements Serializable {
+//immutable!!
+public class EhcacheStreamMaster implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
 
-    private final AtomicInteger chunkCounter;
-    private StreamOpStatus status = StreamOpStatus.AVAILABLE;
-
-    public EhcacheStreamMaster(StreamOpStatus status) {
-        this.chunkCounter = new AtomicInteger(0);
-        this.status = status;
-    }
-
-    public EhcacheStreamMaster(int numberOfChunk, StreamOpStatus status) {
-        this.chunkCounter = new AtomicInteger(numberOfChunk);
-        this.status = status;
-    }
-
-    public EhcacheStreamMaster(EhcacheStreamMaster master) {
-        this.chunkCounter = new AtomicInteger(master.chunkCounter.intValue());
-        this.status = master.status;
-    }
+    private final int chunkCount;
+    private final StreamOpStatus state;
+    private final long createdNanos; //to capture successive changes and use to validate equals/not equals
 
     public enum StreamOpStatus {
         CURRENT_WRITE, AVAILABLE
     }
 
-    public int getChunkCounter() {
-        return chunkCounter.get();
+    public EhcacheStreamMaster(final StreamOpStatus status) {
+        this(0, status, System.nanoTime());
     }
 
-    public int getAndIncrementChunkCounter() {
-        return chunkCounter.getAndIncrement();
+    public EhcacheStreamMaster(final int chunkCount, final StreamOpStatus status) {
+        this(chunkCount, status, System.nanoTime());
+    }
+
+    private EhcacheStreamMaster(final int chunkCount, final StreamOpStatus status, final long createdNanos) {
+        this.chunkCount = chunkCount;
+        this.state = (null == status)?status.AVAILABLE:status; //make sure enum is never stored as null
+        this.createdNanos = createdNanos;
+    }
+
+    @Override
+    protected EhcacheStreamMaster clone() {
+        return new EhcacheStreamMaster(
+                this.chunkCount,
+                this.state,
+                this.createdNanos
+        );
+    }
+
+    public EhcacheStreamMaster newWithIncrementCount(){
+        return new EhcacheStreamMaster(
+                this.chunkCount+1,
+                this.state
+        );
+    }
+
+    public EhcacheStreamMaster newWithStateChange(final StreamOpStatus status){
+        return new EhcacheStreamMaster(
+                this.chunkCount,
+                status
+        );
+    }
+
+    public static EhcacheStreamMaster deepCopy(final EhcacheStreamMaster obj){
+        return (null != obj)?obj.clone():null;
+    }
+
+    public static boolean compare(EhcacheStreamMaster thisObject, EhcacheStreamMaster thatObject){
+        if(thisObject == null && thatObject == null)
+            return true;
+
+        if(thisObject != null && thatObject == null || thisObject == null && thatObject != null)
+            return false;
+
+        return thisObject.equals(thatObject);
+    }
+
+    public int getChunkCount() {
+        return chunkCount;
     }
 
     public boolean isCurrentWrite(){
-        return status == StreamOpStatus.CURRENT_WRITE;
+        return state == StreamOpStatus.CURRENT_WRITE;
     }
 
-    public synchronized void setCurrentWrite() {
-        this.status = StreamOpStatus.CURRENT_WRITE;
-    }
+//    public int getAndIncrementChunkCounter() {
+//        return chunkCounter.getAndIncrement();
+//    }
 
-    public synchronized void setAvailable() {
-        this.status = StreamOpStatus.AVAILABLE;
-    }
+//    @Override
+//    public boolean equals(Object o) {
+//        if (this == o) return true;
+//        if (o == null || getClass() != o.getClass()) return false;
+//
+//        EhcacheStreamMaster that = (EhcacheStreamMaster) o;
+//
+//        if (chunkCounter.get() != that.chunkCounter.get()) return false;
+//        if (state != that.state) return false;
+//        if (createdNanos != that.createdNanos) return false;
+//
+//        return true;
+//    }
+//
+//    @Override
+//    public int hashCode() {
+//        int result = chunkCounter.hashCode();
+//        result = 31 * result + (int) (createdNanos ^ (createdNanos >>> 32));
+//        result = 31 * result + status.hashCode();
+//        return result;
+//    }
+//
+//    @Override
+//    public String toString() {
+//        return "EhcacheStreamMaster{" +
+//                "chunkCounter=" + chunkCounter +
+//                ", createdNanos=" + createdNanos +
+//                ", status=" + status +
+//                '}';
+//    }
 
     @Override
     public boolean equals(Object o) {
@@ -59,24 +121,27 @@ public class EhcacheStreamMaster implements Serializable {
 
         EhcacheStreamMaster that = (EhcacheStreamMaster) o;
 
-        if (getChunkCounter() != that.getChunkCounter()) return false;
-        if (status != that.status) return false;
+        if (chunkCount != that.chunkCount) return false;
+        if (createdNanos != that.createdNanos) return false;
+        if (state != that.state) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = getChunkCounter();
-        result = 31 * result + status.hashCode();
+        int result = chunkCount;
+        result = 31 * result + (int) (createdNanos ^ (createdNanos >>> 32));
+        result = 31 * result + state.hashCode();
         return result;
     }
 
     @Override
     public String toString() {
         return "EhcacheStreamMaster{" +
-                "numberOfChunks=" + getChunkCounter() +
-                ", status=" + status +
+                "chunkCount=" + chunkCount +
+                ", createdNanos=" + createdNanos +
+                ", state=" + state +
                 '}';
     }
 }
