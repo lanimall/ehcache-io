@@ -1,10 +1,11 @@
 package org.ehcache.extensions.io.impl;
 
 import net.sf.ehcache.Ehcache;
-import org.ehcache.extensions.io.EhcacheIOStreams;
-import org.ehcache.extensions.io.EhcacheStreamException;
-import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
+import org.ehcache.extensions.io.*;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.Files;
@@ -15,6 +16,8 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
@@ -23,17 +26,24 @@ import java.util.zip.CheckedOutputStream;
  * Created by fabien.sanglier on 9/12/18.
  */
 public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
-    private List<Callable> callables;
-    private List<AtomicInteger> exceptions;
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamConcurrentTest.class);
 
-    final int ehcacheWriteBufferSize = 32*1024;
-    final int ehcacheReadBufferSize = 32*1024;
+    private static long NULL_CHECKSUM = -1;
+    private List<ConcurrentTestCallable> callables;
+    private List<AtomicReference<Long>> callableResults;
+    private List<AtomicReference<Class>> exceptions;
+    private long inputFileCheckSum = NULL_CHECKSUM;
+
     private final int copyBufferSize = 128*1024;
-    private final int fileReadBufferSize = 32*1024;
+    private final int fileReadBufferSize = 128*1024;
+
+    private final int ehcacheWriteBufferSize = PropertyUtils.outputStreamBufferSize;
+    private final int ehcacheReadBufferSize = PropertyUtils.inputStreamBufferSize;
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
-        System.out.println("============ Starting EhcacheStreamConcurrentTest ====================");
+        logger.info("============ Starting EhcacheStreamConcurrentTest ====================");
+        sysPropDefaultSetup();
         cacheStart();
         generateBigInputFile();
     }
@@ -42,13 +52,16 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     public static void oneTimeTearDown() throws Exception {
         cacheShutdown();
         cleanBigInputFile();
-        System.out.println("============ Finished EhcacheStreamConcurrentTest ====================");
+        sysPropDefaultCleanup();
+        logger.info("============ Finished EhcacheStreamConcurrentTest ====================");
     }
 
     @Before
     public void setup() throws Exception {
-        callables = new ArrayList<Callable>();
-        exceptions = new ArrayList<AtomicInteger>();
+        inputFileCheckSum = readFileFromDisk();
+        callables = new ArrayList<ConcurrentTestCallable>();
+        callableResults = new ArrayList<AtomicReference<Long>>();
+        exceptions = new ArrayList<AtomicReference<Class>>();
         cacheSetUp();
     }
 
@@ -57,18 +70,21 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         cacheCleanUp();
         callables = null;
         exceptions = null;
+        inputFileCheckSum = NULL_CHECKSUM;
     }
 
     public class ThreadWorker extends Thread {
-        private final Callable callable;
+        private final ConcurrentTestCallable callable;
         private final CountDownLatch doneLatch;
-        private AtomicInteger exceptionCounter;
+        private AtomicReference<Long> callableResult;
+        private AtomicReference<Class> exception;
 
-        public ThreadWorker(Callable callable, CountDownLatch doneLatch, AtomicInteger exceptionCounter) {
+        public ThreadWorker(ConcurrentTestCallable callable, CountDownLatch doneLatch, AtomicReference<Long> callableResult, AtomicReference<Class> exception) {
             super();
             this.callable = callable;
             this.doneLatch = doneLatch;
-            this.exceptionCounter = exceptionCounter;
+            this.callableResult = callableResult;
+            this.exception = exception;
         }
 
         @Override
@@ -76,29 +92,25 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             String threadName = getName();
 
             try {
-                callable.call();
-            } catch (EhcacheStreamException e) {
-                if(null != exceptionCounter)
-                    exceptionCounter.incrementAndGet();
-
-                System.out.println(String.format("Thread [%s] - %s", getName(), e.getMessage()));
+                callableResult.set(callable.call());
             } catch (Exception e) {
-                if(null != exceptionCounter)
-                    exceptionCounter.incrementAndGet();
-
-                System.out.println(String.format("Thread [%s] - %s", getName(), e.getMessage()));
-                throw new IllegalStateException("Something unexpected happened", e);
+                if(null != exception)
+                    exception.set(e.getClass());
+                callableResult.set(NULL_CHECKSUM);
+                logger.error(e.getMessage(),e);
             } finally{
                 doneLatch.countDown();
             }
         }
     }
 
-    public void runInThreads(List<Callable> callables, List<AtomicInteger> exceptionCounters, boolean disableReadLocks) throws InterruptedException {
+    public void runInThreads() throws InterruptedException {
+        //Collections.unmodifiableList(callables), Collections.unmodifiableList(callableResults), Collections.unmodifiableList(exceptions)
+
         if(null == callables)
             throw new IllegalStateException("must provides some operations to run...");
 
-        if(null != exceptionCounters && callables.size() != exceptionCounters.size())
+        if(null != exceptions && callables.size() != exceptions.size())
             throw new IllegalStateException("must provides the same number of exception counters as the number of callables");
 
         final List<ThreadWorker> workerList = new ArrayList<>(callables.size());
@@ -107,23 +119,23 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         //add first worker
         int count = 0;
         for(int i = 0; i < callables.size(); i++) {
-            workerList.add(new ThreadWorker(callables.get(i), stopLatch, exceptionCounters.get(i)));
+            workerList.add(new ThreadWorker(callables.get(i), stopLatch, callableResults.get(i), exceptions.get(i)));
         }
 
         try{
-            System.setProperty(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_LOCK_DISABLE, "" + new Boolean(disableReadLocks).booleanValue());
-
             //start the workers
             for (ThreadWorker worker : workerList) {
                 worker.start();
             }
         } finally {
-            System.clearProperty(EhcacheStreamUtils.PROP_INPUTSTREAM_OPEN_LOCK_DISABLE);
+
         }
 
         //wait that all operations are finished
         stopLatch.await();
     }
+
+    abstract class ConcurrentTestCallable implements Callable<Long>{}
 
     class EhcacheInputStreamTestParams extends EhcacheInputStreamParams {
         final long sleepBeforeOpenMillis;
@@ -156,9 +168,10 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     }
 
     private void addReadCallable(final EhcacheInputStreamTestParams ehcacheInputStreamParams) throws EhcacheStreamException {
-        callables.add(new Callable() {
+        callables.add(new ConcurrentTestCallable() {
             @Override
             public Long call() throws Exception {
+                long returnChecksum = -1L;
                 final InputStream ehcacheInputStream = EhcacheIOStreams.getInputStream(
                         ehcacheInputStreamParams.cache,
                         ehcacheInputStreamParams.cacheKey,
@@ -169,49 +182,53 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 Thread.currentThread().setName("Ehcache-Reader-Thread-"+ Thread.currentThread().getId());
 
                 String threadName = Thread.currentThread().getName();
-                System.out.println(String.format("Thread [%s] - Before Open - Sleeping for %d millis", threadName, ehcacheInputStreamParams.sleepBeforeOpenMillis));
+                logger.info("Before Open - Sleeping for {} millis", ehcacheInputStreamParams.sleepBeforeOpenMillis);
                 TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepBeforeOpenMillis);
 
                 try (
                         CheckedInputStream is = new CheckedInputStream(ehcacheInputStream, new CRC32());
                         CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
                 ) {
-                    {
-                        System.out.println(String.format("Thread [%s] - Started the reading from ehcache", threadName));
+                    logger.info("Started the reading from ehcache");
 
-                        byte[] buffer = new byte[copyBufferSize];
-                        int n;
-                        while ((n = is.read(buffer)) > -1) {
-                            os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
+                    byte[] buffer = new byte[copyBufferSize];
+                    int n;
+                    while ((n = is.read(buffer)) > -1) {
+                        os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
 
-                            System.out.println(String.format("Thread [%s] - During Copy - Sleeping for %d millis", threadName, ehcacheInputStreamParams.sleepDuringCopyMillis));
-                            TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepDuringCopyMillis);
-                        }
-
-                        System.out.println(String.format("Thread [%s] - Done with reading all the bytes from ehcache", threadName));
-
-                        System.out.println(String.format("Thread [%s] - After Copy Before Close - Sleeping for %d millis", threadName, ehcacheInputStreamParams.sleepAfterCopyBeforeCloseMillis));
-                        TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepAfterCopyBeforeCloseMillis);
+                        logger.trace("During Copy - Sleeping for {} millis", ehcacheInputStreamParams.sleepDuringCopyMillis);
+                        TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepDuringCopyMillis);
                     }
 
-                    System.out.println(String.format("Thread [%s] - Completely finished reading from ehcache (eg. read lock released)", threadName));
+                    logger.info("Done with reading all the bytes from ehcache");
 
-                    System.out.println(String.format("Thread [%s] - After Close - Sleeping for %d millis", threadName, ehcacheInputStreamParams.sleepAfterCloseMillis));
-                    TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepAfterCloseMillis);
+                    logger.info("After Copy Before Close - Sleeping for {} millis", ehcacheInputStreamParams.sleepAfterCopyBeforeCloseMillis);
+                    TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepAfterCopyBeforeCloseMillis);
 
-                    System.out.println(String.format("Thread [%s] - Finished callable operation", threadName));
-                    return null;
+                    returnChecksum = is.getChecksum().getValue();
                 }
+
+                logger.info("Completely finished writing to ehcache (stream closed)");
+
+                logger.info("After Close - Sleeping for {} millis", ehcacheInputStreamParams.sleepAfterCloseMillis);
+                TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepAfterCloseMillis);
+
+                logger.info("Finished callable operation");
+
+                return returnChecksum;
             }
         });
 
-        exceptions.add(new AtomicInteger());
+        callableResults.add(new AtomicReference<Long>());
+        exceptions.add(new AtomicReference<Class>());
     }
 
     private void addWriteCallable(final EhcacheOutputStreamTestParams ehcacheOuputStreamParams) throws EhcacheStreamException {
-        callables.add(new Callable() {
+        callables.add(new ConcurrentTestCallable() {
             @Override
             public Long call() throws Exception {
+                long returnChecksum = -1L;
+
                 final OutputStream ehcacheOutputStream = EhcacheIOStreams.getOutputStream(
                         ehcacheOuputStreamParams.cache,
                         ehcacheOuputStreamParams.cacheKey,
@@ -222,7 +239,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 Thread.currentThread().setName("Ehcache-Writer-Thread-"+ Thread.currentThread().getId());
 
                 String threadName = Thread.currentThread().getName();
-                System.out.println(String.format("Thread [%s] - Before Open - Sleeping for %d millis", threadName, ehcacheOuputStreamParams.sleepBeforeOpenMillis));
+                logger.info("Before Open - Sleeping for {} millis", ehcacheOuputStreamParams.sleepBeforeOpenMillis);
                 TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepBeforeOpenMillis);
 
                 try (
@@ -230,78 +247,47 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                         CheckedOutputStream os = new CheckedOutputStream(ehcacheOutputStream,new CRC32())
                 )
                 {
-                    System.out.println(String.format("Thread [%s] - Started the writing to ehcache", threadName));
+                    logger.info("Started the writing to ehcache");
 
                     byte[] buffer = new byte[copyBufferSize];
                     int n;
                     while ((n = is.read(buffer)) > -1) {
                         os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
 
-                        System.out.println(String.format("Thread [%s] - During Copy - Sleeping for %d millis", threadName, ehcacheOuputStreamParams.sleepDuringCopyMillis));
+                        logger.trace("During Copy - Sleeping for {} millis", ehcacheOuputStreamParams.sleepDuringCopyMillis);
                         TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepDuringCopyMillis);
                     }
 
-                    System.out.println(String.format("Thread [%s] - Done with writing all the bytes to ehcache", threadName));
+                    logger.info("Done with writing all the bytes to ehcache");
 
-                    System.out.println(String.format("Thread [%s] - After Copy Before Close - Sleeping for %d millis", threadName, ehcacheOuputStreamParams.sleepAfterCopyBeforeCloseMillis));
+                    logger.info("After Copy Before Close - Sleeping for {} millis", ehcacheOuputStreamParams.sleepAfterCopyBeforeCloseMillis);
                     TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepAfterCopyBeforeCloseMillis);
+
+                    returnChecksum = os.getChecksum().getValue();
                 }
 
-                System.out.println(String.format("Thread [%s] - Completely finished  writing to ehcache (eg. write lock released)", threadName));
+                logger.info("Completely finished writing to ehcache (stream closed)");
 
-                System.out.println(String.format("Thread [%s] - After Close - Sleeping for %d millis", threadName, ehcacheOuputStreamParams.sleepAfterCloseMillis));
+                logger.info("After Close - Sleeping for {} millis", ehcacheOuputStreamParams.sleepAfterCloseMillis);
                 TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepAfterCloseMillis);
 
-                System.out.println(String.format("Thread [%s] - Finished callable operation", threadName));
-                return null;
+                logger.info("Finished callable operation");
+                return returnChecksum;
             }
         });
 
-        exceptions.add(new AtomicInteger());
+        callableResults.add(new AtomicReference<Long>());
+        exceptions.add(new AtomicReference<Class>());
     }
 
     @Test
     public void testReadDuringWriteEnoughTime() throws EhcacheStreamException, InterruptedException {
+        logger.info("============ testReadDuringWriteEnoughTime ====================");
+
         final long ehcacheWriteOpenTimeout = 1000L;
         final long writerSleepBeforeOpenMillis = 0L;
-        final long writerSleepDuringCopyMillis = 0L;
-        final long writerSleepAfterCopyBeforeCloseMillis = 5000L;
-        final long writerSleepAfterCloseMillis = 100L;
-        final boolean override = true;
-
-        addWriteCallable(
-                new EhcacheOutputStreamTestParams(
-                        getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeOpenMillis, writerSleepDuringCopyMillis, writerSleepAfterCopyBeforeCloseMillis, writerSleepAfterCloseMillis
-                )
-        );
-
-
-        final long ehcacheReadOpenTimeout = 200000L;
-        final long readerSleepBeforeOpenMillis = 1000L;
-        final long readerSleepDuringCopyMillis = 0L;
-        final long readerSleepAfterCopyBeforeCloseMillis = 0L;
-        final long readerSleepAfterCloseMillis = 100L;
-        final boolean allowNullStream = false;
-
-        addReadCallable(
-                new EhcacheInputStreamTestParams(
-                        getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeOpenMillis, readerSleepDuringCopyMillis, readerSleepAfterCopyBeforeCloseMillis, readerSleepAfterCloseMillis
-                )
-        );
-
-        boolean disableReadLock = false;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
-
-        Assert.assertEquals(0, exceptions.get(0).get()); // write thread should have 0 exception
-        Assert.assertEquals(0, exceptions.get(1).get()); // read thread should have 0 exception
-    }
-
-    @Test
-    public void test_NoReadLock_ReadDuringWriteEnoughTime() throws EhcacheStreamException, InterruptedException {
-        final long ehcacheWriteOpenTimeout = 1000L;
-        final long writerSleepBeforeOpenMillis = 0L;
-        final long writerSleepDuringCopyMillis = 0L;
-        final long writerSleepAfterCopyBeforeCloseMillis = 10000L; //this is lower than non stop timeout
+        final long writerSleepDuringCopyMillis = 100L;
+        final long writerSleepAfterCopyBeforeCloseMillis = 2000L;
         final long writerSleepAfterCloseMillis = 100L;
         final boolean override = true;
 
@@ -324,50 +310,23 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 )
         );
 
-        boolean disableReadLock = true;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
+        runInThreads();
 
-        Assert.assertEquals(0, exceptions.get(0).get()); // write thread should have 0 exception
-        Assert.assertEquals(0, exceptions.get(1).get()); // read thread should have 0 exception
-    }
+        Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
+        Assert.assertNull(exceptions.get(1).get()); // read thread should have 0 exception
 
-    @Test
-    public void test_NoReadLock_WriteDuringReadEnoughWaitTime() throws IOException, InterruptedException {
-        final long ehcacheWriteOpenTimeout = 200000L;
-        final long writerSleepBeforeOpenMillis = 500L;
-        final long writerSleepDuringCopyMillis = 0L;
-        final long writerSleepAfterCopyBeforeCloseMillis = 0L;
-        final long writerSleepAfterCloseMillis = 100L;
-        final boolean override = true;
-
-        addWriteCallable(
-                new EhcacheOutputStreamTestParams(
-                        getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeOpenMillis, writerSleepDuringCopyMillis, writerSleepAfterCopyBeforeCloseMillis, writerSleepAfterCloseMillis
-                )
-        );
-
-        final long ehcacheReadOpenTimeout = 1000L;
-        final long readerSleepBeforeOpenMillis = 0L;
-        final long readerSleepDuringCopyMillis = 500L; //make it a lengthy read
-        final long readerSleepAfterCopyBeforeCloseMillis = 0L;
-        final long readerSleepAfterCloseMillis = 100L;
-        final boolean allowNullStream = false;
-
-        addReadCallable(
-                new EhcacheInputStreamTestParams(
-                        getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeOpenMillis, readerSleepDuringCopyMillis, readerSleepAfterCopyBeforeCloseMillis, readerSleepAfterCloseMillis
-                )
-        );
-
-        boolean disableReadLock = true;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
-
-        Assert.assertEquals(0, exceptions.get(0).get()); // write thread should have 0 exception
-        Assert.assertEquals(1, exceptions.get(1).get()); // read thread should have 0 exception
+        Assert.assertEquals(inputFileCheckSum, callableResults.get(0).get().longValue());
+        Assert.assertEquals(inputFileCheckSum, callableResults.get(1).get().longValue());
     }
 
     @Test
     public void testWriteDuringReadEnoughWaitTime() throws IOException, InterruptedException {
+        logger.info("============ testWriteDuringReadEnoughWaitTime ====================");
+
+        //first, let's add something to cache so the read can start reading something
+        long checksumCacheAdded = copyFileToCache(getCacheKey());
+        Assert.assertEquals(inputFileCheckSum, checksumCacheAdded);
+
         final long ehcacheWriteOpenTimeout = 200000L;
         final long writerSleepBeforeOpenMillis = 1000L;
         final long writerSleepDuringCopyMillis = 0L;
@@ -383,7 +342,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         final long ehcacheReadOpenTimeout = 1000L;
         final long readerSleepBeforeOpenMillis = 0L;
-        final long readerSleepDuringCopyMillis = 0L;
+        final long readerSleepDuringCopyMillis = 100L; //slow down the read to create a problem in priority write mode
         final long readerSleepAfterCopyBeforeCloseMillis = 5000L;
         final long readerSleepAfterCloseMillis = 100L;
         final boolean allowNullStream = false;
@@ -394,16 +353,36 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 )
         );
 
-        boolean disableReadLock = false;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
+        runInThreads();
 
-        Assert.assertEquals(0, exceptions.get(0).get()); // write thread should have 0 exception
-        Assert.assertEquals(0, exceptions.get(1).get()); // read thread should have 0 exception
+        if(PropertyUtils.ehcacheIOStreamsConcurrencyMode == PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS) {
+            Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
+            Assert.assertNull(exceptions.get(1).get()); // read thread should have 0 exception
+
+            Assert.assertEquals(inputFileCheckSum, callableResults.get(0).get().longValue());
+            Assert.assertEquals(inputFileCheckSum, callableResults.get(1).get().longValue());
+        } else if (PropertyUtils.ehcacheIOStreamsConcurrencyMode == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK){
+            Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
+            Assert.assertEquals(EhcacheStreamConcurrentException.class, exceptions.get(1).get()); // read thread should have 1 exception of type EhcacheStreamConcurrentException
+
+            Assert.assertEquals(inputFileCheckSum, callableResults.get(0).get().longValue());
+            Assert.assertEquals(NULL_CHECKSUM, callableResults.get(1).get().longValue());
+        }
     }
 
 
     @Test
-    public void testMultipleReads() throws IOException, InterruptedException {
+    public void testMultipleConcurrentReads() throws IOException, InterruptedException {
+        logger.info("============ testMultipleReads ====================");
+
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //first, let's add something to cache so the read can start reading something
+        long checksumCacheAdded = copyFileToCache(getCacheKey());
+
+        Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
+        Assert.assertEquals(inputFileCheckSum, checksumCacheAdded);
+
         final int threadCount = 10;
         final boolean allowNullStream = false;
 
@@ -421,18 +400,34 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             );
         }
 
-        boolean disableReadLock = false;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
+        runInThreads();
 
         for(int i = 0; i < threadCount; i++) {
-            Assert.assertEquals(0, exceptions.get(i).get()); // read thread should have 0 exception
+            Assert.assertNull(exceptions.get(i).get()); // read thread should have 0 exception
+            Assert.assertEquals(inputFileCheckSum, callableResults.get(i).get().longValue());
         }
     }
 
     @Test
     public void testMultipleWritesOverwriteEnoughWaitTime() throws IOException, InterruptedException {
+        logger.info("============ testMultipleWritesOverwriteEnoughWaitTime ====================");
+
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
         final int threadCount = 10;
         final boolean override = true;
+
+        //first, let's do this serially to get an expected checksum
+        for(int i = 0; i < threadCount; i++) {
+            copyFileToCache(getCacheKey(), override);
+        }
+        int expectedCacheSize = getCache().getSize();
+        Assert.assertTrue(expectedCacheSize > 1); // should be at least 2 (master key + chunk key)
+
+        //cleanup and wait a bit just to be safe
+        getCache().removeAll();
+        Thread.sleep(1000);
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
         for(int i = 0; i < threadCount; i++) {
             final long ehcacheWriteOpenTimeout = 200000L; //long enough timeout
@@ -448,19 +443,38 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             );
         }
 
-        boolean disableReadLock = false;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
+        runInThreads();
 
         for(int i = 0; i < threadCount; i++) {
-            Assert.assertEquals(0, exceptions.get(i).get()); // read thread should have 0 exception
+            Assert.assertNull(exceptions.get(i).get()); // read thread should have 0 exception
+            Assert.assertEquals(inputFileCheckSum, callableResults.get(i).get().longValue());
         }
+        Assert.assertEquals(expectedCacheSize, getCache().getSize());
     }
 
     @Test
     public void testMultipleWritesAppendEnoughWaitTime() throws IOException, InterruptedException {
+        logger.info("============ testMultipleWritesAppendEnoughWaitTime ====================");
+
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
         final int threadCount = 5;
         final boolean override = false;
 
+        //first, let's do this serially to get an expected checksum
+        for(int i = 0; i < threadCount; i++) {
+            copyFileToCache(getCacheKey(), override);
+        }
+
+        int expectedCacheSize = getCache().getSize();
+        Assert.assertTrue(expectedCacheSize > 1); // should be at least 2 (master key + chunk key)
+
+        //cleanup and wait a bit just to be safe
+        getCache().removeAll();
+        Thread.sleep(1000);
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //now, run in threads
         for(int i = 0; i < threadCount; i++) {
             final long ehcacheWriteOpenTimeout = 200000L; //long enough timeout
             final long writerSleepBeforeOpenMillis = 0L;
@@ -475,18 +489,21 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             );
         }
 
-        boolean disableReadLock = false;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
+        runInThreads();
 
         for(int i = 0; i < threadCount; i++) {
-            Assert.assertEquals(0, exceptions.get(i).get()); // read thread should have 0 exception
+            Assert.assertNull(exceptions.get(i).get()); // should have 0 exception
+            Assert.assertEquals(inputFileCheckSum, callableResults.get(i).get().longValue());
         }
+        Assert.assertEquals(expectedCacheSize, getCache().getSize());
     }
 
     @Test
-    public void testReadCannotAcquireDuringWrite() throws IOException, InterruptedException {
+    public void testReadDuringWrite_ReadTimeoutReached() throws IOException, InterruptedException {
+        logger.info("============ testReadCannotAcquireDuringWrite ====================");
+
         final long ehcacheWriteOpenTimeout = 1000L;
-        final long writerSleepBeforeOpenMillis = 0L;
+        final long writerSleepBeforeOpenMillis = 0L; //ensured write thread starts before read thread
         final long writerSleepDuringCopyMillis = 0L;
         final long writerSleepAfterCopyBeforeCloseMillis = 5000L; //this is larger than the read lock
         final long writerSleepAfterCloseMillis = 100L;
@@ -499,7 +516,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         );
 
         final long ehcacheReadOpenTimeout = 2000L;
-        final long readerSleepBeforeOpenMillis = 1000L;
+        final long readerSleepBeforeOpenMillis = 1000L; //ensured read thread starts after the write one
         final long readerSleepDuringCopyMillis = 0L;
         final long readerSleepAfterCopyBeforeCloseMillis = 0L;
         final long readerSleepAfterCloseMillis = 100L;
@@ -511,50 +528,27 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 )
         );
 
-        boolean disableReadLock = false;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
+        runInThreads();
 
-        Assert.assertEquals(0, exceptions.get(0).get()); // write thread should have 0 exception
-        Assert.assertEquals(1, exceptions.get(1).get()); // read thread should have 1 exception
+        Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
+        Assert.assertEquals(inputFileCheckSum, callableResults.get(0).get().longValue());
+
+        Assert.assertEquals(EhcacheStreamTimeoutException.class, exceptions.get(1).get()); // read thread should have 1 exception
+        Assert.assertEquals(NULL_CHECKSUM, callableResults.get(1).get().longValue());
     }
 
     @Test
-    public void test_NoReadLock_ReadCannotAcquireDuringWrite() throws IOException, InterruptedException {
-        final long ehcacheWriteOpenTimeout = 1000L;
-        final long writerSleepBeforeOpenMillis = 0L;
-        final long writerSleepDuringCopyMillis = 0L;
-        final long writerSleepAfterCopyBeforeCloseMillis = 35000L; //this is set larger than the non-stop exception (on purpose to make sure the read fails)
-        final long writerSleepAfterCloseMillis = 100L;
-        final boolean override = true;
+    public void testWriteDuringRead_WriteTimeoutReached() throws IOException, InterruptedException {
+        logger.info("============ testWriteCannotAcquireDuringRead ====================");
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        addWriteCallable(
-                new EhcacheOutputStreamTestParams(
-                        getCache(), getCacheKey(), override, ehcacheWriteBufferSize, ehcacheWriteOpenTimeout, writerSleepBeforeOpenMillis, writerSleepDuringCopyMillis, writerSleepAfterCopyBeforeCloseMillis, writerSleepAfterCloseMillis
-                )
-        );
+        //first, let's add something to cache so the read can start reading something
+        long checksumCacheAdded = copyFileToCache(getCacheKey());
+        int expectedCacheSize = getCache().getSize();
 
-        final long ehcacheReadOpenTimeout = 2000L;
-        final long readerSleepBeforeOpenMillis = 1000L;
-        final long readerSleepDuringCopyMillis = 0L;
-        final long readerSleepAfterCopyBeforeCloseMillis = 0L;
-        final long readerSleepAfterCloseMillis = 100L;
-        final boolean allowNullStream = false;
+        Assert.assertTrue(expectedCacheSize > 1); // should be at least 2 (master key + chunk key)
+        Assert.assertEquals(inputFileCheckSum, checksumCacheAdded);
 
-        addReadCallable(
-                new EhcacheInputStreamTestParams(
-                        getCache(), getCacheKey(), allowNullStream, ehcacheReadBufferSize, ehcacheReadOpenTimeout, readerSleepBeforeOpenMillis, readerSleepDuringCopyMillis, readerSleepAfterCopyBeforeCloseMillis, readerSleepAfterCloseMillis
-                )
-        );
-
-        boolean disableReadLock = true;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
-
-        Assert.assertEquals(0, exceptions.get(0).get()); // write thread should have 0 exception
-        Assert.assertEquals(1, exceptions.get(1).get()); // read thread should have 1 exception
-    }
-
-    @Test
-    public void testWriteCannotAcquireDuringRead() throws IOException, InterruptedException {
         final long ehcacheWriteOpenTimeout = 2000L;
         final long writerSleepBeforeOpenMillis = 1000L;
         final long writerSleepDuringCopyMillis = 0L;
@@ -570,7 +564,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         final long ehcacheReadOpenTimeout = 1000L;
         final long readerSleepBeforeOpenMillis = 0L;
-        final long readerSleepDuringCopyMillis = 0L;
+        final long readerSleepDuringCopyMillis = 500L;
         final long readerSleepAfterCopyBeforeCloseMillis = 5000L;
         final long readerSleepAfterCloseMillis = 100L;
         final boolean allowNullStream = false;
@@ -581,10 +575,21 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 )
         );
 
-        boolean disableReadLock = false;
-        runInThreads(Collections.unmodifiableList(callables), Collections.unmodifiableList(exceptions), disableReadLock);
+        runInThreads();
 
-        Assert.assertEquals(1, exceptions.get(0).get()); // write thread should have 1 exception
-        Assert.assertEquals(0, exceptions.get(1).get()); // read thread should have 0 exception
+        if(PropertyUtils.ehcacheIOStreamsConcurrencyMode == PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS) {
+            Assert.assertEquals(EhcacheStreamTimeoutException.class, exceptions.get(0).get()); // write thread should have 1 exception
+            Assert.assertNull(exceptions.get(1).get()); // read thread should have 0 exception
+
+            Assert.assertEquals(NULL_CHECKSUM, callableResults.get(0).get().longValue());
+            Assert.assertEquals(inputFileCheckSum, callableResults.get(1).get().longValue());
+        } else if (PropertyUtils.ehcacheIOStreamsConcurrencyMode == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK){
+            Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
+            Assert.assertEquals(EhcacheStreamConcurrentException.class, exceptions.get(1).get()); // read thread should have EhcacheStreamConcurrentException
+
+            Assert.assertEquals(checksumCacheAdded, callableResults.get(0).get().longValue());
+            Assert.assertEquals(NULL_CHECKSUM, callableResults.get(1).get().longValue());
+        }
+        Assert.assertEquals(expectedCacheSize, getCache().getSize()); // should be 0 now
     }
 }

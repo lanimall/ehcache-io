@@ -1,16 +1,21 @@
 package org.ehcache.extensions.io.impl;
 
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
+import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsFactory;
 import org.junit.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 
 public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamUtilsTest.class);
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
         System.out.println("============ Starting EhcacheStreamUtilsTest ====================");
+        sysPropDefaultSetup();
         cacheStart();
         generateBigInputFile();
     }
@@ -19,6 +24,7 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
     public static void oneTimeTearDown() throws Exception {
         cacheShutdown();
         cleanBigInputFile();
+        sysPropDefaultCleanup();
         System.out.println("============ Finished EhcacheStreamUtilsTest ====================");
     }
 
@@ -36,27 +42,27 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
     public void testRemoveExistingStreamEntry() throws Exception {
         long openTimeout = 10000L;
 
-        Assert.assertTrue(getCache().getSize() == 0);
+        Assert.assertEquals(0, getCache().getSize());
 
         copyFileToCache(getCacheKey());
 
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
 
-        boolean removed = new EhcacheStreamUtils(getCache()).removeStreamEntry(getCacheKey(), openTimeout);
+        boolean removed = EhcacheStreamUtilsFactory.getUtils(getCache()).removeStreamEntry(getCacheKey(), openTimeout);
 
         Assert.assertTrue(removed);
-        Assert.assertTrue(getCache().getSize() == 0);
+        Assert.assertEquals(0, getCache().getSize());
     }
 
     @Test
     public void testRemoveNonExistingStreamEntry() throws Exception {
         long openTimeout = 10000L;
-        Assert.assertTrue(getCache().getSize() == 0);
+        Assert.assertEquals(0, getCache().getSize());
 
-        boolean removed = new EhcacheStreamUtils(getCache()).removeStreamEntry(getCacheKey(), openTimeout);
+        boolean removed = EhcacheStreamUtilsFactory.getUtils(getCache()).removeStreamEntry(getCacheKey(), openTimeout);
 
         Assert.assertFalse(removed);
-        Assert.assertTrue(getCache().getSize() == 0);
+        Assert.assertEquals(0, getCache().getSize());
     }
 
     @Test
@@ -65,16 +71,16 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
 
-        boolean found = new EhcacheStreamUtils(getCache()).containsStreamEntry(getCacheKey());
+        boolean found = EhcacheStreamUtilsFactory.getUtils(getCache()).containsStreamEntry(getCacheKey());
 
         Assert.assertTrue(found);
     }
 
     @Test
     public void testContainsNonExistingStreamEntry() throws Exception {
-        Assert.assertTrue(getCache().getSize() == 0);
+        Assert.assertEquals(0, getCache().getSize());
 
-        boolean found = new EhcacheStreamUtils(getCache()).containsStreamEntry(getCacheKey());
+        boolean found = EhcacheStreamUtilsFactory.getUtils(getCache()).containsStreamEntry(getCacheKey());
 
         Assert.assertFalse(found);
     }
@@ -87,11 +93,11 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
 
-        List keys = new EhcacheStreamUtils(getCache()).getAllStreamEntryKeys(expirationCheck);
+        List keys = EhcacheStreamUtilsFactory.getUtils(getCache()).getAllStreamEntryKeys(expirationCheck);
 
-        Assert.assertTrue(null != keys);
-        Assert.assertTrue(keys.size() == 1);
-        Assert.assertTrue(keys.get(0).equals(getCacheKey()));
+        Assert.assertNotNull(keys);
+        Assert.assertEquals(1, keys.size());
+        Assert.assertEquals(getCacheKey(), keys.get(0));
     }
 
     @Test
@@ -102,10 +108,10 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
 
-        List keys = new EhcacheStreamUtils(getCache()).getAllStreamEntryKeys(expirationCheck);
+        List keys = EhcacheStreamUtilsFactory.getUtils(getCache()).getAllStreamEntryKeys(expirationCheck);
 
-        Assert.assertTrue(null != keys);
-        Assert.assertTrue(keys.size() == 1);
-        Assert.assertTrue(keys.get(0).equals(getCacheKey()));
+        Assert.assertNotNull(keys);
+        Assert.assertEquals(1, keys.size());
+        Assert.assertEquals(getCacheKey(), keys.get(0));
     }
 }

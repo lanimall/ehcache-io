@@ -4,6 +4,9 @@ import org.ehcache.extensions.io.impl.EhcacheInputStreamTest;
 import org.ehcache.extensions.io.impl.EhcacheOutputStreamTest;
 import org.ehcache.extensions.io.impl.EhcacheStreamConcurrentTest;
 import org.ehcache.extensions.io.impl.EhcacheStreamUtilsTest;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.runner.RunWith;
 import org.junit.runners.Suite;
 
@@ -19,4 +22,13 @@ import org.junit.runners.Suite;
         EhcacheStreamConcurrentTest.class
 })
 public class EhcacheStreamTestSuiteBase {
+    @BeforeClass
+    public static void setup() throws Exception {
+        EhcacheStreamingTestsBase.sysPropDefaultSetup();
+    }
+
+    @AfterClass
+    public static void cleanup() throws Exception {
+        EhcacheStreamingTestsBase.sysPropDefaultCleanup();
+    }
 }
