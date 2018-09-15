@@ -19,15 +19,29 @@ public class PropertyUtils {
     public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
     public static final boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
     public static final boolean DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP = true;
-    public static final String DEFAULT_CONCURRENCY_MODE = "";
+    public static final ConcurrencyMode DEFAULT_CONCURRENCY_MODE = ConcurrencyMode.WRITE_PRIORITY_NOLOCK;
 
-    public static final Integer inputStreamBufferSize = getPropertyAsInt(PROP_INPUTSTREAM_BUFFERSIZE, DEFAULT_INPUTSTREAM_BUFFER_SIZE);
-    public static final Integer outputStreamBufferSize = getPropertyAsInt(PROP_OUTPUTSTREAM_BUFFERSIZE, DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
-    public static final Long inputStreamOpenTimeout = getPropertyAsLong(PROP_INPUTSTREAM_OPEN_TIMEOUTS, DEFAULT_INPUTSTREAM_OPEN_TIMEOUT);
-    public static final Long outputStreamOpenTimeout = getPropertyAsLong(PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT);
-    public static final Boolean inputStreamAllowNulls = getPropertyAsBoolean(PROP_INPUTSTREAM_ALLOW_NULLSTREAM, DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM);
-    public static final Boolean outputStreamDefaultOverride = getPropertyAsBoolean(PROP_OUTPUTSTREAM_OVERRIDE, DEFAULT_OUTPUTSTREAM_OVERRIDE);
-    public static final ConcurrencyMode ehcacheIOStreamsConcurrencyMode = ConcurrencyMode.valueOfIgnoreCase(getPropertyAsString(PROP_CONCURRENCY_MODE, DEFAULT_CONCURRENCY_MODE));
+    public static final Integer getInputStreamBufferSize(){
+        return getPropertyAsInt(PROP_INPUTSTREAM_BUFFERSIZE, DEFAULT_INPUTSTREAM_BUFFER_SIZE);
+    }
+    public static final Integer getOutputStreamBufferSize(){
+        return getPropertyAsInt(PROP_OUTPUTSTREAM_BUFFERSIZE, DEFAULT_OUTPUTSTREAM_BUFFER_SIZE);
+    }
+    public static final Long getInputStreamOpenTimeout(){
+        return getPropertyAsLong(PROP_INPUTSTREAM_OPEN_TIMEOUTS, DEFAULT_INPUTSTREAM_OPEN_TIMEOUT);
+    }
+    public static final Long getOutputStreamOpenTimeout(){
+        return getPropertyAsLong(PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT);
+    }
+    public static final Boolean getInputStreamAllowNulls(){
+        return getPropertyAsBoolean(PROP_INPUTSTREAM_ALLOW_NULLSTREAM, DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM);
+    }
+    public static final Boolean getOutputStreamDefaultOverride(){
+        return getPropertyAsBoolean(PROP_OUTPUTSTREAM_OVERRIDE, DEFAULT_OUTPUTSTREAM_OVERRIDE);
+    }
+    public static final ConcurrencyMode getEhcacheIOStreamsConcurrencyMode(){
+        return ConcurrencyMode.valueOfIgnoreCase(getPropertyAsString(PROP_CONCURRENCY_MODE, DEFAULT_CONCURRENCY_MODE.getPropValue()));
+    }
 
     private static String getPropertyAsString(String key, String defaultVal) {
         return System.getProperty(key, defaultVal);
@@ -82,7 +96,7 @@ public class PropertyUtils {
                 else
                     throw new IllegalArgumentException("ConcurrencyMode [" + ((null != concurrencyModeStr) ? concurrencyModeStr : "null") + "] is not valid");
             } else {
-                return READ_COMMITTED_WITHLOCKS;
+                return DEFAULT_CONCURRENCY_MODE;
             }
         }
     }

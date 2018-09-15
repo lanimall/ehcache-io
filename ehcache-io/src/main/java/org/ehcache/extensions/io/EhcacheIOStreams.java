@@ -59,7 +59,7 @@ public class EhcacheIOStreams {
      * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the remove operation was not successful
      */
     public static boolean removeStreamEntry(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return removeStreamEntry(cache, cacheKey, PropertyUtils.outputStreamOpenTimeout);
+        return removeStreamEntry(cache, cacheKey, PropertyUtils.getOutputStreamOpenTimeout());
     }
 
     /**
@@ -80,15 +80,15 @@ public class EhcacheIOStreams {
     //////////////////////////// InputStream
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, PropertyUtils.inputStreamAllowNulls);
+        return getInputStream(cache, cacheKey, PropertyUtils.getInputStreamAllowNulls());
     }
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, allowNullStream, PropertyUtils.inputStreamBufferSize);
+        return getInputStream(cache, cacheKey, allowNullStream, PropertyUtils.getInputStreamBufferSize());
     }
 
     public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize) throws EhcacheStreamException {
-        return getInputStream(cache, cacheKey, allowNullStream, bufferSize, PropertyUtils.inputStreamOpenTimeout);
+        return getInputStream(cache, cacheKey, allowNullStream, bufferSize, PropertyUtils.getInputStreamOpenTimeout());
     }
 
     /**
@@ -119,15 +119,15 @@ public class EhcacheIOStreams {
     //////////////////////////// OutputStream
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
-        return getOutputStream(cache, cacheKey, PropertyUtils.outputStreamDefaultOverride);
+        return getOutputStream(cache, cacheKey, PropertyUtils.getOutputStreamDefaultOverride());
     }
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override) throws EhcacheStreamException {
-        return getOutputStream(cache, cacheKey, override, PropertyUtils.outputStreamBufferSize);
+        return getOutputStream(cache, cacheKey, override, PropertyUtils.getOutputStreamBufferSize());
     }
 
     public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize) throws EhcacheStreamException {
-        return getOutputStream(cache, cacheKey, override, bufferSize, PropertyUtils.outputStreamOpenTimeout);
+        return getOutputStream(cache, cacheKey, override, bufferSize, PropertyUtils.getOutputStreamOpenTimeout());
     }
 
     /**
