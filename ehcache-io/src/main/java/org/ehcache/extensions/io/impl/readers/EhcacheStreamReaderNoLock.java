@@ -9,8 +9,6 @@ import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
 
-import java.io.Closeable;
-
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
@@ -56,7 +54,6 @@ import java.io.Closeable;
         if(openTimeoutMillis <= 0)
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
-        EhcacheStreamMaster test = new EhcacheStreamMaster(null);
         if (!isOpen) {
             try {
                 //TODO: sync protect that loop?

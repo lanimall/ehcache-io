@@ -1,6 +1,5 @@
 package org.ehcache.extensions.io.impl.writers;
 
-import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 

@@ -17,7 +17,7 @@ public class EhcacheStreamReadersFactory {
      */
     public static EhcacheStreamReader getReader(Ehcache cache, Object cacheKey, long openTimeoutMillis) {
         EhcacheStreamReader ehcacheStreamReader;
-        switch (PropertyUtils.ehcacheIOStreamsConcurrencyMode){
+        switch (PropertyUtils.getEhcacheIOStreamsConcurrencyMode()){
             case READ_COMMITTED_WITHLOCKS:
                 ehcacheStreamReader = new EhcacheStreamReaderWithSingleLock(cache, cacheKey, openTimeoutMillis);
                 break;

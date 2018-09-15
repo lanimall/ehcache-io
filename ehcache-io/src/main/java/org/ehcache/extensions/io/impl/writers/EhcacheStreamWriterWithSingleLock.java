@@ -7,7 +7,6 @@ import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 
-import java.io.Closeable;
 import java.util.Arrays;
 
 /**

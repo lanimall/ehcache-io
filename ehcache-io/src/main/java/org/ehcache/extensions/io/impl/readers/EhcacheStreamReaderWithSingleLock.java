@@ -7,8 +7,6 @@ import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
 
-import java.io.Closeable;
-
 /**
  * Created by fabien.sanglier on 7/24/18.
  */

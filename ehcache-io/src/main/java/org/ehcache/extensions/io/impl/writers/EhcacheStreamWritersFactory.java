@@ -18,7 +18,7 @@ public class EhcacheStreamWritersFactory {
      */
     public static EhcacheStreamWriter getWriter(Ehcache cache, Object cacheKey, boolean override, long openTimeoutMillis) {
         EhcacheStreamWriter ehcacheStreamWriter;
-        switch (PropertyUtils.ehcacheIOStreamsConcurrencyMode){
+        switch (PropertyUtils.getEhcacheIOStreamsConcurrencyMode()){
             case READ_COMMITTED_WITHLOCKS:
                 ehcacheStreamWriter = new EhcacheStreamWriterWithSingleLock(cache, cacheKey, override, openTimeoutMillis);
                 break;
