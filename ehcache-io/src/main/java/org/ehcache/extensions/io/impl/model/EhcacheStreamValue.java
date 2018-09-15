@@ -1,4 +1,4 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.model;
 
 import java.io.Serializable;
 
@@ -11,7 +11,7 @@ public class EhcacheStreamValue implements Serializable {
 
     private final byte[] chunk;
 
-    EhcacheStreamValue(byte[] chunk) {
+    public EhcacheStreamValue(byte[] chunk) {
         this.chunk = chunk;
     }
 

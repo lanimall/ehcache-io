@@ -1,8 +1,6 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.model;
 
-import java.io.Closeable;
 import java.io.Serializable;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by Fabien Sanglier on 5/6/15.

@@ -1,12 +1,16 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.writers;
 
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamConcurrentException;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
+import org.ehcache.extensions.io.impl.BaseEhcacheStream;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.Closeable;
 import java.util.Arrays;
 
 /**
@@ -17,85 +21,109 @@ import java.util.Arrays;
  * doc TBD
  */
 
-/*package protected*/ class EhcacheStreamWriterNoLock extends BaseEhcacheStream implements Closeable {
+/*package protected*/ class EhcacheStreamWriterNoLock extends BaseEhcacheStream implements EhcacheStreamWriter {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamWriterNoLock.class);
+    private static final boolean isTrace = logger.isTraceEnabled();
+    private static final boolean isDebug = logger.isTraceEnabled();
 
     private EhcacheStreamMaster oldStreamMaster;
 
     private final boolean override;
 
     private volatile boolean isOpen = false;
+    private final long openTimeoutMillis;
 
-    public EhcacheStreamWriterNoLock(Ehcache cache, Object cacheKey, boolean override) {
+    public EhcacheStreamWriterNoLock(final Ehcache cache, final Object cacheKey, final boolean override, final long openTimeoutMillis) {
         super(cache, cacheKey);
         this.override = override;
+        this.openTimeoutMillis = openTimeoutMillis;
     }
 
-    public void tryOpen(final long timeoutMillis) throws EhcacheStreamException {
+    public void tryOpen() throws EhcacheStreamException {
+        if(openTimeoutMillis <= 0)
+            throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
+
         if (!isOpen) {
             try {
                 //TODO: sync protect that loop?
                 // get the stream master for writing
                 // if it's null, get out right away
                 // if it's not null, check for available flag. if flag is not available for current writing, try a couple of time with some wait
-                EhcacheStreamMaster initialStreamMasterFromCache = null;
                 long t1 = System.currentTimeMillis();
                 long t2 = t1; //this ensures that the while always happen at least once!
-                while (t2 - t1 <= timeoutMillis) {
-                    initialStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-                    if(null == initialStreamMasterFromCache || null != initialStreamMasterFromCache && !initialStreamMasterFromCache.isCurrentWrite())
-                        break;
+                while (!isOpen && t2 - t1 <= openTimeoutMillis) {
+                    EhcacheStreamMaster initialStreamMasterFromCache = initialStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+                    if(null == initialStreamMasterFromCache || null != initialStreamMasterFromCache && !initialStreamMasterFromCache.isCurrentWrite()) {
+                        logger.trace("Got a stream master from cache that is now writable. Let's try to CAS it back in cache in write mode now.");
+
+                        //if we're here, we've successfully acquired the lock -- otherwise, a EhcacheStreamException would have been thrown
+                        //now, get the master index from cache, unless override is set
+                        EhcacheStreamMaster newOpenStreamMaster = null;
+                        if(null != initialStreamMasterFromCache) {
+                            if (!override) {
+                                newOpenStreamMaster = new EhcacheStreamMaster(initialStreamMasterFromCache.getChunkCount(), EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                            } else {
+                                newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                            }
+                        } else {
+                            newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                        }
+
+                        //concurrency check with CAS: let's save the initial EhcacheStreamMaster in cache, while making sure it hasn't change so far
+                        //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed here...while others will fail their CAS ops...and spin back to try again later.
+                        boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialStreamMasterFromCache, newOpenStreamMaster);
+                        if (replaced) {
+                            logger.trace("cas replace successful...Stream master is now saved in cache in write mode");
+
+                            //if the new master has 0 chunk, it means it is an overwrite, so let's clear the chunks for the old master to keep things clean...
+                            if (newOpenStreamMaster.getChunkCount() == 0) {
+                                logger.trace("Clearing previous chunks ...open");
+                                getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), initialStreamMasterFromCache);
+                            }
+
+                            //save (deep copy) the newOpenStreamMaster for later usage (for CAS replace) when we close
+                            oldStreamMaster = EhcacheStreamMaster.deepCopy(newOpenStreamMaster);
+
+                            //at this point, it's really open with consistency in cache
+                            isOpen = true;
+                            logger.trace("writer open successful...");
+                        } else {
+                            logger.trace("Could not cas replace the Stream master in cache, got beat by another thread. Let's retry in a bit.");
+                        }
+                    }
 
                     try {
-                        Thread.sleep(50L);
+                        if(!isOpen) {
+                            if(isTrace)
+                                logger.trace("Sleeping before retry...");
+                            Thread.sleep(50L);
+                        }
                     } catch (InterruptedException e) {
                         throw new EhcacheStreamException("Thread sleep interrupted", e);
                     } finally {
                         Thread.yield();
                     }
+
                     t2 = System.currentTimeMillis();
                 }
 
-                //if the stream master is still being written at the end of the tries, stop trying...
-                if (null != initialStreamMasterFromCache && initialStreamMasterFromCache.isCurrentWrite()) {
-                    throw new EhcacheStreamException(String.format("Could not acquire a write within timeout %d ms.", t2 - t1));
+//                throw new EhcacheStreamConcurrentException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
+
+                //if it's open opened at the end of all the tries and timeout, throw timeout exception
+                if (!isOpen) {
+                    throw new EhcacheStreamTimeoutException(String.format("Could not acquire a write after trying for %d ms (timeout triggers at %d ms)", t2 - t1, openTimeoutMillis));
                 }
-
-                //if we're here, we've successfully acquired the lock -- otherwise, a EhcacheStreamException would have been thrown
-                //now, get the master index from cache, unless override is set
-                EhcacheStreamMaster newOpenStreamMaster = null;
-                if(null != initialStreamMasterFromCache) {
-                    if (!override) {
-                        newOpenStreamMaster = new EhcacheStreamMaster(initialStreamMasterFromCache.getChunkCount(), EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
-                    } else {
-                        newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
-                    }
-                } else {
-                    newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
-                }
-
-                //concurrency check with CAS: let's save the initial EhcacheStreamMaster in cache, while making sure it hasn't change so far
-                //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed...others will end up throwing a EhcacheStreamException
-                boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialStreamMasterFromCache, newOpenStreamMaster);
-                if (!replaced)
-                    throw new EhcacheStreamConcurrentException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
-
-                //if the new master has 0 chunk, it means it is an overwrite, so let's clear the chunks for the old master to keep things clean...
-                if(newOpenStreamMaster.getChunkCount() == 0)
-                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), initialStreamMasterFromCache);
-
-                //save (deep copy) the newOpenStreamMaster for later usage (for CAS replace) when we close
-                oldStreamMaster = EhcacheStreamMaster.deepCopy(newOpenStreamMaster);
-
-                //at this point, it's really open with consistency in cache
-                isOpen = true;
             } catch (Exception exc){
                 isOpen = false;
-                throw new EhcacheStreamException(exc);
+                if(exc instanceof EhcacheStreamException)
+                    throw exc;
+                else
+                    throw new EhcacheStreamException(exc);
             }
         }
 
         if (!isOpen || oldStreamMaster == null)
-            throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should be opened at this point: something unexpected happened.");
+            throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should be opened at this point or an exception should have been thrown...something unexpected happened.");
     }
 
     @Override
@@ -178,11 +206,5 @@ import java.util.Arrays;
         } catch (Exception exc){
             throw new EhcacheStreamException(exc);
         }
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        close();
-        super.finalize();
     }
 }

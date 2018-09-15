@@ -1,7 +1,8 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.readers;
 
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * Created by Fabien Sanglier on 5/4/15.
  */
-public class EhcacheInputStream extends InputStream {
+/*package protected*/ class EhcacheInputStream extends InputStream {
     /**
      * The internal buffer array where the data is stored.
      */
@@ -42,26 +43,22 @@ public class EhcacheInputStream extends InputStream {
     /*
      * The Internal Ehcache streaming access layer
      */
-    protected final EhcacheStreamReaderNoLock ehcacheStreamReader;
-    protected final long ehcacheStreamReaderOpenTimeout;
+    protected final EhcacheStreamReader ehcacheStreamReader;
 
     /**
      * Creates a new buffered output stream to write data to a cache
      * with the specified buffer size.
      *
-     * @param   cache           the underlying cache to access
-     * @param   cacheKey        the underlying cache key to read data from
-     * @param   size            the buffer size.
-     * @param   openTimeout     the timeout for the stream reader open
+     * @param   bufferSize              the stream buffer size.
+     * @param   ehcacheStreamReader     the stream reader implementation
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(Ehcache cache, Object cacheKey, int size, long openTimeout) throws EhcacheStreamException {
-        if (size <= 0) {
-            throw new EhcacheStreamException(new IllegalArgumentException("Buffer size <= 0"));
+    public EhcacheInputStream(int bufferSize, EhcacheStreamReader ehcacheStreamReader) throws EhcacheStreamException {
+        if (bufferSize <= 0) {
+            throw new EhcacheStreamIllegalStateException("Buffer size <= 0");
         }
-        this.buf = new byte[size];
-        this.ehcacheStreamReader = new EhcacheStreamReaderNoLock(cache,cacheKey);
-        this.ehcacheStreamReaderOpenTimeout = openTimeout;
+        this.buf = new byte[bufferSize];
+        this.ehcacheStreamReader = ehcacheStreamReader;
     }
 
     @Override
@@ -70,7 +67,7 @@ public class EhcacheInputStream extends InputStream {
     }
 
     private void tryOpenInternalReader() throws IOException{
-        ehcacheStreamReader.tryOpen(ehcacheStreamReaderOpenTimeout);
+        ehcacheStreamReader.tryOpen();
     }
 
     private void closeInternalReader() throws IOException {

@@ -1,9 +1,13 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.readers;
 
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamConcurrentException;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
+import org.ehcache.extensions.io.impl.BaseEhcacheStream;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
 
 import java.io.Closeable;
 
@@ -15,7 +19,7 @@ import java.io.Closeable;
  * doc TBD
  */
 
-/*package protected*/ class EhcacheStreamReaderNoLock extends BaseEhcacheStream implements Closeable {
+/*package protected*/ class EhcacheStreamReaderNoLock extends BaseEhcacheStream implements EhcacheStreamReader {
 
     /*
      * The current position in the ehcache value chunk list.
@@ -32,21 +36,25 @@ import java.io.Closeable;
     protected EhcacheStreamMaster initialOpenedStreamMaster;
 
     private volatile boolean isOpen = false;
+    private final long openTimeoutMillis;
 
-    public EhcacheStreamReaderNoLock(Ehcache cache, Object cacheKey) {
+    public EhcacheStreamReaderNoLock(Ehcache cache, Object cacheKey, long openTimeoutMillis) {
         super(cache, cacheKey);
+        this.openTimeoutMillis = openTimeoutMillis;
     }
 
     //TODO: implement something better to return a better size
     //this is meant to be a general estimate without guarantees
+    @Override
     public int getSize() {
         EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
         return (null == temp)? 0: 1;
     }
 
-    public void tryOpen(long timeoutMillis) throws EhcacheStreamException {
-        if(timeoutMillis <= 0)
-            throw new EhcacheStreamException(String.format("Open timeout [%d] may not be lower than 0", timeoutMillis));
+    @Override
+    public void tryOpen() throws EhcacheStreamException {
+        if(openTimeoutMillis <= 0)
+            throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         EhcacheStreamMaster test = new EhcacheStreamMaster(null);
         if (!isOpen) {
@@ -58,7 +66,7 @@ import java.io.Closeable;
                 EhcacheStreamMaster ehcacheStreamMasterFromCache = null;
                 long t1 = System.currentTimeMillis();
                 long t2 = t1; //this ensures that the while always happen at least once!
-                while (t2 - t1 <= timeoutMillis) {
+                while (t2 - t1 <= openTimeoutMillis) {
                     ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
                     if(null == ehcacheStreamMasterFromCache || null != ehcacheStreamMasterFromCache && !ehcacheStreamMasterFromCache.isCurrentWrite())
                         break;
@@ -75,16 +83,19 @@ import java.io.Closeable;
 
                 //if the stream master is still being written at the end of the tries, stop trying...
                 if (null != ehcacheStreamMasterFromCache && ehcacheStreamMasterFromCache.isCurrentWrite()) {
-                    throw new EhcacheStreamException(String.format("Could not acquire a read within timeout %d ms.", t2 - t1));
+                    throw new EhcacheStreamTimeoutException(String.format("Could not acquire a read after trying for %d ms (timeout triggers at %d ms)", t2 - t1, openTimeoutMillis));
                 }
 
                 //once the stream master is available for reading, save it
-                this.initialOpenedStreamMaster = (null != ehcacheStreamMasterFromCache)?EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache):null;
+                this.initialOpenedStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
 
                 isOpen = true;
             } catch (Exception exc){
                 isOpen = false;
-                throw new EhcacheStreamException(exc);
+                if(exc instanceof EhcacheStreamException)
+                    throw exc;
+                else
+                    throw new EhcacheStreamException(exc);
             }
         }
 
@@ -101,11 +112,6 @@ import java.io.Closeable;
     }
 
     @Override
-    protected void finalize() throws Throwable {
-        close();
-        super.finalize();
-    }
-
     public int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException {
         if(!isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader is not open...call open() first.");

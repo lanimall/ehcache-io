@@ -1,10 +1,11 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.writers;
 
-import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamConcurrentException;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.impl.BaseEhcacheStream;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 
 import java.io.Closeable;
 import java.util.Arrays;
@@ -12,7 +13,7 @@ import java.util.Arrays;
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
-/*package protected*/ class EhcacheStreamWriterWithSingleLock extends BaseEhcacheStream implements Closeable {
+/*package protected*/ class EhcacheStreamWriterWithSingleLock extends BaseEhcacheStream implements EhcacheStreamWriter {
 
     private EhcacheStreamMaster initialOpenedStreamMaster;
     private EhcacheStreamMaster currentStreamMaster;
@@ -20,16 +21,21 @@ import java.util.Arrays;
     private final boolean override;
 
     private volatile boolean isOpen = false;
+    private final long openTimeoutMillis;
 
-    public EhcacheStreamWriterWithSingleLock(Ehcache cache, Object cacheKey, boolean override) {
+    public EhcacheStreamWriterWithSingleLock(final Ehcache cache, final Object cacheKey, final boolean override, final long openTimeoutMillis) {
         super(cache, cacheKey);
         this.override = override;
+        this.openTimeoutMillis = openTimeoutMillis;
     }
 
-    public void tryOpen(long timeout) throws EhcacheStreamException {
+    public void tryOpen() throws EhcacheStreamException {
+        if(openTimeoutMillis <= 0)
+            throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
+
         if (!isOpen) {
             //always try to acquire the lock first
-            getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), timeout);
+            getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), openTimeoutMillis);
 
             //if we're here, we've successfully acquired the lock -- otherwise, a EhcacheStreamException would have been thrown
             //now, get the master index from cache, unless override is set
@@ -110,10 +116,10 @@ import java.util.Arrays;
 
         //put and increment stream index
         if(count > 0) {
-            //copy and increment count
-            EhcacheStreamMaster newIncrementedStreamMaster = currentStreamMaster.newWithIncrementCount();
+            getEhcacheStreamUtils().putChunkValue(getCacheKey(), currentStreamMaster.getChunkCount(), Arrays.copyOf(buf, count));
 
-            getEhcacheStreamUtils().putChunkValue(getCacheKey(), newIncrementedStreamMaster.getChunkCount(), Arrays.copyOf(buf, count));
+            //copy and increment count
+            currentStreamMaster = currentStreamMaster.newWithIncrementCount();
         }
     }
 }

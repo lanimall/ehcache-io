@@ -1,7 +1,5 @@
 package org.ehcache.extensions.io;
 
-import java.io.IOException;
-
 /**
  * Created by fabien.sanglier on 7/27/18.
  */

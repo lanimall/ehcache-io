@@ -1,4 +1,4 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.model;
 
 import java.io.Serializable;
 
@@ -13,7 +13,7 @@ public class EhcacheStreamKey implements Serializable {
     private final Object cacheKey;
     private final int chunkIndex;
 
-    EhcacheStreamKey(Object cacheKey, int chunkIndex) {
+    public EhcacheStreamKey(Object cacheKey, int chunkIndex) {
         this.cacheKey = cacheKey;
         this.chunkIndex = chunkIndex;
     }
