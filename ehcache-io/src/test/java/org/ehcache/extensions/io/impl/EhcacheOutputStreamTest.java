@@ -4,6 +4,8 @@ import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +18,7 @@ import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 
+@RunWith(Parameterized.class)
 public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheOutputStreamTest.class);
 
@@ -39,6 +42,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Before
     public void setup() throws Exception {
+        setupParameterizedProperties();
         cacheSetUp();
         inputFileCheckSum = readFileFromDisk();
     }
@@ -48,6 +52,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         cacheCleanUp();
         cleanBigOutputFile();
         inputFileCheckSum = -1L;
+        cleanupParameterizedProperties();
     }
 
     public long testCopyFileToCacheByteByByte(Boolean override, Integer bufferSize) throws IOException {
@@ -63,7 +68,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
         else if (null == override && null != bufferSize)
-            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.outputStreamDefaultOverride, bufferSize.intValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.getOutputStreamDefaultOverride(), bufferSize.intValue());
         else if (null != override && null != bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
         else
@@ -179,7 +184,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
         else if (null == override && null != bufferSize)
-            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.outputStreamDefaultOverride, bufferSize.intValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.getOutputStreamDefaultOverride(), bufferSize.intValue());
         else if (null != override && null != bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
         else
@@ -295,7 +300,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
         else if (null == override && null != bufferSize)
-            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.outputStreamDefaultOverride, bufferSize.intValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.getOutputStreamDefaultOverride(), bufferSize.intValue());
         else if (null != override && null != bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
         else

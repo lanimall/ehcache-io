@@ -17,7 +17,6 @@ public class EhcacheStreamTestSuiteDistributed extends EhcacheStreamTestSuiteBas
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_distributed.xml");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsDistributedTest");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStoreDistributed");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "string");
     }
 
     @AfterClass
@@ -27,6 +26,5 @@ public class EhcacheStreamTestSuiteDistributed extends EhcacheStreamTestSuiteBas
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME);
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
     }
 }

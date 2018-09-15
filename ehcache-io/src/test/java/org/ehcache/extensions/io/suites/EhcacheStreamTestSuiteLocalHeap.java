@@ -17,7 +17,6 @@ public class EhcacheStreamTestSuiteLocalHeap extends EhcacheStreamTestSuiteBase 
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_localheap.xml");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsTest");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStore");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "string");
     }
 
     @AfterClass
@@ -27,6 +26,5 @@ public class EhcacheStreamTestSuiteLocalHeap extends EhcacheStreamTestSuiteBase 
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME);
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
     }
 }

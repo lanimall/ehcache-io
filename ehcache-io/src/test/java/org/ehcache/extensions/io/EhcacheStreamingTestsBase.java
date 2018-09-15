@@ -4,9 +4,8 @@ import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
-import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Random;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
@@ -48,6 +49,32 @@ public abstract class EhcacheStreamingTestsBase {
 
     private static final String CACHEKEY_TYPE_STRING = "somekey";
     private static final Object CACHEKEY_TYPE_CUSTOMOBJECT = CustomPublicKey.generateRandom();
+
+    @Parameterized.Parameter(0)
+    public PropertyUtils.ConcurrencyMode concurrencyMode;
+
+    @Parameterized.Parameter(1)
+    public String cacheKeyType;
+
+    @Parameterized.Parameters
+    public static Collection params() {
+        return Arrays.asList(new Object[][]{
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK, "string"},
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK, "object"},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, "string"},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, "object"},
+        });
+    }
+
+    public void setupParameterizedProperties() {
+        System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, concurrencyMode.getPropValue());
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, cacheKeyType);
+    }
+
+    public void cleanupParameterizedProperties() {
+        System.clearProperty(PropertyUtils.PROP_CONCURRENCY_MODE);
+        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
+    }
 
     public class EhcacheInputStreamParams{
         public final Ehcache cache;
@@ -248,12 +275,8 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public static void sysPropDefaultSetup() throws Exception {
-        if(null == System.getProperty(PropertyUtils.PROP_CONCURRENCY_MODE)) {
-//        System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, PropertyUtils.DEFAULT_CONCURRENCY_MODE);
-//        System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS.getPropValue());
-            System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK.getPropValue());
-        }
-
+        if(null == System.getProperty(PropertyUtils.PROP_CONCURRENCY_MODE))
+            System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, PropertyUtils.DEFAULT_CONCURRENCY_MODE.getPropValue());
         if(null == System.getProperty(PropertyUtils.PROP_INPUTSTREAM_BUFFERSIZE))
             System.setProperty(PropertyUtils.PROP_INPUTSTREAM_BUFFERSIZE, new Integer(PropertyUtils.DEFAULT_INPUTSTREAM_BUFFER_SIZE).toString());
         if(null == System.getProperty(PropertyUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS))
@@ -282,11 +305,11 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public long copyFileToCache(final Object publicCacheKey) throws IOException {
-        return copyFileToCache(publicCacheKey, PropertyUtils.outputStreamDefaultOverride);
+        return copyFileToCache(publicCacheKey, PropertyUtils.getOutputStreamDefaultOverride());
     }
 
     public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride) throws IOException {
-        return copyFileToCache(publicCacheKey, cacheWriteOverride, PropertyUtils.outputStreamBufferSize);
+        return copyFileToCache(publicCacheKey, cacheWriteOverride, PropertyUtils.getOutputStreamBufferSize());
     }
 
     public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride, final int cacheWriteBufferSize) throws IOException {
@@ -347,7 +370,7 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public long readFileFromCache(final Object publicCacheKey) throws IOException {
-        return readFileFromCache(publicCacheKey, PropertyUtils.inputStreamBufferSize);
+        return readFileFromCache(publicCacheKey, PropertyUtils.getInputStreamBufferSize());
     }
 
     public long readFileFromCache(final Object publicCacheKey, int cacheReadBufferSize) throws IOException {

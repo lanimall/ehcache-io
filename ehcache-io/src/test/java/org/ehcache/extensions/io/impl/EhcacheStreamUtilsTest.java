@@ -3,12 +3,15 @@ package org.ehcache.extensions.io.impl;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsFactory;
 import org.junit.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.List;
 
+@RunWith(Parameterized.class)
 public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamUtilsTest.class);
 
@@ -30,12 +33,14 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @Before
     public void setup() throws Exception {
+        setupParameterizedProperties();
         cacheSetUp();
     }
 
     @After
     public void cleanup() throws IOException {
         cacheCleanUp();
+        cleanupParameterizedProperties();
     }
 
     @Test

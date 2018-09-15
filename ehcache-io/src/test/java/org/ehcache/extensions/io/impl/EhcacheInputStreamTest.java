@@ -2,7 +2,10 @@ package org.ehcache.extensions.io.impl;
 
 import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,14 +13,32 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 
+@RunWith(Parameterized.class)
 public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheInputStreamTest.class);
 
     private long inputFileCheckSum = -1L;
+
+    @Before
+    public void setup() throws Exception {
+        setupParameterizedProperties();
+        cacheSetUp();
+        inputFileCheckSum = copyFileToCache(getCacheKey());
+    }
+
+    @After
+    public void cleanup() throws IOException {
+        cacheCleanUp();
+        cleanBigOutputFile();
+        inputFileCheckSum = -1L;
+        cleanupParameterizedProperties();
+    }
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
@@ -33,19 +54,6 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         cleanBigInputFile();
         sysPropDefaultCleanup();
         System.out.println("============ Finished EhcacheInputStreamTest ====================");
-    }
-
-    @Before
-    public void setup() throws Exception {
-        cacheSetUp();
-        inputFileCheckSum = copyFileToCache(getCacheKey());
-    }
-
-    @After
-    public void cleanup() throws IOException {
-        cacheCleanUp();
-        cleanBigOutputFile();
-        inputFileCheckSum = -1L;
     }
 
     @Test
