@@ -6,10 +6,10 @@
     </appender>
 
     <logger name="net.sf.ehcache">
-        <level value="error"/>
+        <level value="info"/>
     </logger>
 
-    <root level="error">
+    <root level="debug">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>
