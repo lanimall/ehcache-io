@@ -18,7 +18,9 @@ public class PropertyUtils {
     public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 10000L;
     public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
     public static final boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
-    public static final boolean DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP = true;
+    public static final long DEFAULT_BUSYWAIT_RETRY_LOOP_SLEEP_MILLIS = 50;
+    public static final long DEFAULT_CONSISTENCY_WAIT_TIMEOUT = 100;
+
     public static final ConcurrencyMode DEFAULT_CONCURRENCY_MODE = ConcurrencyMode.WRITE_PRIORITY_NOLOCK;
 
     public static final Integer getInputStreamBufferSize(){
