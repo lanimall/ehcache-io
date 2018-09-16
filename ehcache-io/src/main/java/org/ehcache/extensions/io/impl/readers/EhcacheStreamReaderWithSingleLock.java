@@ -63,9 +63,20 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should be open at this point: something unexpected happened.");
     }
 
+    /**
+     * Closes this reader and releases any system resources
+     * associated with the reader.
+     * Once the reader has been closed, further read() invocations will throw an EhcacheStreamException.
+     * Closing a previously closed reader has no effect.
+     *
+     * @exception org.ehcache.extensions.io.EhcacheStreamException  if an I/O error occurs.
+     */
     public void close() throws EhcacheStreamException {
         if (isOpen) {
             getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+            cacheChunkIndexPos = 0;
+            cacheChunkBytePos = 0;
+            currentStreamMaster = null;
             isOpen = false;
         }
 
@@ -104,8 +115,13 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
                 }
             } else {
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new EhcacheStreamIllegalStateException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCount() + "] boundaries. Make sure the cache values are not evicted");
+                throw new EhcacheStreamIllegalStateException("Cache chunk [" + (cacheChunkIndexPos) + "] is null " +
+                        "and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCount() + "] boundaries.");
             }
+        } else {
+            //if we are here, we know we're done as we reached the end of the chunks...
+            // so let's close the reader pro-actively so that we don't hold the locks longer than needed
+            close();
         }
 
         return byteCopied;
