@@ -71,7 +71,7 @@ import java.util.Arrays;
                 //at this point, it's really open with consistency in cache
                 isOpen = true;
             } catch (Exception exc){
-                //release lock
+                //release lock in case of issue opening
                 getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
                 isOpen = false;
                 throw exc;
