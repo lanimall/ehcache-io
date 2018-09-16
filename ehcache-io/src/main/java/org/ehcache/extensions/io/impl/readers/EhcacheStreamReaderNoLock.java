@@ -8,6 +8,9 @@ import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
@@ -18,6 +21,9 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
  */
 
 /*package protected*/ class EhcacheStreamReaderNoLock extends BaseEhcacheStream implements EhcacheStreamReader {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamReaderNoLock.class);
+    private static final boolean isTrace = logger.isTraceEnabled();
+    private static final boolean isDebug = logger.isDebugEnabled();
 
     /*
      * The current position in the ehcache value chunk list.
@@ -63,30 +69,46 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
                 EhcacheStreamMaster ehcacheStreamMasterFromCache = null;
                 long t1 = System.currentTimeMillis();
                 long t2 = t1; //this ensures that the while always happen at least once!
-                while (t2 - t1 <= openTimeoutMillis) {
+                long itcounter = 0;
+                while (!isOpen && t2 - t1 <= openTimeoutMillis) {
                     ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-                    if(null == ehcacheStreamMasterFromCache || null != ehcacheStreamMasterFromCache && !ehcacheStreamMasterFromCache.isCurrentWrite())
-                        break;
+                    if(null == ehcacheStreamMasterFromCache || null != ehcacheStreamMasterFromCache && !ehcacheStreamMasterFromCache.isCurrentWrite()) {
+                        if(isDebug)
+                            logger.debug("Got a stream master from cache that is now readable.");
+
+                        //once the stream master is available for reading, save it
+                        this.initialOpenedStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
+
+                        isOpen = true;
+                        if(isDebug)
+                            logger.trace("writer open successful...");
+                    } else {
+                        if(isTrace)
+                            logger.trace("The current stream master in cache is marked as writable. Another thread must be working on it. Let's retry in a bit.");
+                    }
 
                     try {
-                        Thread.sleep(50L);
+                        if(!isOpen) {
+                            if(isTrace)
+                                logger.trace("Sleeping before retry...");
+                            Thread.sleep(PropertyUtils.DEFAULT_BUSYWAIT_RETRY_LOOP_SLEEP_MILLIS);
+                        }
                     } catch (InterruptedException e) {
                         throw new EhcacheStreamException("Thread sleep interrupted", e);
                     } finally {
                         Thread.yield();
                     }
                     t2 = System.currentTimeMillis();
+                    itcounter++;
                 }
 
-                //if the stream master is still being written at the end of the tries, stop trying...
-                if (null != ehcacheStreamMasterFromCache && ehcacheStreamMasterFromCache.isCurrentWrite()) {
+                if(isDebug)
+                    logger.debug("Total cas loop iterations: {}", itcounter - 1);
+
+                //if it's not opened at the end of all the tries and timeout, throw timeout exception
+                if (!isOpen) {
                     throw new EhcacheStreamTimeoutException(String.format("Could not acquire a read after trying for %d ms (timeout triggers at %d ms)", t2 - t1, openTimeoutMillis));
                 }
-
-                //once the stream master is available for reading, save it
-                this.initialOpenedStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
-
-                isOpen = true;
             } catch (Exception exc){
                 isOpen = false;
                 if(exc instanceof EhcacheStreamException)
@@ -121,7 +143,7 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
         //check if the stream master we just got is the same as the one we opened with
         boolean isConsistent = EhcacheStreamMaster.compare(currentStreamMasterFromCache, initialOpenedStreamMaster);
         if(!isConsistent)
-            throw new EhcacheStreamConcurrentException("Concurrent modification exception: EhcacheStreamMaster has changed since opening...concurrent write must have happened."); //TODO: maybe a new EhcacheStreamConsistencyException?
+            throw new EhcacheStreamConcurrentException("Concurrent modification exception: EhcacheStreamMaster has changed since opening...concurrent write must have happened.");
 
         // now we know we are good with consistent EhcacheStreamMaster from cache, let's do the work.
 
@@ -137,7 +159,19 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
             EhcacheStreamValue cacheChunkValue = null;
             int maxTries = 10;
             int tryCount = 0;
-            while(tryCount < maxTries && null == cacheChunkValue){
+
+            //TODO: IMPORTANT!! checking for null cacheChunkValue is not enough
+            //TODO: what if the cacheChunk was just being replaced by another write for example?
+            //TODO: Currently, We would stream these bytes out even though these chunks are not ours...
+            //TODO: We need some sort of concurrency check...maybe we add a checksum list in the stream master object
+            //TODO: EG. as a write happens, it would store the checksums of each chunks in the stream master object,
+            //TODO: And then, on read, we could reference and cross check each chunk from cache against expected checksum
+            //TODO: i think that would be a good improvement for data consistency.
+
+            long t1 = System.currentTimeMillis();
+            long t2 = t1; //this ensures that the while always happen at least once!
+            long itcounter = 0;
+            while(t2 - t1 <= PropertyUtils.DEFAULT_CONSISTENCY_WAIT_TIMEOUT && null == cacheChunkValue){
                 cacheChunkValue = getEhcacheStreamUtils().getChunkValue(getCacheKey(), cacheChunkIndexPos);
                 if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
                     byte[] cacheChunk = cacheChunkValue.getChunk();
@@ -158,17 +192,26 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
                         cacheChunkIndexPos++;
                         cacheChunkBytePos = 0;
                     }
-                } else {
-                    try {
-                        Thread.sleep(tryCount * 1L); //sliding wait time
-                    } catch (InterruptedException e) {
-                        throw new EhcacheStreamException("Thread sleep interrupted", e);
-                    } finally {
-                        Thread.yield();
-                    }
                 }
-                tryCount++;
+
+                try {
+                    if(null == cacheChunkValue) {
+                        if(isTrace)
+                            logger.trace("Sleeping before retry...");
+                        Thread.sleep(PropertyUtils.DEFAULT_BUSYWAIT_RETRY_LOOP_SLEEP_MILLIS);
+                    }
+                } catch (InterruptedException e) {
+                    throw new EhcacheStreamException("Thread sleep interrupted", e);
+                } finally {
+                    Thread.yield();
+                }
+
+                t2 = System.currentTimeMillis();
+                itcounter++;
             }
+
+            if(isDebug)
+                logger.debug("Total loop iterations: {}", itcounter - 1);
 
             // if the cache chunk is still null, this should not really happen within the cacheValueTotalChunks boundaries
             // there is potential for this to happen if cache is eventual, but we supposedly waited and retried to get it...
