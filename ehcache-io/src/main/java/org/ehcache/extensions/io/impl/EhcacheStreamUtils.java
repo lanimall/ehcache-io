@@ -23,7 +23,6 @@ public class EhcacheStreamUtils {
 
     public static final String PROP_INPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.inputstream.buffersize";
     public static final String PROP_INPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.inputstream.opentimeout";
-    public static final String PROP_INPUTSTREAM_OPEN_LOCK_DISABLE = "ehcache.extension.io.inputstream.openlock.disable";
     public static final String PROP_INPUTSTREAM_ALLOW_NULLSTREAM = "ehcache.extension.io.inputstream.allownull";
 
     public static final String PROP_OUTPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.outputstream.buffersize";
