@@ -48,11 +48,7 @@ public class EhcacheStreamUtilsInternal {
     }
 
     public void releaseReadOnMaster(final Object cacheKey){
-        releaseReadOnMaster(cacheKey, PropertyUtils.DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP);
-    }
-
-    public void releaseReadOnMaster(final Object cacheKey, boolean checkOnlyForCurrentThread){
-        releaseLockInternal(buildMasterKey(cacheKey), LockType.READ, checkOnlyForCurrentThread);
+        releaseLockInternal(buildMasterKey(cacheKey), LockType.READ);
     }
 
     public void acquireExclusiveWriteOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamException {
@@ -67,37 +63,35 @@ public class EhcacheStreamUtilsInternal {
     }
 
     public void releaseExclusiveWriteOnMaster(final Object cacheKey){
-        releaseExclusiveWriteOnMaster(cacheKey, PropertyUtils.DEFAULT_RELEASELOCK_CHECKTHREAD_OWNERSHIP);
-    }
-
-    public void releaseExclusiveWriteOnMaster(final Object cacheKey, boolean checkOnlyForCurrentThread){
-        releaseLockInternal(buildMasterKey(cacheKey), LockType.WRITE, checkOnlyForCurrentThread);
+        releaseLockInternal(buildMasterKey(cacheKey), LockType.WRITE);
     }
 
     private synchronized boolean tryLockInternal(Object lockKey, LockType lockType, long timeout) throws InterruptedException {
         boolean isLocked = false;
-        if(lockType == LockType.READ)
-            isLocked = cache.tryReadLockOnKey(lockKey, timeout);
-        else if(lockType == LockType.WRITE)
-            isLocked = cache.tryWriteLockOnKey(lockKey, timeout);
+        if(lockType == LockType.READ) {
+            isLocked = cache.isReadLockedByCurrentThread(lockKey) || cache.tryReadLockOnKey(lockKey, timeout);
+        }
+        else if(lockType == LockType.WRITE) {
+            isLocked = cache.isWriteLockedByCurrentThread(lockKey) || cache.tryWriteLockOnKey(lockKey, timeout);
+        }
         else
             throw new IllegalArgumentException("LockType not supported");
 
         return isLocked;
     }
 
-    public synchronized void releaseLockInternal(Object lockKey, LockType lockType, boolean checkLockedByCurrentThread) {
+    public synchronized void releaseLockInternal(Object lockKey, LockType lockType) {
         if(lockType == LockType.READ) {
+            // isReadLockedByCurrentThread throws a "UnsupportedOperationException Querying of read lock is not supported" for standalone ehcache
+            // so in that case, release the lock anyway
             try {
-                // isReadLockedByCurrentThread throws a "UnsupportedOperationException Querying of read lock is not supported" for standalone ehcache
-                // so in that case, release the lock anyway
-                if (!checkLockedByCurrentThread || checkLockedByCurrentThread && cache.isReadLockedByCurrentThread(lockKey))
+                if (cache.isReadLockedByCurrentThread(lockKey))
                     cache.releaseReadLockOnKey(lockKey);
             } catch (UnsupportedOperationException uex){
                 cache.releaseReadLockOnKey(lockKey);
             }
         } else if(lockType == LockType.WRITE) {
-            if(!checkLockedByCurrentThread || checkLockedByCurrentThread && cache.isWriteLockedByCurrentThread(lockKey))
+            if(cache.isWriteLockedByCurrentThread(lockKey))
                 cache.releaseWriteLockOnKey(lockKey);
         }
         else
