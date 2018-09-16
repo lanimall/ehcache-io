@@ -3,7 +3,11 @@ package org.ehcache.extensions.io;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.Assert;
+import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.file.FileSystems;
@@ -11,6 +15,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Random;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
@@ -20,6 +26,8 @@ import java.util.zip.CheckedOutputStream;
  * Created by FabienSanglier on 5/5/15.
  */
 public abstract class EhcacheStreamingTestsBase {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamingTestsBase.class);
+
     public static final String ENV_CACHE_NAME = "ehcache.config.cachename";
     public static final String ENV_CACHEMGR_NAME = "ehcache.config.cachemgr.name";
     public static final String ENV_CACHE_CONFIGPATH = "ehcache.config.path";
@@ -41,6 +49,32 @@ public abstract class EhcacheStreamingTestsBase {
 
     private static final String CACHEKEY_TYPE_STRING = "somekey";
     private static final Object CACHEKEY_TYPE_CUSTOMOBJECT = CustomPublicKey.generateRandom();
+
+    @Parameterized.Parameter(0)
+    public PropertyUtils.ConcurrencyMode concurrencyMode;
+
+    @Parameterized.Parameter(1)
+    public String cacheKeyType;
+
+    @Parameterized.Parameters
+    public static Collection params() {
+        return Arrays.asList(new Object[][]{
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK, "string"},
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK, "object"},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, "string"},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, "object"},
+        });
+    }
+
+    public void setupParameterizedProperties() {
+        System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, concurrencyMode.getPropValue());
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, cacheKeyType);
+    }
+
+    public void cleanupParameterizedProperties() {
+        System.clearProperty(PropertyUtils.PROP_CONCURRENCY_MODE);
+        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
+    }
 
     public class EhcacheInputStreamParams{
         public final Ehcache cache;
@@ -240,18 +274,56 @@ public abstract class EhcacheStreamingTestsBase {
             Files.delete(OUT_FILE_PATH);
     }
 
-    public long copyFileToCache(final Object publicCacheKey) throws Exception {
-        int inBufferSize = 32 * 1024;
-        int copyBufferSize = 128 * 1024;
+    public static void sysPropDefaultSetup() throws Exception {
+        if(null == System.getProperty(PropertyUtils.PROP_CONCURRENCY_MODE))
+            System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, PropertyUtils.DEFAULT_CONCURRENCY_MODE.getPropValue());
+        if(null == System.getProperty(PropertyUtils.PROP_INPUTSTREAM_BUFFERSIZE))
+            System.setProperty(PropertyUtils.PROP_INPUTSTREAM_BUFFERSIZE, new Integer(PropertyUtils.DEFAULT_INPUTSTREAM_BUFFER_SIZE).toString());
+        if(null == System.getProperty(PropertyUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS))
+            System.setProperty(PropertyUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, new Long(PropertyUtils.DEFAULT_INPUTSTREAM_OPEN_TIMEOUT).toString());
+        if(null == System.getProperty(PropertyUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM))
+            System.setProperty(PropertyUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM, new Boolean(PropertyUtils.DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM).toString());
+
+        if(null == System.getProperty(PropertyUtils.PROP_OUTPUTSTREAM_BUFFERSIZE))
+            System.setProperty(PropertyUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, new Integer(PropertyUtils.DEFAULT_OUTPUTSTREAM_BUFFER_SIZE).toString());
+        if(null == System.getProperty(PropertyUtils.PROP_OUTPUTSTREAM_OVERRIDE))
+            System.setProperty(PropertyUtils.PROP_OUTPUTSTREAM_OVERRIDE, new Boolean(PropertyUtils.DEFAULT_OUTPUTSTREAM_OVERRIDE).toString());
+        if(null == System.getProperty(PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS))
+            System.setProperty(PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, new Long(PropertyUtils.DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT).toString());
+    }
+
+    public static void sysPropDefaultCleanup() throws Exception {
+        System.clearProperty(PropertyUtils.PROP_CONCURRENCY_MODE);
+
+        System.clearProperty(PropertyUtils.PROP_INPUTSTREAM_BUFFERSIZE);
+        System.clearProperty(PropertyUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS);
+        System.clearProperty(PropertyUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM);
+
+        System.clearProperty(PropertyUtils.PROP_OUTPUTSTREAM_BUFFERSIZE);
+        System.clearProperty(PropertyUtils.PROP_OUTPUTSTREAM_OVERRIDE);
+        System.clearProperty(PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS);
+    }
+
+    public long copyFileToCache(final Object publicCacheKey) throws IOException {
+        return copyFileToCache(publicCacheKey, PropertyUtils.getOutputStreamDefaultOverride());
+    }
+
+    public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride) throws IOException {
+        return copyFileToCache(publicCacheKey, cacheWriteOverride, PropertyUtils.getOutputStreamBufferSize());
+    }
+
+    public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride, final int cacheWriteBufferSize) throws IOException {
+        int fileReadBufferSize = 32 * 1024;
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
+        int copyBufferSize = 32*1024;
 
         System.out.println("============ copyFileToCache ====================");
         System.out.println("Before Cache Size = " + cache.getSize());
 
         try (
-                CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),inBufferSize),new CRC32());
-                CheckedOutputStream os = new CheckedOutputStream(EhcacheIOStreams.getOutputStream(cache, publicCacheKey),new CRC32())
+                CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),fileReadBufferSize),new CRC32());
+                CheckedOutputStream os = new CheckedOutputStream(EhcacheIOStreams.getOutputStream(cache, publicCacheKey, cacheWriteOverride, cacheWriteBufferSize),new CRC32())
         )
         {
             start = System.nanoTime();
@@ -270,9 +342,10 @@ public abstract class EhcacheStreamingTestsBase {
         return outputChecksum;
     }
 
-    public long readFileFromDisk() throws Exception {
+    public long readFileFromDisk() throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
+        int copyBufferSize = 32*1024;
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH)), new CRC32());
@@ -280,8 +353,6 @@ public abstract class EhcacheStreamingTestsBase {
         )
         {
             System.out.println("============ readFileFromDisk ====================");
-
-            int copyBufferSize = 32*1024;
 
             start = System.nanoTime();
             pipeStreamsWithBuffer(is, os, copyBufferSize);
@@ -299,14 +370,16 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public long readFileFromCache(final Object publicCacheKey) throws IOException {
-        int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
-        int outBufferSize = 128 * 1024;
+        return readFileFromCache(publicCacheKey, PropertyUtils.getInputStreamBufferSize());
+    }
+
+    public long readFileFromCache(final Object publicCacheKey, int cacheReadBufferSize) throws IOException {
         int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
 
         try (
-                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, publicCacheKey, false, inBufferSize),new CRC32());
+                CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, publicCacheKey, false, cacheReadBufferSize),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
         )
         {

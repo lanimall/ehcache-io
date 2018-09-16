@@ -1,7 +1,7 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.readers;
 
-import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +10,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * Created by Fabien Sanglier on 5/4/15.
  */
-public class EhcacheInputStream extends InputStream {
+/*package protected*/ class EhcacheInputStream extends InputStream {
     /**
      * The internal buffer array where the data is stored.
      */
@@ -43,38 +43,34 @@ public class EhcacheInputStream extends InputStream {
      * The Internal Ehcache streaming access layer
      */
     protected final EhcacheStreamReader ehcacheStreamReader;
-    protected final long ehcacheStreamReaderOpenTimeout;
 
     /**
      * Creates a new buffered output stream to write data to a cache
      * with the specified buffer size.
      *
-     * @param   cache           the underlying cache to access
-     * @param   cacheKey        the underlying cache key to read data from
-     * @param   size            the buffer size.
-     * @param   openTimeout     the timeout for the stream reader open
+     * @param   bufferSize              the stream buffer size.
+     * @param   ehcacheStreamReader     the stream reader implementation
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(Ehcache cache, Object cacheKey, int size, long openTimeout) throws EhcacheStreamException {
-        if (size <= 0) {
-            throw new EhcacheStreamException(new IllegalArgumentException("Buffer size <= 0"));
+    public EhcacheInputStream(int bufferSize, EhcacheStreamReader ehcacheStreamReader) throws EhcacheStreamException {
+        if (bufferSize <= 0) {
+            throw new EhcacheStreamIllegalStateException("Buffer size <= 0");
         }
-        this.buf = new byte[size];
-        this.ehcacheStreamReader = new EhcacheStreamReader(cache,cacheKey);
-        this.ehcacheStreamReaderOpenTimeout = openTimeout;
+
+        if (null == ehcacheStreamReader) {
+            throw new EhcacheStreamIllegalStateException("An internal stream reader must be provided");
+        }
+
+        this.buf = new byte[bufferSize];
+        this.ehcacheStreamReader = ehcacheStreamReader;
+
+        //let's open it now!
+        this.ehcacheStreamReader.tryOpen();
     }
 
     @Override
     public int available() throws IOException {
         return ehcacheStreamReader.getSize();
-    }
-
-    private void tryOpenInternalReader() throws IOException{
-        ehcacheStreamReader.tryOpen(ehcacheStreamReaderOpenTimeout);
-    }
-
-    private void closeInternalReader() throws IOException {
-        ehcacheStreamReader.close();
     }
 
     /**
@@ -95,9 +91,6 @@ public class EhcacheInputStream extends InputStream {
      * hence pos > count.
      */
     private void fill() throws IOException {
-        //open the internal reader upon starting the writes
-        tryOpenInternalReader();
-
         byte[] buffer = getBufIfOpen();
 
         /* if we're here, that means we need to refill the buffer and as such it's ok to throw away the content of the buffer */
@@ -216,17 +209,14 @@ public class EhcacheInputStream extends InputStream {
      * @exception  IOException  if an I/O error occurs.
      */
     public void close() throws IOException {
-        try {
-            byte[] buffer;
-            while ((buffer = buf) != null) {
-                if (bufUpdater.compareAndSet(this, buffer, null)) {
-                    return;
-                }
-                // Else retry in case a new buf was CASed in fill()
+        ehcacheStreamReader.close();
+
+        byte[] buffer;
+        while ((buffer = buf) != null) {
+            if (bufUpdater.compareAndSet(this, buffer, null)) {
+                return;
             }
-        } finally {
-            //important to close this to release the locks etc...
-            closeInternalReader();
+            // Else retry in case a new buf was CASed in fill()
         }
     }
 }

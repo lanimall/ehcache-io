@@ -6,10 +6,18 @@
     </appender>
 
     <logger name="net.sf.ehcache">
-        <level value="error"/>
+        <level value="info"/>
     </logger>
 
-    <root level="error">
+    <logger name="org.ehcache.extensions.io.impl.writers">
+        <level value="info"/>
+    </logger>
+
+    <logger name="org.ehcache.extensions.io.impl.readers">
+        <level value="info"/>
+    </logger>
+
+    <root level="info">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>

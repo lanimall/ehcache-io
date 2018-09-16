@@ -1,6 +1,7 @@
-package org.ehcache.extensions.io;
+package org.ehcache.extensions.io.suites;
 
-import org.ehcache.extensions.io.impl.EhcacheStreamUtils;
+import org.ehcache.extensions.io.EhcacheStreamTestSuiteBase;
+import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -11,21 +12,19 @@ import org.junit.BeforeClass;
 public class EhcacheStreamTestSuiteLocalHeap extends EhcacheStreamTestSuiteBase {
     @BeforeClass
     public static void setup() throws Exception {
-        int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
-        System.setProperty(EhcacheStreamUtils.PROP_INPUTSTREAM_BUFFERSIZE, new Integer(inBufferSize).toString());
+        EhcacheStreamTestSuiteBase.setup();
+
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_localheap.xml");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsTest");
         System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStore");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, "string");
     }
 
     @AfterClass
     public static void cleanup() throws Exception {
-        int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
-        System.clearProperty(EhcacheStreamUtils.PROP_INPUTSTREAM_BUFFERSIZE);
+        EhcacheStreamTestSuiteBase.cleanup();
+
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME);
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
     }
 }

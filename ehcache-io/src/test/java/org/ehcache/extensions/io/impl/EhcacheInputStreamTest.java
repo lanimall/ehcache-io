@@ -2,36 +2,32 @@ package org.ehcache.extensions.io.impl;
 
 import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 
+@RunWith(Parameterized.class)
 public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheInputStreamTest.class);
 
     private long inputFileCheckSum = -1L;
 
-    @BeforeClass
-    public static void oneTimeSetup() throws Exception {
-        System.out.println("============ Starting EhcacheInputStreamTest ====================");
-        cacheStart();
-        generateBigInputFile();
-    }
-
-    @AfterClass
-    public static void oneTimeTearDown() throws Exception {
-        cacheShutdown();
-        cleanBigInputFile();
-        System.out.println("============ Finished EhcacheInputStreamTest ====================");
-    }
-
     @Before
     public void setup() throws Exception {
+        setupParameterizedProperties();
         cacheSetUp();
         inputFileCheckSum = copyFileToCache(getCacheKey());
     }
@@ -41,6 +37,23 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         cacheCleanUp();
         cleanBigOutputFile();
         inputFileCheckSum = -1L;
+        cleanupParameterizedProperties();
+    }
+
+    @BeforeClass
+    public static void oneTimeSetup() throws Exception {
+        System.out.println("============ Starting EhcacheInputStreamTest ====================");
+        sysPropDefaultSetup();
+        cacheStart();
+        generateBigInputFile();
+    }
+
+    @AfterClass
+    public static void oneTimeTearDown() throws Exception {
+        cacheShutdown();
+        cleanBigInputFile();
+        sysPropDefaultCleanup();
+        System.out.println("============ Finished EhcacheInputStreamTest ====================");
     }
 
     @Test
@@ -72,9 +85,9 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         System.out.println("After Cache Size = " + getCache().getSize());
         System.out.println("============================================");
 
-        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
-        Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, inputChecksum);
+        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
@@ -107,9 +120,9 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         System.out.println("After Cache Size = " + getCache().getSize());
         System.out.println("============================================");
 
-        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
-        Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, inputChecksum);
+        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
@@ -140,9 +153,9 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         System.out.println("After Cache Size = " + getCache().getSize());
         System.out.println("============================================");
 
-        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
-        Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, inputChecksum);
+        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
@@ -172,9 +185,9 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         System.out.println("After Cache Size = " + getCache().getSize());
         System.out.println("============================================");
 
-        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
-        Assert.assertEquals(inputChecksum, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, inputChecksum);
+        Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertTrue(Files.exists(OUT_FILE_PATH));
     }
 
@@ -221,10 +234,12 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         System.out.println("After Cache Size = " + getCache().getSize());
         System.out.println("============================================");
 
+        Assert.assertNotEquals(inputFileCheckSum, outputChecksum);
+        Assert.assertNotEquals(inputFileCheckSum, inputChecksum);
         Assert.assertEquals(inputChecksum, outputChecksum);
         Assert.assertEquals(0, outputChecksum);
-        Assert.assertEquals(inputChecksum, 0);
+        Assert.assertEquals(0, inputChecksum);
         Assert.assertTrue(Files.exists(OUT_FILE_PATH));
-        Assert.assertEquals(Files.size(OUT_FILE_PATH), 0);
+        Assert.assertEquals(0, Files.size(OUT_FILE_PATH));
     }
 }

@@ -1,7 +1,7 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.writers;
 
-import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -9,7 +9,7 @@ import java.io.OutputStream;
 /**
  * Created by Fabien Sanglier on 5/4/15.
  */
-public class EhcacheOutputStream extends OutputStream {
+/*package protected*/ class EhcacheOutputStream extends OutputStream {
 
     /**
      * The internal buffer where data is stored.
@@ -28,35 +28,25 @@ public class EhcacheOutputStream extends OutputStream {
      * The Internal Ehcache streaming access layer
      */
     protected final EhcacheStreamWriter ehcacheStreamWriter;
-    protected final long ehcacheStreamWriterOpenTimeout;
 
     /**
      * Creates a new buffered output stream to write data to a cache
      * with the specified buffer size.
      *
-     * @param   cache           the underlying cache to copy data to
-     * @param   cacheKey        the underlying cache key to read data from
-     * @param   size            the buffer size.
-     * @param   override        the mode in which to write the bytes (either override previous value, or append to previous value)
-     * @param   openTimeout     the timeout for the stream writer open operation
+     * @param   bufferSize            the stream buffer size.
+     * @param   ehcacheStreamWriter   the stream writer implementation
      *
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheOutputStream(Ehcache cache, Object cacheKey, int size, boolean override, long openTimeout) throws EhcacheStreamException {
-        if (size <= 0) {
-            throw new EhcacheStreamException(new IllegalArgumentException("Buffer size <= 0"));
+    public EhcacheOutputStream(int bufferSize, EhcacheStreamWriter ehcacheStreamWriter) throws EhcacheStreamException {
+        if (bufferSize <= 0) {
+            throw new EhcacheStreamIllegalStateException("Buffer size <= 0");
         }
-        this.buf = new byte[size];
-        this.ehcacheStreamWriter = new EhcacheStreamWriter(cache, cacheKey, override);
-        this.ehcacheStreamWriterOpenTimeout = openTimeout;
-    }
+        this.buf = new byte[bufferSize];
+        this.ehcacheStreamWriter = ehcacheStreamWriter;
 
-    private void tryOpenInternalWriter() throws IOException{
-        ehcacheStreamWriter.tryOpen(ehcacheStreamWriterOpenTimeout);
-    }
-
-    private void closeInternalWriter() throws IOException {
-        ehcacheStreamWriter.close();
+        //open now
+        this.ehcacheStreamWriter.tryOpen();
     }
 
     /**
@@ -64,9 +54,6 @@ public class EhcacheOutputStream extends OutputStream {
      * @throws IOException
      */
     private void flushBuffer() throws IOException {
-        //open the internal writer upon starting the writes
-        tryOpenInternalWriter();
-
         if (count > 0) { // we're going to write here
             ehcacheStreamWriter.writeData(buf, count);
 
@@ -136,11 +123,7 @@ public class EhcacheOutputStream extends OutputStream {
      */
     @Override
     public void close() throws IOException {
-        try {
-            flush();
-        } finally {
-            //important to close this to release the locks etc...
-            closeInternalWriter();
-        }
+        flush();
+        ehcacheStreamWriter.close();
     }
 }

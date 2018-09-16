@@ -2,7 +2,12 @@ package org.ehcache.extensions.io.impl;
 
 import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -13,13 +18,16 @@ import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
 
+@RunWith(Parameterized.class)
 public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheOutputStreamTest.class);
 
     private long inputFileCheckSum = -1L;
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
         System.out.println("============ Starting EhcacheOutputStreamTest ====================");
+        sysPropDefaultSetup();
         cacheStart();
         generateBigInputFile();
     }
@@ -28,11 +36,13 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
     public static void oneTimeTearDown() throws Exception {
         cacheShutdown();
         cleanBigInputFile();
+        sysPropDefaultCleanup();
         System.out.println("============ Finished EhcacheOutputStreamTest ====================");
     }
 
     @Before
     public void setup() throws Exception {
+        setupParameterizedProperties();
         cacheSetUp();
         inputFileCheckSum = readFileFromDisk();
     }
@@ -42,6 +52,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         cacheCleanUp();
         cleanBigOutputFile();
         inputFileCheckSum = -1L;
+        cleanupParameterizedProperties();
     }
 
     public long testCopyFileToCacheByteByByte(Boolean override, Integer bufferSize) throws IOException {
@@ -57,7 +68,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
         else if (null == override && null != bufferSize)
-            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), EhcacheStreamUtils.outputStreamDefaultOverride, bufferSize.intValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.getOutputStreamDefaultOverride(), bufferSize.intValue());
         else if (null != override && null != bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
         else
@@ -91,8 +102,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -103,8 +114,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -115,8 +126,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -135,7 +146,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
             int newCacheSize = getCache().getSize();
             Assert.assertEquals(initialCacheSizeAfter1, newCacheSize);
-            Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+            Assert.assertEquals(inputFileCheckSum, checksumFromCache);
         }
     }
 
@@ -155,7 +166,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
             int newCacheSize = getCache().getSize();
             Assert.assertTrue(newCacheSize > initialCacheSizeAfter1);
             Assert.assertTrue(newCacheSize == 1 + (initialCacheSizeAfter1 - 1) * (i+2));
-            Assert.assertNotEquals(checksumFromCache, inputFileCheckSum);
+            Assert.assertNotEquals(inputFileCheckSum, checksumFromCache);
         }
     }
 
@@ -173,7 +184,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
         else if (null == override && null != bufferSize)
-            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), EhcacheStreamUtils.outputStreamDefaultOverride, bufferSize.intValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.getOutputStreamDefaultOverride(), bufferSize.intValue());
         else if (null != override && null != bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
         else
@@ -207,8 +218,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -219,8 +230,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -231,8 +242,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -251,7 +262,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
             int newCacheSize = getCache().getSize();
             Assert.assertEquals(initialCacheSizeAfter1, newCacheSize);
-            Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+            Assert.assertEquals(inputFileCheckSum, checksumFromCache);
         }
     }
 
@@ -271,7 +282,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
             int newCacheSize = getCache().getSize();
             Assert.assertTrue(newCacheSize > initialCacheSizeAfter1);
             Assert.assertTrue(newCacheSize == 1 + (initialCacheSizeAfter1 - 1) * (i+2));
-            Assert.assertNotEquals(checksumFromCache, inputFileCheckSum);
+            Assert.assertNotEquals(inputFileCheckSum, checksumFromCache);
 
         }
     }
@@ -289,7 +300,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         else if (null != override && null == bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue());
         else if (null == override && null != bufferSize)
-            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), EhcacheStreamUtils.outputStreamDefaultOverride, bufferSize.intValue());
+            ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), PropertyUtils.getOutputStreamDefaultOverride(), bufferSize.intValue());
         else if (null != override && null != bufferSize)
             ehcacheOutputStream = EhcacheIOStreams.getOutputStream(getCache(), getCacheKey(), override.booleanValue(), bufferSize.intValue());
         else
@@ -328,8 +339,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -340,8 +351,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -352,8 +363,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         //get the file from cache again
         long checksumFromCache = readFileFromCache(getCacheKey());
 
-        Assert.assertEquals(checksumFromCache, outputChecksum);
-        Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+        Assert.assertEquals(inputFileCheckSum, checksumFromCache);
+        Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
     }
 
@@ -372,7 +383,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
             int newCacheSize = getCache().getSize();
             Assert.assertEquals(initialCacheSizeAfter1, newCacheSize);
-            Assert.assertEquals(checksumFromCache, inputFileCheckSum);
+            Assert.assertEquals(inputFileCheckSum, checksumFromCache);
         }
     }
 
@@ -392,7 +403,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
             int newCacheSize = getCache().getSize();
             Assert.assertTrue(newCacheSize > initialCacheSizeAfter1);
             Assert.assertTrue(newCacheSize == 1 + (initialCacheSizeAfter1 - 1) * (i+2));
-            Assert.assertNotEquals(checksumFromCache, inputFileCheckSum);
+            Assert.assertNotEquals(inputFileCheckSum, checksumFromCache);
         }
     }
 }

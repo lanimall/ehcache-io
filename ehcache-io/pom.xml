@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ehcache.extensions.io</groupId>
     <artifactId>ehcache-io</artifactId>
-    <version>1.1</version>
+    <version>1.2-snapshot</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -44,6 +44,13 @@
             <artifactId>slf4j-api</artifactId>
             <version>${slf4j.version}</version>
             <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+            <version>1.1.1</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -85,7 +92,7 @@
                 <configuration>
                     <argLine>${maven-surefire-plugin-args}</argLine>
                     <includes>
-                        <include>**/EhcacheStreamTestSuiteLocalHeap*.class</include>
+                        <include>**/suites/EhcacheStreamTestSuiteLocalHeap*.class</include>
                     </includes>
                 </configuration>
             </plugin>
@@ -145,7 +152,7 @@
                         <configuration>
                             <argLine>${maven-surefire-plugin-args}</argLine>
                             <includes>
-                                <include>**/EhcacheStreamTestSuite*.class</include>
+                                <include>**/suites/EhcacheStreamTestSuite*.class</include>
                             </includes>
                         </configuration>
                     </plugin>

@@ -1,14 +1,16 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.readers;
 
-import net.sf.ehcache.Cache;
 import net.sf.ehcache.Ehcache;
-import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.impl.BaseEhcacheStream;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
-/*package protected*/ class EhcacheStreamReader extends BaseEhcacheStream {
+/*package protected*/ class EhcacheStreamReaderWithSingleLock extends BaseEhcacheStream implements EhcacheStreamReader {
 
     protected EhcacheStreamMaster currentStreamMaster;
 
@@ -23,9 +25,11 @@ import org.ehcache.extensions.io.EhcacheStreamException;
     protected int cacheChunkBytePos = 0;
 
     private volatile boolean isOpen = false;
+    private final long openTimeoutMillis;
 
-    public EhcacheStreamReader(Ehcache cache, Object cacheKey) {
+    public EhcacheStreamReaderWithSingleLock(Ehcache cache, Object cacheKey, long openTimeoutMillis) {
         super(cache, cacheKey);
+        this.openTimeoutMillis = openTimeoutMillis;
     }
 
     //TODO: implement something better to return a better size
@@ -35,13 +39,16 @@ import org.ehcache.extensions.io.EhcacheStreamException;
         return (null == temp)? 0: 1;
     }
 
-    public void tryOpen(long timeout) throws EhcacheStreamException {
+    public void tryOpen() throws EhcacheStreamException {
+        if(openTimeoutMillis <= 0)
+            throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
+
         if (!isOpen) {
-            getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), timeout);
+            getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), openTimeoutMillis);
 
             try {
                 EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-                this.currentStreamMaster = (null != ehcacheStreamMasterFromCache)?new EhcacheStreamMaster(ehcacheStreamMasterFromCache):null;
+                this.currentStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
 
                 isOpen = true;
             } catch (Exception exc){
@@ -53,27 +60,38 @@ import org.ehcache.extensions.io.EhcacheStreamException;
         }
 
         if (!isOpen)
-            throw new EhcacheStreamException("EhcacheStreamReader should be open at this point: something unexpected happened.");
+            throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should be open at this point: something unexpected happened.");
     }
 
+    /**
+     * Closes this reader and releases any system resources
+     * associated with the reader.
+     * Once the reader has been closed, further read() invocations will throw an EhcacheStreamException.
+     * Closing a previously closed reader has no effect.
+     *
+     * @exception org.ehcache.extensions.io.EhcacheStreamException  if an I/O error occurs.
+     */
     public void close() throws EhcacheStreamException {
         if (isOpen) {
             getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+            cacheChunkIndexPos = 0;
+            cacheChunkBytePos = 0;
+            currentStreamMaster = null;
             isOpen = false;
         }
 
         if (isOpen)
-            throw new EhcacheStreamException("EhcacheStreamReader should be closed at this point: something unexpected happened.");
+            throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should be closed at this point: something unexpected happened.");
     }
 
     public int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException {
         if(!isOpen)
-            throw new EhcacheStreamException("EhcacheStreamReader is not open...call open() first.");
+            throw new EhcacheStreamIllegalStateException("EhcacheStreamReader is not open...call open() first.");
 
         int byteCopied = 0;
 
         //then we get the index to know where we are in the writes
-        if(null != currentStreamMaster && cacheChunkIndexPos < this.currentStreamMaster.getChunkCounter()){
+        if(null != currentStreamMaster && cacheChunkIndexPos < this.currentStreamMaster.getChunkCount()){
             //get chunk from cache
             EhcacheStreamValue cacheChunkValue = getEhcacheStreamUtils().getChunkValue(getCacheKey(), cacheChunkIndexPos);
             if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
@@ -97,8 +115,12 @@ import org.ehcache.extensions.io.EhcacheStreamException;
                 }
             } else {
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new EhcacheStreamException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCounter() + "] boundaries. Make sure the cache values are not evicted");
+                throw new EhcacheStreamIllegalStateException("Cache chunk [" + (cacheChunkIndexPos) + "] is null " +
+                        "and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCount() + "] boundaries.");
             }
+        } else {
+            //if we are here, we know we're done as we reached the end of the chunks...
+            // BUT careful not to close here: the calling stream implementation may be calling this some more (eg. in case of buffer reading for example)
         }
 
         return byteCopied;
