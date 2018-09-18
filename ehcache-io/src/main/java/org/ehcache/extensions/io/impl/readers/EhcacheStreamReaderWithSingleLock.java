@@ -3,16 +3,17 @@ package org.ehcache.extensions.io.impl.readers;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
-import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
  */
-/*package protected*/ class EhcacheStreamReaderWithSingleLock extends BaseEhcacheStream implements EhcacheStreamReader {
-
-    protected EhcacheStreamMaster currentStreamMaster;
+/*package protected*/ class EhcacheStreamReaderWithSingleLock extends BaseEhcacheStreamReader implements EhcacheStreamReader {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamReaderWithSingleLock.class);
+    private static final boolean isTrace = logger.isTraceEnabled();
+    private static final boolean isDebug = logger.isDebugEnabled();
 
     /*
      * The current position in the ehcache value chunk list.
@@ -24,6 +25,10 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
      */
     protected int cacheChunkBytePos = 0;
 
+    //This is the copy of the master cache entry at time of open
+    //we will use it to compare what we get during the successive gets
+    private EhcacheStreamMaster activeStreamMaster;
+
     private volatile boolean isOpen = false;
     private final long openTimeoutMillis;
 
@@ -34,11 +39,13 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
 
     //TODO: implement something better to return a better size
     //this is meant to be a general estimate without guarantees
+    @Override
     public int getSize() {
         EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
         return (null == temp)? 0: 1;
     }
 
+    @Override
     public void tryOpen() throws EhcacheStreamException {
         if(openTimeoutMillis <= 0)
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
@@ -48,7 +55,7 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
 
             try {
                 EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-                this.currentStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
+                activeStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
 
                 isOpen = true;
             } catch (Exception exc){
@@ -71,58 +78,32 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
      *
      * @exception org.ehcache.extensions.io.EhcacheStreamException  if an I/O error occurs.
      */
+    @Override
     public void close() throws EhcacheStreamException {
         if (isOpen) {
             getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
-            cacheChunkIndexPos = 0;
-            cacheChunkBytePos = 0;
-            currentStreamMaster = null;
+
+            activeStreamMaster = null;
             isOpen = false;
+            super.close();
         }
 
         if (isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should be closed at this point: something unexpected happened.");
     }
 
+    @Override
     public int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException {
         if(!isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader is not open...call open() first.");
 
         int byteCopied = 0;
 
-        //then we get the index to know where we are in the writes
-        if(null != currentStreamMaster && cacheChunkIndexPos < this.currentStreamMaster.getChunkCount()){
-            //get chunk from cache
-            EhcacheStreamValue cacheChunkValue = getEhcacheStreamUtils().getChunkValue(getCacheKey(), cacheChunkIndexPos);
-            if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
-                byte[] cacheChunk = cacheChunkValue.getChunk();
+        // if cache entry is null, it's fine...means there's nothing to copy
+        if(null == activeStreamMaster)
+            return byteCopied;
 
-                //calculate the number of bytes to copy from the cacheChunks into the destination buffer based on the buffer size that's available
-                if(cacheChunk.length - cacheChunkBytePos < outBuf.length - bufferBytePos){
-                    byteCopied = cacheChunk.length - cacheChunkBytePos;
-                } else {
-                    byteCopied = outBuf.length - bufferBytePos;
-                }
-
-                System.arraycopy(cacheChunk, cacheChunkBytePos, outBuf, bufferBytePos, byteCopied);
-
-                //track the chunk offset for next
-                if(byteCopied < cacheChunk.length - cacheChunkBytePos) {
-                    cacheChunkBytePos = cacheChunkBytePos + byteCopied;
-                } else { // it means we'll need to use the next chunk
-                    cacheChunkIndexPos++;
-                    cacheChunkBytePos = 0;
-                }
-            } else {
-                //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new EhcacheStreamIllegalStateException("Cache chunk [" + (cacheChunkIndexPos) + "] is null " +
-                        "and should not be since we're within the cache total chunks [=" +  currentStreamMaster.getChunkCount() + "] boundaries.");
-            }
-        } else {
-            //if we are here, we know we're done as we reached the end of the chunks...
-            // BUT careful not to close here: the calling stream implementation may be calling this some more (eg. in case of buffer reading for example)
-        }
-
-        return byteCopied;
+        // copy the cache chunks into the buffer based on the internal index tracker
+        return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
     }
 }
