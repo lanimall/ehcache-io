@@ -18,10 +18,13 @@ public class EhcacheStreamReadersFactory {
     public static EhcacheStreamReader getReader(Ehcache cache, Object cacheKey, long openTimeoutMillis) {
         EhcacheStreamReader ehcacheStreamReader;
         switch (PropertyUtils.getEhcacheIOStreamsConcurrencyMode()){
+            case READ_COMMITTED_CASLOCKS:
+                ehcacheStreamReader = new EhcacheStreamReaderCasLock(cache, cacheKey, openTimeoutMillis);
+                break;
             case READ_COMMITTED_WITHLOCKS:
                 ehcacheStreamReader = new EhcacheStreamReaderWithSingleLock(cache, cacheKey, openTimeoutMillis);
                 break;
-            case WRITE_PRIORITY_NOLOCK:
+            case WRITE_PRIORITY:
                 ehcacheStreamReader = new EhcacheStreamReaderNoLock(cache, cacheKey, openTimeoutMillis);
                 break;
             default:
