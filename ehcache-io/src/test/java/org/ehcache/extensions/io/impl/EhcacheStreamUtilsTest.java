@@ -17,7 +17,7 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
-        System.out.println("============ Starting EhcacheStreamUtilsTest ====================");
+        logger.debug("============ Starting EhcacheStreamUtilsTest ====================");
         sysPropDefaultSetup();
         cacheStart();
         generateBigInputFile();
@@ -28,7 +28,7 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
         cacheShutdown();
         cleanBigInputFile();
         sysPropDefaultCleanup();
-        System.out.println("============ Finished EhcacheStreamUtilsTest ====================");
+        logger.debug("============ Finished EhcacheStreamUtilsTest ====================");
     }
 
     @Before

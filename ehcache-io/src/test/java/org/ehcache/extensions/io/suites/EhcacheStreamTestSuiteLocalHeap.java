@@ -13,18 +13,12 @@ public class EhcacheStreamTestSuiteLocalHeap extends EhcacheStreamTestSuiteBase 
     @BeforeClass
     public static void setup() throws Exception {
         EhcacheStreamTestSuiteBase.setup();
-
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_localheap.xml");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsTest");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStore");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHETEST_TYPE, EhcacheStreamingTestsBase.CacheTestType.LOCAL_HEAP.getPropValue());
     }
 
     @AfterClass
     public static void cleanup() throws Exception {
         EhcacheStreamTestSuiteBase.cleanup();
-
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH);
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME);
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME);
+        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHETEST_TYPE);
     }
 }

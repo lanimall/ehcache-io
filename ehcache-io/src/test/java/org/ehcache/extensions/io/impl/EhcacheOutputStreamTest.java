@@ -26,7 +26,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
-        System.out.println("============ Starting EhcacheOutputStreamTest ====================");
+        logger.debug("============ Starting EhcacheOutputStreamTest ====================");
         sysPropDefaultSetup();
         cacheStart();
         generateBigInputFile();
@@ -37,7 +37,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         cacheShutdown();
         cleanBigInputFile();
         sysPropDefaultCleanup();
-        System.out.println("============ Finished EhcacheOutputStreamTest ====================");
+        logger.debug("============ Finished EhcacheOutputStreamTest ====================");
     }
 
     @Before
@@ -60,7 +60,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
 
-        System.out.println("============ testCopyFileToCacheByteByByte With Override=" + override + " ====================");
+        logger.info("============ testCopyFileToCacheByteByByte With Override=" + override + " ====================");
 
         OutputStream ehcacheOutputStream;
         if(null == override && null == bufferSize)
@@ -87,8 +87,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug("============================================");
 
         Assert.assertEquals(inputChecksum, outputChecksum);
 
@@ -176,7 +176,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         int inBufferSize = 32*1024;
         int copyBufferSize = 128*1024;
 
-        System.out.println("============ testCopyFileToCacheWithBuffer With Override=" + override + " ====================");
+        logger.info("============ testCopyFileToCacheWithBuffer With Override=" + override + " ====================");
 
         OutputStream ehcacheOutputStream;
         if(null == override && null == bufferSize)
@@ -203,8 +203,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug("============================================");
 
         Assert.assertEquals(inputChecksum, outputChecksum);
 
@@ -292,7 +292,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
 
-        System.out.println("============ testCopyFileToCacheInOneShot ====================");
+        logger.info("============ testCopyFileToCacheInOneShot ====================");
 
         OutputStream ehcacheOutputStream;
         if(null == override && null == bufferSize)
@@ -324,8 +324,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug("============================================");
 
         Assert.assertEquals(inputChecksum, outputChecksum);
 

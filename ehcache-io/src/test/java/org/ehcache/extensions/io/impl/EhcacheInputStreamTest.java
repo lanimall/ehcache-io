@@ -2,7 +2,6 @@ package org.ehcache.extensions.io.impl;
 
 import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
@@ -13,8 +12,6 @@ import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
@@ -42,7 +39,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
-        System.out.println("============ Starting EhcacheInputStreamTest ====================");
+        logger.debug("============ Starting EhcacheInputStreamTest ====================");
         sysPropDefaultSetup();
         cacheStart();
         generateBigInputFile();
@@ -53,7 +50,7 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         cacheShutdown();
         cleanBigInputFile();
         sysPropDefaultCleanup();
-        System.out.println("============ Finished EhcacheInputStreamTest ====================");
+        logger.debug("============ Finished EhcacheInputStreamTest ====================");
     }
 
     @Test
@@ -69,8 +66,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
-            System.out.println("============ copyCacheToFileUsingStreamSmallerCopyBuffer ====================");
-            System.out.println("Before Cache Size = " + getCache().getSize());
+            logger.info("============ copyCacheToFileUsingStreamSmallerCopyBuffer ====================");
+            logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
@@ -80,10 +77,10 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
-        System.out.println("After Cache Size = " + getCache().getSize());
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        logger.debug("After Cache Size = " + getCache().getSize());
+        logger.debug("============================================");
 
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
@@ -104,8 +101,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
-            System.out.println("============ copyCacheToFileUsingStreamLargerCopyBuffer ====================");
-            System.out.println("Before Cache Size = " + getCache().getSize());
+            logger.info("============ copyCacheToFileUsingStreamLargerCopyBuffer ====================");
+            logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
@@ -115,10 +112,10 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
-        System.out.println("After Cache Size = " + getCache().getSize());
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        logger.debug("After Cache Size = " + getCache().getSize());
+        logger.debug("============================================");
 
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
@@ -137,8 +134,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
-            System.out.println("============ copyCacheToFileUsingStreamDefaultBuffers ====================");
-            System.out.println("Before Cache Size = " + getCache().getSize());
+            logger.info("============ copyCacheToFileUsingStreamDefaultBuffers ====================");
+            logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
@@ -148,10 +145,10 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
-        System.out.println("After Cache Size = " + getCache().getSize());
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        logger.debug("After Cache Size = " + getCache().getSize());
+        logger.debug("============================================");
 
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
@@ -169,8 +166,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
-            System.out.println("============ copyCacheToFileUsingStreamDefaultBuffersByteByByte ====================");
-            System.out.println("Before Cache Size = " + getCache().getSize());
+            logger.info("============ copyCacheToFileUsingStreamDefaultBuffersByteByByte ====================");
+            logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
             pipeStreamsByteByByte(is, os);
@@ -180,10 +177,10 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
-        System.out.println("After Cache Size = " + getCache().getSize());
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        logger.debug("After Cache Size = " + getCache().getSize());
+        logger.debug("============================================");
 
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
@@ -216,10 +213,10 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
-            System.out.println("============ copyCacheToFileNoCacheKey ====================");
+            logger.info("============ copyCacheToFileNoCacheKey ====================");
 
             int beforeCacheSize = getCache().getSize();
-            System.out.println("Before Cache Size = " + beforeCacheSize);
+            logger.debug("Before Cache Size = " + beforeCacheSize);
 
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
@@ -229,10 +226,10 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
-        System.out.println("After Cache Size = " + getCache().getSize());
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        logger.debug("After Cache Size = " + getCache().getSize());
+        logger.debug("============================================");
 
         Assert.assertNotEquals(inputFileCheckSum, outputChecksum);
         Assert.assertNotEquals(inputFileCheckSum, inputChecksum);

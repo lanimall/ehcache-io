@@ -13,18 +13,12 @@ public class EhcacheStreamTestSuiteDistributed extends EhcacheStreamTestSuiteBas
     @BeforeClass
     public static void setup() throws Exception {
         EhcacheStreamTestSuiteBase.setup();
-
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH, "classpath:ehcache_distributed.xml");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME, "EhcacheStreamsDistributedTest");
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME, "FileStoreDistributed");
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHETEST_TYPE, EhcacheStreamingTestsBase.CacheTestType.CLUSTERED.getPropValue());
     }
 
     @AfterClass
     public static void cleanup() throws Exception {
         EhcacheStreamTestSuiteBase.cleanup();
-
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_CONFIGPATH);
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEMGR_NAME);
-        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHE_NAME);
+        System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHETEST_TYPE);
     }
 }

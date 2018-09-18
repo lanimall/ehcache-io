@@ -15,9 +15,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Random;
+import java.util.*;
+import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.zip.CRC32;
 import java.util.zip.CheckedInputStream;
 import java.util.zip.CheckedOutputStream;
@@ -28,15 +29,11 @@ import java.util.zip.CheckedOutputStream;
 public abstract class EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamingTestsBase.class);
 
-    public static final String ENV_CACHE_NAME = "ehcache.config.cachename";
-    public static final String ENV_CACHEMGR_NAME = "ehcache.config.cachemgr.name";
-    public static final String ENV_CACHE_CONFIGPATH = "ehcache.config.path";
+    public static final String ENV_CACHETEST_TYPE = "ehcache.tests.cachetesttype";
     public static final String ENV_CACHEKEY_TYPE = "ehcache.tests.cachekeytype";
 
-    public static final String DEFAULT_CACHE_PATH = "classpath:ehcache_localheap.xml";
-    public static final String DEFAULT_CACHE_NAME = "FileStore";
-    public static final String DEFAULT_CACHEMGR_NAME = "EhcacheStreamsTest";
-    public static final String DEFAULT_CACHEKEY_TYPE = "string";
+    public static final CacheKeyType DEFAULT_CACHEKEY_TYPE = CacheKeyType.COMPLEX_OBJECT;
+    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.CLUSTERED;
 
     protected static final int IN_FILE_SIZE = 10 * 1024 * 1024;
     protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
@@ -47,6 +44,7 @@ public abstract class EhcacheStreamingTestsBase {
     private static CacheManager cm;
     private Ehcache cache;
 
+    //saved statically so it's the same throughout the tests
     private static final String CACHEKEY_TYPE_STRING = "somekey";
     private static final Object CACHEKEY_TYPE_CUSTOMOBJECT = CustomPublicKey.generateRandom();
 
@@ -54,26 +52,138 @@ public abstract class EhcacheStreamingTestsBase {
     public PropertyUtils.ConcurrencyMode concurrencyMode;
 
     @Parameterized.Parameter(1)
-    public String cacheKeyType;
+    public CacheKeyType cacheKeyType;
 
     @Parameterized.Parameters
     public static Collection params() {
         return Arrays.asList(new Object[][]{
-                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK, "string"},
-                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY_NOLOCK, "object"},
-                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, "string"},
-                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, "object"},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS, CacheKeyType.COMPLEX_OBJECT},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS, CacheKeyType.STRING},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, CacheKeyType.COMPLEX_OBJECT},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, CacheKeyType.STRING},
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.STRING},
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.COMPLEX_OBJECT}
         });
     }
 
     public void setupParameterizedProperties() {
         System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, concurrencyMode.getPropValue());
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE, cacheKeyType);
+        System.setProperty(ENV_CACHEKEY_TYPE, cacheKeyType.getPropValue());
     }
 
     public void cleanupParameterizedProperties() {
         System.clearProperty(PropertyUtils.PROP_CONCURRENCY_MODE);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
+    }
+
+    public static enum CacheKeyType {
+        STRING("string") {
+            @Override
+            public Object getCacheKey() {
+                return CACHEKEY_TYPE_STRING;
+            }
+        }, COMPLEX_OBJECT("complex") {
+            @Override
+            public Object getCacheKey() {
+                return CACHEKEY_TYPE_CUSTOMOBJECT;
+            }
+        };
+
+        public abstract Object getCacheKey();
+
+        private final String propValue;
+
+        CacheKeyType(String propValue) {
+            this.propValue = propValue;
+        }
+
+        public String getPropValue() {
+            return propValue;
+        }
+
+        public static CacheKeyType valueOfIgnoreCase(String cacheKeyTypeStr){
+            if(null != cacheKeyTypeStr && !"".equals(cacheKeyTypeStr)) {
+                if (STRING.propValue.equalsIgnoreCase(cacheKeyTypeStr))
+                    return STRING;
+                else if (COMPLEX_OBJECT.propValue.equalsIgnoreCase(cacheKeyTypeStr))
+                    return COMPLEX_OBJECT;
+                else
+                    throw new IllegalArgumentException("CacheKeyType [" + ((null != cacheKeyTypeStr) ? cacheKeyTypeStr : "null") + "] is not valid");
+            } else {
+                return DEFAULT_CACHEKEY_TYPE;
+            }
+        }
+    }
+
+    public enum CacheTestType {
+        LOCAL_HEAP("localheap") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_localheap.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsTest";
+            }
+
+            public String getCacheName(){
+                return "FileStore";
+            }
+        },
+        LOCAL_OFFHEAP("localoffheap") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_localoffheap.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsOffheapTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreOffheap";
+            }
+        },
+        CLUSTERED("clustered") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributed";
+            }
+        };
+
+        private final String propValue;
+
+        CacheTestType(String propValue) {
+            this.propValue = propValue;
+        }
+
+        public abstract String getCacheConfigPath();
+        public abstract String getCacheManagerName();
+        public abstract String getCacheName();
+
+        public String getPropValue() {
+            return propValue;
+        }
+
+        public static CacheTestType valueOfIgnoreCase(String cacheTestTypeStr){
+            if(null != cacheTestTypeStr && !"".equals(cacheTestTypeStr)) {
+                if (LOCAL_HEAP.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return LOCAL_HEAP;
+                else if (LOCAL_OFFHEAP.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return LOCAL_OFFHEAP;
+                else if (CLUSTERED.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED;
+                else
+                    throw new IllegalArgumentException("CacheTestType [" + ((null != cacheTestTypeStr) ? cacheTestTypeStr : "null") + "] is not valid");
+            } else {
+                return DEFAULT_CACHETEST_TYPE;
+            }
+        }
     }
 
     public class EhcacheInputStreamParams{
@@ -113,6 +223,7 @@ public abstract class EhcacheStreamingTestsBase {
         private Long att2;
         private Integer att3;
         private Float att4;
+        private CustomPublicKey obj;
 
         @Override
         public boolean equals(Object o) {
@@ -125,6 +236,7 @@ public abstract class EhcacheStreamingTestsBase {
             if (att2 != null ? !att2.equals(that.att2) : that.att2 != null) return false;
             if (att3 != null ? !att3.equals(that.att3) : that.att3 != null) return false;
             if (att4 != null ? !att4.equals(that.att4) : that.att4 != null) return false;
+            if (obj != null ? !obj.equals(that.obj) : that.obj != null) return false;
 
             return true;
         }
@@ -135,6 +247,7 @@ public abstract class EhcacheStreamingTestsBase {
             result = 31 * result + (att2 != null ? att2.hashCode() : 0);
             result = 31 * result + (att3 != null ? att3.hashCode() : 0);
             result = 31 * result + (att4 != null ? att4.hashCode() : 0);
+            result = 31 * result + (obj != null ? obj.hashCode() : 0);
             return result;
         }
 
@@ -145,16 +258,24 @@ public abstract class EhcacheStreamingTestsBase {
                     ", att2=" + att2 +
                     ", att3=" + att3 +
                     ", att4=" + att4 +
+                    ", obj=" + obj +
                     '}';
         }
 
-        public static CustomPublicKey generateRandom(){
+        public static CustomPublicKey generateRandom() {
+            return generateRandom(true);
+        }
+
+        public static CustomPublicKey generateRandom(boolean createInnerObject){
             Random rnd = new Random(System.currentTimeMillis());
             CustomPublicKey customPublicKey = new CustomPublicKey();
             customPublicKey.att1 = generateRandomText(rnd,100);
             customPublicKey.att2 = rnd.nextLong();
             customPublicKey.att3 = rnd.nextInt();
             customPublicKey.att4 = rnd.nextFloat();
+            if(createInnerObject)
+                customPublicKey.obj = CustomPublicKey.generateRandom(false);
+
             return customPublicKey;
         }
 
@@ -173,14 +294,8 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public Object getCacheKey(){
-        String valStr = System.getProperty(ENV_CACHEKEY_TYPE, DEFAULT_CACHEKEY_TYPE);
-        if("string".equalsIgnoreCase(valStr))
-            return CACHEKEY_TYPE_STRING;
-        else if ("object".equalsIgnoreCase(valStr)) {
-            return CACHEKEY_TYPE_CUSTOMOBJECT;
-        } else {
-            throw new IllegalArgumentException("CacheKey Type " + ((null != valStr)?valStr.toString():"null") + " not valid");
-        }
+        String valStr = System.getProperty(ENV_CACHEKEY_TYPE, DEFAULT_CACHEKEY_TYPE.getPropValue());
+        return CacheKeyType.valueOfIgnoreCase(valStr).getCacheKey();
     }
 
     public Ehcache getCache(){
@@ -188,12 +303,16 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public static void cacheStart() throws Exception {
-        System.out.println("============ cacheStart ====================");
-        cm = getCacheManager(System.getProperty(ENV_CACHEMGR_NAME, DEFAULT_CACHEMGR_NAME), System.getProperty(ENV_CACHE_CONFIGPATH, DEFAULT_CACHE_PATH));
+        logger.debug("============ cacheStart ====================");
+
+        String valStr = System.getProperty(ENV_CACHETEST_TYPE);
+        CacheTestType cacheTestType = CacheTestType.valueOfIgnoreCase(valStr);
+
+        cm = getCacheManager(cacheTestType.getCacheManagerName(), cacheTestType.getCacheConfigPath());
     }
 
     public static void cacheShutdown() throws Exception {
-        System.out.println("============ cacheShutdown ====================");
+        logger.debug("============ cacheShutdown ====================");
         if(null != cm)
             cm.shutdown();
 
@@ -201,11 +320,12 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public void cacheSetUp() throws Exception {
-        System.out.println("============ cacheSetUp ====================");
+        logger.debug("============ cacheSetUp ====================");
+        String valStr = System.getProperty(ENV_CACHETEST_TYPE);
+        CacheTestType cacheTestType = CacheTestType.valueOfIgnoreCase(valStr);
 
-        String cacheName = System.getProperty(ENV_CACHE_NAME, DEFAULT_CACHE_NAME);
         try {
-            cache = cm.getCache(cacheName);
+            cache = cm.getCache(cacheTestType.getCacheName());
         } catch (IllegalStateException e) {
             e.printStackTrace();
         } catch (ClassCastException e) {
@@ -215,7 +335,7 @@ public abstract class EhcacheStreamingTestsBase {
         }
 
         if (cache == null) {
-            throw new IllegalArgumentException("Could not find the cache " + cacheName);
+            throw new IllegalArgumentException("Could not find the cache " + cacheTestType.getCacheName());
         }
 
         //empty the cache
@@ -223,7 +343,7 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public void cacheCleanUp(){
-        System.out.println("============ cacheCleanUp ====================");
+        logger.debug("============ cacheCleanUp ====================");
         if(null != cache)
             cache.removeAll();
         cache = null;
@@ -235,8 +355,8 @@ public abstract class EhcacheStreamingTestsBase {
         try (
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(IN_FILE_PATH)), new CRC32());
         ) {
-            System.out.println("============ Generate Initial Big File ====================");
-            System.out.println("Path: " + IN_FILE_PATH);
+            logger.debug("============ Generate Initial Big File ====================");
+            logger.debug("Path: " + IN_FILE_PATH);
 
             byte[] buffer = new byte[10 * 1024];
             int len = buffer.length;
@@ -256,9 +376,9 @@ public abstract class EhcacheStreamingTestsBase {
 
             fileChecksum = os.getChecksum().getValue();
 
-            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-            System.out.println("CheckSum = " + fileChecksum);
-            System.out.println("============================================");
+            logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+            logger.debug("CheckSum = " + fileChecksum);
+            logger.debug("============================================");
         }
 
         return fileChecksum;
@@ -318,8 +438,8 @@ public abstract class EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
         int copyBufferSize = 32*1024;
 
-        System.out.println("============ copyFileToCache ====================");
-        System.out.println("Before Cache Size = " + cache.getSize());
+        logger.debug("============ copyFileToCache ====================");
+        logger.debug("Before Cache Size = " + cache.getSize());
 
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),fileReadBufferSize),new CRC32());
@@ -334,10 +454,10 @@ public abstract class EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
-        System.out.println("After Cache Size = " + cache.getSize());
-        System.out.println("============================================");
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        logger.debug("After Cache Size = " + cache.getSize());
+        logger.debug("============================================");
 
         return outputChecksum;
     }
@@ -352,7 +472,7 @@ public abstract class EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
         )
         {
-            System.out.println("============ readFileFromDisk ====================");
+            logger.info("============ readFileFromDisk ====================");
 
             start = System.nanoTime();
             pipeStreamsWithBuffer(is, os, copyBufferSize);
@@ -361,9 +481,9 @@ public abstract class EhcacheStreamingTestsBase {
             inputChecksum = is.getChecksum().getValue();
             outputChecksum = os.getChecksum().getValue();
 
-            System.out.println("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
-            System.out.println(String.format("CheckSums Input: %d // Output = %d", inputChecksum, outputChecksum));
-            System.out.println("============================================");
+            logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+            logger.debug(String.format("CheckSums Input: %d // Output = %d", inputChecksum, outputChecksum));
+            logger.debug("============================================");
         }
 
         return outputChecksum;
@@ -391,7 +511,7 @@ public abstract class EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
-        System.out.println(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
+        logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
         Assert.assertEquals(inputChecksum, outputChecksum);
 
         return outputChecksum;
@@ -403,8 +523,6 @@ public abstract class EhcacheStreamingTestsBase {
             String configLocationToLoad = null;
             if (null != resourcePath && !"".equals(resourcePath)) {
                 configLocationToLoad = resourcePath;
-            } else if (null != System.getProperty(ENV_CACHE_CONFIGPATH)) {
-                configLocationToLoad = System.getProperty(ENV_CACHE_CONFIGPATH);
             }
 
             if (null != configLocationToLoad) {
@@ -455,6 +573,66 @@ public abstract class EhcacheStreamingTestsBase {
         byte[] buffer = new byte[bufferSize];
         while ((n = is.read(buffer)) > -1) {
             os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
+        }
+    }
+
+    public void runInThreads(List<Callable<Long>> callables, List<AtomicReference<Long>> callableResults, List<AtomicReference<Class>> exceptions) throws InterruptedException {
+        if(null == callables)
+            throw new IllegalStateException("must provides some operations to run...");
+
+        if(null != callableResults && callables.size() != callableResults.size())
+            throw new IllegalStateException("must provides the same number of callableResults as the number of callables");
+
+        if(null != exceptions && callables.size() != exceptions.size())
+            throw new IllegalStateException("must provides the same number of exception counters as the number of callables");
+
+        final List<ThreadWorker> workerList = new ArrayList<>(callables.size());
+        final CountDownLatch stopLatch = new CountDownLatch(callables.size());
+
+        //add first worker
+        int count = 0;
+        for(int i = 0; i < callables.size(); i++) {
+            workerList.add(new ThreadWorker(callables.get(i), stopLatch, callableResults.get(i), exceptions.get(i)));
+        }
+
+        try{
+            //start the workers
+            for (ThreadWorker worker : workerList) {
+                worker.start();
+            }
+        } finally {
+
+        }
+
+        //wait that all operations are finished
+        stopLatch.await();
+    }
+
+    public class ThreadWorker<R> extends Thread {
+        private final Callable<R> callable;
+        private final CountDownLatch doneLatch;
+        private AtomicReference<R> callableResult;
+        private AtomicReference<Class> exception;
+
+        public ThreadWorker(Callable<R> callable, CountDownLatch doneLatch, AtomicReference<R> callableResult, AtomicReference<Class> exception) {
+            super();
+            this.callable = callable;
+            this.doneLatch = doneLatch;
+            this.callableResult = callableResult;
+            this.exception = exception;
+        }
+
+        @Override
+        public void run() {
+            try {
+                callableResult.set(callable.call());
+            } catch (Exception e) {
+                if(null != exception)
+                    exception.set(e.getClass());
+                logger.debug(e.getMessage(),e);
+            } finally{
+                doneLatch.countDown();
+            }
         }
     }
 }
