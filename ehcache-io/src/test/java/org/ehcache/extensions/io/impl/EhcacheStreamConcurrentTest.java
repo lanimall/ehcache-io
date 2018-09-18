@@ -125,7 +125,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
                 Thread.currentThread().setName("Ehcache-Reader-Thread-"+ Thread.currentThread().getId());
 
-                logger.info("Before Open - Sleeping for {} millis", ehcacheInputStreamParams.sleepBeforeOpenMillis);
+                logger.debug("Before Open - Sleeping for {} millis", ehcacheInputStreamParams.sleepBeforeOpenMillis);
                 TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepBeforeOpenMillis);
 
                 try (
@@ -139,31 +139,31 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                         CheckedInputStream is = new CheckedInputStream(ehcacheInputStream, new CRC32());
                         CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
                 ) {
-                    logger.info("Started the reading from ehcache");
+                    logger.debug("Started the reading from ehcache");
 
                     byte[] buffer = new byte[copyBufferSize];
                     int n;
                     while ((n = is.read(buffer)) > -1) {
                         os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
 
-                        logger.trace("During Copy - Sleeping for {} millis", ehcacheInputStreamParams.sleepDuringCopyMillis);
+                        logger.debug("During Copy - Sleeping for {} millis", ehcacheInputStreamParams.sleepDuringCopyMillis);
                         TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepDuringCopyMillis);
                     }
 
-                    logger.info("Done with reading all the bytes from ehcache");
+                    logger.debug("Done with reading all the bytes from ehcache");
 
-                    logger.info("After Copy Before Close - Sleeping for {} millis", ehcacheInputStreamParams.sleepAfterCopyBeforeCloseMillis);
+                    logger.debug("After Copy Before Close - Sleeping for {} millis", ehcacheInputStreamParams.sleepAfterCopyBeforeCloseMillis);
                     TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepAfterCopyBeforeCloseMillis);
 
                     returnChecksum = is.getChecksum().getValue();
                 }
 
-                logger.info("Completely finished writing to ehcache (stream closed)");
+                logger.debug("Completely finished writing to ehcache (stream closed)");
 
-                logger.info("After Close - Sleeping for {} millis", ehcacheInputStreamParams.sleepAfterCloseMillis);
+                logger.debug("After Close - Sleeping for {} millis", ehcacheInputStreamParams.sleepAfterCloseMillis);
                 TimeUnit.MILLISECONDS.sleep(ehcacheInputStreamParams.sleepAfterCloseMillis);
 
-                logger.info("Finished callable operation");
+                logger.debug("Finished callable operation");
 
                 return returnChecksum;
             }
@@ -181,7 +181,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
                 Thread.currentThread().setName("Ehcache-Writer-Thread-" + Thread.currentThread().getId());
 
-                logger.info("Before Open - Sleeping for {} millis", ehcacheOuputStreamParams.sleepBeforeOpenMillis);
+                logger.debug("Before Open - Sleeping for {} millis", ehcacheOuputStreamParams.sleepBeforeOpenMillis);
                 TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepBeforeOpenMillis);
 
                 try (
@@ -195,31 +195,31 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                         CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH), fileReadBufferSize), new CRC32());
                         CheckedOutputStream os = new CheckedOutputStream(ehcacheOutputStream, new CRC32())
                 ) {
-                    logger.info("Started the writing to ehcache");
+                    logger.debug("Started the writing to ehcache");
 
                     byte[] buffer = new byte[copyBufferSize];
                     int n;
                     while ((n = is.read(buffer)) > -1) {
                         os.write(buffer, 0, n);   // Don't allow any extra bytes to creep in, final write
 
-                        logger.trace("During Copy - Sleeping for {} millis", ehcacheOuputStreamParams.sleepDuringCopyMillis);
+                        logger.debug("During Copy - Sleeping for {} millis", ehcacheOuputStreamParams.sleepDuringCopyMillis);
                         TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepDuringCopyMillis);
                     }
 
-                    logger.info("Done with writing all the bytes to ehcache");
+                    logger.debug("Done with writing all the bytes to ehcache");
 
-                    logger.info("After Copy Before Close - Sleeping for {} millis", ehcacheOuputStreamParams.sleepAfterCopyBeforeCloseMillis);
+                    logger.debug("After Copy Before Close - Sleeping for {} millis", ehcacheOuputStreamParams.sleepAfterCopyBeforeCloseMillis);
                     TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepAfterCopyBeforeCloseMillis);
 
                     returnChecksum = os.getChecksum().getValue();
                 }
 
-                logger.info("Completely finished writing to ehcache (stream closed)");
+                logger.debug("Completely finished writing to ehcache (stream closed)");
 
-                logger.info("After Close - Sleeping for {} millis", ehcacheOuputStreamParams.sleepAfterCloseMillis);
+                logger.debug("After Close - Sleeping for {} millis", ehcacheOuputStreamParams.sleepAfterCloseMillis);
                 TimeUnit.MILLISECONDS.sleep(ehcacheOuputStreamParams.sleepAfterCloseMillis);
 
-                logger.info("Finished callable operation");
+                logger.debug("Finished callable operation");
                 return returnChecksum;
             }
         });
