@@ -92,7 +92,7 @@
                 <configuration>
                     <argLine>${maven-surefire-plugin-args}</argLine>
                     <includes>
-                        <include>**/suites/EhcacheStreamTestSuiteLocalHeap*.class</include>
+                        <include>**/EhcacheStreamTestSuiteLocalHeap.class</include>
                     </includes>
                 </configuration>
             </plugin>
@@ -152,7 +152,9 @@
                         <configuration>
                             <argLine>${maven-surefire-plugin-args}</argLine>
                             <includes>
-                                <include>**/suites/EhcacheStreamTestSuite*.class</include>
+                                <include>**/EhcacheStreamTestSuiteLocalHeap.class</include>
+                                <include>**/EhcacheStreamTestSuiteLocalOffheap.class</include>
+                                <include>**/EhcacheStreamTestSuiteDistributed.class</include>
                             </includes>
                         </configuration>
                     </plugin>
