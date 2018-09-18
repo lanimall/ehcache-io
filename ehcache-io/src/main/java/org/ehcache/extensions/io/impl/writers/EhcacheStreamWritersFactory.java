@@ -19,11 +19,12 @@ public class EhcacheStreamWritersFactory {
     public static EhcacheStreamWriter getWriter(Ehcache cache, Object cacheKey, boolean override, long openTimeoutMillis) {
         EhcacheStreamWriter ehcacheStreamWriter;
         switch (PropertyUtils.getEhcacheIOStreamsConcurrencyMode()){
+            case WRITE_PRIORITY:
+            case READ_COMMITTED_CASLOCKS:
+                ehcacheStreamWriter = new EhcacheStreamWriterCasLock(cache, cacheKey, override, openTimeoutMillis);
+                break;
             case READ_COMMITTED_WITHLOCKS:
                 ehcacheStreamWriter = new EhcacheStreamWriterWithSingleLock(cache, cacheKey, override, openTimeoutMillis);
-                break;
-            case WRITE_PRIORITY_NOLOCK:
-                ehcacheStreamWriter = new EhcacheStreamWriterNoLock(cache, cacheKey, override, openTimeoutMillis);
                 break;
             default:
                 throw new IllegalStateException("Not implemented");
