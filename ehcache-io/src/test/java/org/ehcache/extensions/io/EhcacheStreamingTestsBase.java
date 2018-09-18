@@ -472,7 +472,7 @@ public abstract class EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
         )
         {
-            logger.info("============ readFileFromDisk ====================");
+            logger.debug("============ readFileFromDisk ====================");
 
             start = System.nanoTime();
             pipeStreamsWithBuffer(is, os, copyBufferSize);
