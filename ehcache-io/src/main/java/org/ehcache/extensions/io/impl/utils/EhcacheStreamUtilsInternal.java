@@ -8,6 +8,8 @@ import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamKey;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -17,6 +19,10 @@ import java.util.List;
  * Created by fabien.sanglier on 8/2/18.
  */
 public class EhcacheStreamUtilsInternal {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamUtilsInternal.class);
+    private static final boolean isTrace = logger.isTraceEnabled();
+    private static final boolean isDebug = logger.isDebugEnabled();
+
     /*
      * The Internal Ehcache cache object
      */
@@ -34,6 +40,84 @@ public class EhcacheStreamUtilsInternal {
     public enum LockType {
         READ,
         WRITE
+    }
+
+
+    //Main CAS loop util method used by the CAS readers/writers
+    public EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final Object cacheKey, final long mutationTimeoutMillis, final boolean clearCacheObjectBeforeMutate, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType) throws EhcacheStreamException {
+        EhcacheStreamMaster mutatedStreamMaster = null;
+        long t1 = System.currentTimeMillis();
+        long t2 = t1; //this ensures that the while always happen at least once!
+        boolean isMutated = false;
+        long itcounter = 0;
+
+        while (!isMutated && t2 - t1 <= mutationTimeoutMillis) {
+            //get the master index from cache, unless override is set
+            EhcacheStreamMaster initialStreamMasterFromCache = getStreamMasterFromCache(cacheKey);
+
+            if(comparatorType.check(initialStreamMasterFromCache)) {
+                if(isTrace)
+                    logger.trace("Got a stream master from cache that is now readable.");
+
+                if(null == initialStreamMasterFromCache || clearCacheObjectBeforeMutate) {
+                    mutatedStreamMaster = new EhcacheStreamMaster();
+                } else {
+                    mutatedStreamMaster = EhcacheStreamMaster.deepCopy(initialStreamMasterFromCache);
+                }
+
+                mutationField.mutate(mutatedStreamMaster, mutationType);
+
+                if (isDebug)
+                    logger.trace("testObjectModified before CAS cache: {}", mutatedStreamMaster.toString());
+
+                //concurrency check with CAS: let's save the initial EhcacheStreamMaster in cache, while making sure it hasn't change so far
+                //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed here...while others will fail their CAS ops...and spin back to try again later.
+                boolean replaced = replaceIfEqualEhcacheStreamMaster(cacheKey, initialStreamMasterFromCache, mutatedStreamMaster);
+                if (replaced) {
+                    if(isDebug)
+                        logger.debug("cas replace successful...Stream master is now saved in cache with expected mutation");
+
+                    //at this point, it's really open with consistency in cache
+                    isMutated = true;
+                    if(isDebug)
+                        logger.trace("mutation successful...");
+                } else {
+                    if(isTrace)
+                        logger.trace("Could not cas replace the Stream master in cache, got beat by another thread. Let's retry in a bit.");
+                }
+            } else {
+                if(isTrace)
+                    logger.trace("The current stream master in cache is marked as writable. Another thread must be working on it. Let's retry in a bit.");
+            }
+
+            try {
+                if(!isMutated) {
+                    if(isTrace)
+                        logger.trace("Sleeping before retry...");
+                    Thread.sleep(PropertyUtils.DEFAULT_BUSYWAIT_RETRY_LOOP_SLEEP_MILLIS);
+                }
+            } catch (InterruptedException e) {
+                throw new EhcacheStreamException("Thread sleep interrupted", e);
+            } finally {
+                Thread.yield();
+            }
+            t2 = System.currentTimeMillis();
+            itcounter++;
+        }
+
+        if(isDebug)
+            logger.debug("Total cas loop iterations: {}", itcounter - 1);
+
+        //if it's not mutated at the end of all the tries and timeout, throw timeout exception
+        if (!isMutated) {
+            throw new EhcacheStreamTimeoutException(String.format("Could not acquire a read after trying for %d ms (timeout triggers at %d ms)", t2 - t1, mutationTimeoutMillis));
+        }
+
+        if(isDebug)
+            logger.debug("mutatedStreamMaster: {}", mutatedStreamMaster.toString());
+
+        //return clone of the deep copy) the newOpenStreamMaster for later usage (for CAS replace) when we close
+        return mutatedStreamMaster;
     }
 
     public void acquireReadOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamException {
