@@ -21,7 +21,7 @@ public class PropertyUtils {
     public static final long DEFAULT_BUSYWAIT_RETRY_LOOP_SLEEP_MILLIS = 50;
     public static final long DEFAULT_CONSISTENCY_WAIT_TIMEOUT = 100;
 
-    public static final ConcurrencyMode DEFAULT_CONCURRENCY_MODE = ConcurrencyMode.WRITE_PRIORITY_NOLOCK;
+    public static final ConcurrencyMode DEFAULT_CONCURRENCY_MODE = ConcurrencyMode.READ_COMMITTED_CASLOCKS;
 
     public static final Integer getInputStreamBufferSize(){
         return getPropertyAsInt(PROP_INPUTSTREAM_BUFFERSIZE, DEFAULT_INPUTSTREAM_BUFFER_SIZE);
@@ -77,8 +77,9 @@ public class PropertyUtils {
     }
 
     public enum ConcurrencyMode {
-        READ_COMMITTED_WITHLOCKS("read_committed"),
-        WRITE_PRIORITY_NOLOCK("write_priority");
+        READ_COMMITTED_WITHLOCKS("read_committed2"),
+        READ_COMMITTED_CASLOCKS("read_committed1"),
+        WRITE_PRIORITY("write_priority");
 
         private final String propValue;
         ConcurrencyMode(String propValue) {
@@ -93,8 +94,10 @@ public class PropertyUtils {
             if(null != concurrencyModeStr && !"".equals(concurrencyModeStr)) {
                 if (READ_COMMITTED_WITHLOCKS.propValue.equalsIgnoreCase(concurrencyModeStr))
                     return READ_COMMITTED_WITHLOCKS;
-                else if (WRITE_PRIORITY_NOLOCK.propValue.equalsIgnoreCase(concurrencyModeStr))
-                    return WRITE_PRIORITY_NOLOCK;
+                else if (WRITE_PRIORITY.propValue.equalsIgnoreCase(concurrencyModeStr))
+                    return WRITE_PRIORITY;
+                else if (READ_COMMITTED_CASLOCKS.propValue.equalsIgnoreCase(concurrencyModeStr))
+                    return READ_COMMITTED_CASLOCKS;
                 else
                     throw new IllegalArgumentException("ConcurrencyMode [" + ((null != concurrencyModeStr) ? concurrencyModeStr : "null") + "] is not valid");
             } else {
