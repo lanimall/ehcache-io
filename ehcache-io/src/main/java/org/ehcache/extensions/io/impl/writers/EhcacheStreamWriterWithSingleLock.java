@@ -6,6 +6,8 @@ import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 
@@ -13,9 +15,12 @@ import java.util.Arrays;
  * Created by fabien.sanglier on 7/24/18.
  */
 /*package protected*/ class EhcacheStreamWriterWithSingleLock extends BaseEhcacheStream implements EhcacheStreamWriter {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamWriterWithSingleLock.class);
+    private static final boolean isTrace = logger.isTraceEnabled();
+    private static final boolean isDebug = logger.isDebugEnabled();
 
     private EhcacheStreamMaster initialOpenedStreamMaster;
-    private EhcacheStreamMaster currentStreamMaster;
+    private EhcacheStreamMaster activeStreamMaster;
 
     private final boolean override;
 
@@ -28,6 +33,9 @@ import java.util.Arrays;
         this.openTimeoutMillis = openTimeoutMillis;
     }
 
+    /**
+     * Open() creates a new stream master writer object and stores it in cache.
+     */
     public void tryOpen() throws EhcacheStreamException {
         if(openTimeoutMillis <= 0)
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
@@ -38,35 +46,40 @@ import java.util.Arrays;
 
             //if we're here, we've successfully acquired the lock -- otherwise, a EhcacheStreamException would have been thrown
             //now, get the master index from cache, unless override is set
-            EhcacheStreamMaster oldStreamMaster = null;
+            EhcacheStreamMaster initialStreamMasterFromCache = null;
             try {
-                oldStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+                initialStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
 
-                EhcacheStreamMaster newOpenStreamMaster = null;
-                if(null != oldStreamMaster) {
+                if(null != initialStreamMasterFromCache) {
                     if (!override) {
-                        newOpenStreamMaster = new EhcacheStreamMaster(oldStreamMaster.getChunkCount(), EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                        activeStreamMaster = new EhcacheStreamMaster(initialStreamMasterFromCache.getChunkCount());
                     } else {
-                        newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                        activeStreamMaster = new EhcacheStreamMaster();
                     }
                 } else {
-                    newOpenStreamMaster = new EhcacheStreamMaster(EhcacheStreamMaster.StreamOpStatus.CURRENT_WRITE);
+                    activeStreamMaster = new EhcacheStreamMaster();
                 }
 
-                boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), oldStreamMaster, newOpenStreamMaster);
+                //set the master object with a new writer
+                activeStreamMaster.addWriter();
+
+                boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialStreamMasterFromCache, activeStreamMaster);
                 if (!replaced)
                     throw new EhcacheStreamConcurrentException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
 
-                //save (deep copy) the newOpenStreamMaster for later usage (for CAS replace) when we close
-                this.initialOpenedStreamMaster = EhcacheStreamMaster.deepCopy(newOpenStreamMaster);
-
-                //clear the chunks for the old master to keep things clean...
-                if(null != oldStreamMaster && newOpenStreamMaster.getChunkCount() == 0)
-                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), oldStreamMaster);
-
                 //if the previous cas operation was successful, save (deep copy) the value from the cache into a instance variable
                 EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-                this.currentStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
+                activeStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
+
+                //save (deep copy) the newOpenStreamMaster for later usage (for CAS replace) when we close
+                initialOpenedStreamMaster = EhcacheStreamMaster.deepCopy(activeStreamMaster);
+
+                //if the new master has 0 chunk, it means it is an overwrite, so let's clear the chunks for the old master to keep things clean...
+                if (activeStreamMaster.getChunkCount() == 0) {
+                    if(isTrace)
+                        logger.trace("Clearing previous chunks ...");
+                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), initialStreamMasterFromCache);
+                }
 
                 //at this point, it's really open with consistency in cache
                 isOpen = true;
@@ -85,17 +98,33 @@ import java.util.Arrays;
     @Override
     public void close() throws EhcacheStreamException {
         if(isOpen) {
-            if (currentStreamMaster == null)
-                throw new EhcacheStreamIllegalStateException("Trying to close, but EhcacheStreamMaster is null, which should never happen here. Something unexpected happened.");
+            if (activeStreamMaster == null)
+                throw new EhcacheStreamIllegalStateException("Trying to close, but activeStreamMaster is null, which should never happen here. Something unexpected happened.");
 
-            boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialOpenedStreamMaster, currentStreamMaster.newWithStateChange(EhcacheStreamMaster.StreamOpStatus.AVAILABLE));
-            if (!replaced)
-                throw new EhcacheStreamConcurrentException("Could not close the ehcache stream index properly.");
+            // finalize the EhcacheStreamMaster value by saving it in cache with writer count decremented --
+            // this op must happen otherwise this entry will remain un-writeable / un-readable forever until manual cleanup
 
-            //release the lock
-            getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
+            EhcacheStreamMaster backupWriterStreamMaster = EhcacheStreamMaster.deepCopy(activeStreamMaster);
+            try {
+                //decrement the writer count from the active stream master
+                activeStreamMaster.removeWriter();
 
-            isOpen = false;
+                boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialOpenedStreamMaster, activeStreamMaster);
+                if (!replaced)
+                    throw new EhcacheStreamConcurrentException("CAS replace failed: Could not close the ehcache stream index properly.");
+
+                //release the lock
+                getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
+
+                //clean the internal vars
+                isOpen = false;
+                initialOpenedStreamMaster = null;
+                activeStreamMaster = null;
+            } catch (Exception exc) {
+                //roll back the stream master for consistency (eg. if the client wants to call close again
+                activeStreamMaster = backupWriterStreamMaster;
+                throw exc;
+            }
         }
 
         if (isOpen)
@@ -103,22 +132,23 @@ import java.util.Arrays;
     }
 
     /**
+     * Writes data byte chunks to ehcache
      * buf: The internal buffer where data is stored.
-     * count: The number of valid bytes in the buffer. This value is always
-     * in the range <tt>0</tt> through <tt>buf.length</tt>; elements
-     * <tt>buf[0]</tt> through <tt>buf[count-1]</tt> contain valid
-     * byte data.
+     * count: The number of valid bytes in the buffer
      */
     public void writeData(byte[] buf, int count) throws EhcacheStreamException {
-        if(!isOpen)
+        if(!isOpen || activeStreamMaster == null)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter is not open...call open() first.");
 
-        //put and increment stream index
-        if(count > 0) {
-            getEhcacheStreamUtils().putChunkValue(getCacheKey(), currentStreamMaster.getChunkCount(), Arrays.copyOf(buf, count));
+        //only 1 thread at a time should be able to reach this method...
+        // because all other threads should be waiting in the tryOpen method still
 
-            //copy and increment count
-            currentStreamMaster = currentStreamMaster.newWithIncrementCount();
+        if(count > 0) {
+            // let's add the chunk (overwrite anything in cache)
+            getEhcacheStreamUtils().putChunkValue(getCacheKey(), activeStreamMaster.getChunkCount(), Arrays.copyOf(buf, count));
+
+            //increment the chunk count
+            activeStreamMaster.incrementChunkCount();
         }
     }
 }
