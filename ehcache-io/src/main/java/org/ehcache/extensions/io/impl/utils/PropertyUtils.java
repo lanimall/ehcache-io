@@ -96,8 +96,8 @@ public class PropertyUtils {
     }
 
     public enum ConcurrencyMode {
-        READ_COMMITTED_WITHLOCKS("read_committed2"),
-        READ_COMMITTED_CASLOCKS("read_committed1"),
+        READ_COMMITTED_WITHLOCKS("read_committed_explicitlocking"),
+        READ_COMMITTED_CASLOCKS("read_committed"),
         WRITE_PRIORITY("write_priority");
 
         private final String propValue;
