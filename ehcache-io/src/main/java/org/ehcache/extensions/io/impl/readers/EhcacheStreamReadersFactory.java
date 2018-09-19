@@ -23,7 +23,7 @@ public class EhcacheStreamReadersFactory {
         EhcacheStreamReader ehcacheStreamReader;
         PropertyUtils.ConcurrencyMode concurrencyMode = PropertyUtils.getEhcacheIOStreamsConcurrencyMode();
         if(logger.isDebugEnabled())
-            logger.info("Creating a stream reader with Concurrency mode: {}", concurrencyMode.getPropValue());
+            logger.debug("Creating a stream reader with Concurrency mode: {}", concurrencyMode.getPropValue());
 
         switch (concurrencyMode){
             case READ_COMMITTED_CASLOCKS:
