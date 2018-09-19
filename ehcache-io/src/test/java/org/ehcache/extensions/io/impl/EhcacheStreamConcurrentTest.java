@@ -393,10 +393,10 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             if(addCachePayloadBeforeReads) {
                 Assert.assertEquals(initialCacheSize, finalCacheSize);
                 Assert.assertNotNull(testObjectCheckAfter);
-                Assert.assertNotEquals(testObjectCheckBefore,testObjectCheckAfter);
+                Assert.assertNotEquals(testObjectCheckBefore,testObjectCheckAfter); //objects should not be equal due to date updates
                 Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
             } else {
-                Assert.assertEquals(1, finalCacheSize);
+                Assert.assertEquals(1, finalCacheSize); //that's the main difference compared to READ_COMMITTED_WITHLOCKS: the CAS impl adds a stream entry no matter what
                 Assert.assertTrue(new EhcacheStreamMaster().equalsNoNanoTimes(testObjectCheckAfter));
             }
         }
@@ -404,7 +404,8 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             if(addCachePayloadBeforeReads) {
                 Assert.assertEquals(initialCacheSize, finalCacheSize);
                 Assert.assertNotNull(testObjectCheckAfter);
-                Assert.assertEquals(testObjectCheckBefore, testObjectCheckAfter);
+                Assert.assertEquals(testObjectCheckBefore, testObjectCheckAfter); //objects should not be equal due to date updates
+                Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
             } else {
                 Assert.assertEquals(0, finalCacheSize);
                 Assert.assertNull(testObjectCheckAfter);
@@ -415,7 +416,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             if(addCachePayloadBeforeReads) {
                 Assert.assertEquals(initialCacheSize, finalCacheSize);
                 Assert.assertNotNull(testObjectCheckAfter);
-                Assert.assertNotEquals(testObjectCheckBefore, testObjectCheckAfter);
+                Assert.assertEquals(testObjectCheckBefore, testObjectCheckAfter); //in priority writes, the read op is silent...hence the before and after objects in this tests should be equal
                 Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
             } else {
                 Assert.assertEquals(1, finalCacheSize);
