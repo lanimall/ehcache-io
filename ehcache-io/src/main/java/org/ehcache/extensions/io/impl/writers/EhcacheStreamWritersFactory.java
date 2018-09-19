@@ -3,6 +3,8 @@ package org.ehcache.extensions.io.impl.writers;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.OutputStream;
 
@@ -10,6 +12,7 @@ import java.io.OutputStream;
  * Created by fabien.sanglier on 9/14/18.
  */
 public class EhcacheStreamWritersFactory {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamWritersFactory.class);
 
     /**
      * Get an IEhcacheStreamWriter object backed by Ehcache.
@@ -18,7 +21,11 @@ public class EhcacheStreamWritersFactory {
      */
     public static EhcacheStreamWriter getWriter(Ehcache cache, Object cacheKey, boolean override, long openTimeoutMillis) {
         EhcacheStreamWriter ehcacheStreamWriter;
-        switch (PropertyUtils.getEhcacheIOStreamsConcurrencyMode()){
+        PropertyUtils.ConcurrencyMode concurrencyMode = PropertyUtils.getEhcacheIOStreamsConcurrencyMode();
+        if(logger.isDebugEnabled())
+            logger.info("Creating a stream reader with Concurrency mode: {}", concurrencyMode.getPropValue());
+
+        switch (concurrencyMode){
             case WRITE_PRIORITY:
             case READ_COMMITTED_CASLOCKS:
                 ehcacheStreamWriter = new EhcacheStreamWriterCasLock(cache, cacheKey, override, openTimeoutMillis);
