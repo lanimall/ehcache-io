@@ -1,5 +1,7 @@
 package org.ehcache.extensions.io.impl.utils;
 
+import java.util.Properties;
+
 /**
  * Created by fabien.sanglier on 9/14/18.
  */
@@ -18,8 +20,6 @@ public class PropertyUtils {
     public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 10000L;
     public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
     public static final boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
-    public static final long DEFAULT_BUSYWAIT_RETRY_LOOP_SLEEP_MILLIS = 50;
-    public static final long DEFAULT_CONSISTENCY_WAIT_TIMEOUT = 100;
 
     public static final ConcurrencyMode DEFAULT_CONCURRENCY_MODE = ConcurrencyMode.READ_COMMITTED_CASLOCKS;
 
@@ -45,12 +45,23 @@ public class PropertyUtils {
         return ConcurrencyMode.valueOfIgnoreCase(getPropertyAsString(PROP_CONCURRENCY_MODE, DEFAULT_CONCURRENCY_MODE.getPropValue()));
     }
 
-    private static String getPropertyAsString(String key, String defaultVal) {
-        return System.getProperty(key, defaultVal);
+    public static String getPropertyAsString(final Properties properties, final String key, final String defaultVal) {
+        if(null == properties)
+            throw new IllegalStateException("Properties may not be null.");
+
+        return properties.getProperty(key, defaultVal);
     }
 
-    private static long getPropertyAsLong(String key, long defaultVal) {
-        String valStr = System.getProperty(key, new Long(defaultVal).toString());
+    public static String getPropertyAsString(final String key, final String defaultVal) {
+        return getPropertyAsString(System.getProperties(), key, defaultVal);
+    }
+
+    public static long getPropertyAsLong(final String key, final long defaultVal) {
+        return getPropertyAsLong(System.getProperties(), key, defaultVal);
+    }
+
+    public static long getPropertyAsLong(final Properties properties, final String key, final long defaultVal) {
+        String valStr = getPropertyAsString(properties, key, new Long(defaultVal).toString());
         long val;
         try {
             val = Long.parseLong(valStr);
@@ -60,8 +71,12 @@ public class PropertyUtils {
         return val;
     }
 
-    private static int getPropertyAsInt(String key, int defaultVal) {
-        String valStr = System.getProperty(key, new Integer(defaultVal).toString());
+    public static int getPropertyAsInt(final String key, final int defaultVal) {
+        return getPropertyAsInt(System.getProperties(), key, defaultVal);
+    }
+
+    public static int getPropertyAsInt(final Properties properties, final String key, final int defaultVal) {
+        String valStr = getPropertyAsString(properties, key, new Integer(defaultVal).toString());
         int val;
         try {
             val = Integer.parseInt(valStr);
@@ -71,8 +86,12 @@ public class PropertyUtils {
         return val;
     }
 
-    private static boolean getPropertyAsBoolean(String key, boolean defaultVal) {
-        String valStr = System.getProperty(key, new Boolean(defaultVal).toString());
+    public static boolean getPropertyAsBoolean(final String key, final boolean defaultVal) {
+        return getPropertyAsBoolean(System.getProperties(), key, defaultVal);
+    }
+
+    public static boolean getPropertyAsBoolean(final Properties properties, final String key, final boolean defaultVal) {
+        String valStr = getPropertyAsString(properties, key, new Boolean(defaultVal).toString());
         return Boolean.parseBoolean(valStr);
     }
 
