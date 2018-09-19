@@ -28,8 +28,12 @@ public class EhcacheStreamUtilsInternal {
      */
     final Ehcache cache;
 
+    /*
+     * creating an exponential wait object to be use for busy wait cas loops
+     */
+    final WaitStrategy waitStrategy = new ExponentialWait(2L, 15L, true);
+
     public EhcacheStreamUtilsInternal(Ehcache cache) {
-        //TODO: we should check if the cache is not null but maybe enforce "Pinning"?? (because otherwise cache chunks can disappear and that would mess up the data consistency...)
         this.cache = cache;
     }
 
@@ -49,64 +53,39 @@ public class EhcacheStreamUtilsInternal {
         long t1 = System.currentTimeMillis();
         long t2 = t1; //this ensures that the while always happen at least once!
         boolean isMutated = false;
-        long itcounter = 0;
-
+        long attempts = 0L;
         while (!isMutated && t2 - t1 <= mutationTimeoutMillis) {
             //get the master index from cache, unless override is set
             EhcacheStreamMaster initialStreamMasterFromCache = getStreamMasterFromCache(cacheKey);
 
             if(comparatorType.check(initialStreamMasterFromCache)) {
-                if(isTrace)
-                    logger.trace("Got a stream master from cache that is now readable.");
-
                 if(null == initialStreamMasterFromCache || clearCacheObjectBeforeMutate) {
                     mutatedStreamMaster = new EhcacheStreamMaster();
                 } else {
                     mutatedStreamMaster = EhcacheStreamMaster.deepCopy(initialStreamMasterFromCache);
                 }
 
+                //mutation as requested
                 mutationField.mutate(mutatedStreamMaster, mutationType);
-
-                if (isDebug)
-                    logger.trace("testObjectModified before CAS cache: {}", mutatedStreamMaster.toString());
 
                 //concurrency check with CAS: let's save the initial EhcacheStreamMaster in cache, while making sure it hasn't change so far
                 //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed here...while others will fail their CAS ops...and spin back to try again later.
                 boolean replaced = replaceIfEqualEhcacheStreamMaster(cacheKey, initialStreamMasterFromCache, mutatedStreamMaster);
                 if (replaced) {
-                    if(isDebug)
-                        logger.debug("cas replace successful...Stream master is now saved in cache with expected mutation");
-
-                    //at this point, it's really open with consistency in cache
+                    //at this point, the object has been changed in cache as expected
                     isMutated = true;
-                    if(isDebug)
-                        logger.trace("mutation successful...");
-                } else {
-                    if(isTrace)
-                        logger.trace("Could not cas replace the Stream master in cache, got beat by another thread. Let's retry in a bit.");
                 }
-            } else {
-                if(isTrace)
-                    logger.trace("The current stream master in cache is marked as writable. Another thread must be working on it. Let's retry in a bit.");
             }
 
-            try {
-                if(!isMutated) {
-                    if(isTrace)
-                        logger.trace("Sleeping before retry...");
-                    Thread.sleep(PropertyUtils.DEFAULT_BUSYWAIT_RETRY_LOOP_SLEEP_MILLIS);
-                }
-            } catch (InterruptedException e) {
-                throw new EhcacheStreamException("Thread sleep interrupted", e);
-            } finally {
-                Thread.yield();
+            if(!isMutated) {
+                waitStrategy.doWait(attempts); //wait time
+                t2 = System.currentTimeMillis();
+                attempts++;
             }
-            t2 = System.currentTimeMillis();
-            itcounter++;
         }
 
         if(isDebug)
-            logger.debug("Total cas loop iterations: {}", itcounter - 1);
+            logger.debug("Total cas loop iterations: {}", attempts);
 
         //if it's not mutated at the end of all the tries and timeout, throw timeout exception
         if (!isMutated) {
