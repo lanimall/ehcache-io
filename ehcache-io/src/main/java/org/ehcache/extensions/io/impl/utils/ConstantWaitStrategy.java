@@ -19,10 +19,12 @@ public class ConstantWaitStrategy implements WaitStrategy {
     }
 
     public void doWait(final long attempt) {
-        try {
-            Thread.sleep(waitTime);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
+        if(waitTime > 0) {
+            try {
+                Thread.sleep(waitTime);
+            } catch (final InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
         }
     }
 }
