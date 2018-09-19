@@ -467,13 +467,13 @@ public abstract class EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
         int copyBufferSize = 32*1024;
 
+        logger.debug("============ readFileFromDisk ====================");
+
         try (
                 CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH)), new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
         )
         {
-            logger.debug("============ readFileFromDisk ====================");
-
             start = System.nanoTime();
             pipeStreamsWithBuffer(is, os, copyBufferSize);
             end = System.nanoTime();
@@ -498,6 +498,8 @@ public abstract class EhcacheStreamingTestsBase {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
 
+        logger.debug("============ readFileFromCache ====================");
+
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(cache, publicCacheKey, false, cacheReadBufferSize),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
@@ -519,6 +521,8 @@ public abstract class EhcacheStreamingTestsBase {
 
     private static CacheManager getCacheManager(String cacheManagerName, String resourcePath) {
         CacheManager cm = null;
+        logger.debug("============ getCacheManager ====================");
+
         if (null == (cm = CacheManager.getCacheManager(cacheManagerName))) {
             String configLocationToLoad = null;
             if (null != resourcePath && !"".equals(resourcePath)) {
@@ -577,6 +581,9 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public void runInThreads(List<Callable<Long>> callables, List<AtomicReference<Long>> callableResults, List<AtomicReference<Class>> exceptions) throws InterruptedException {
+        long start = 0L, end = 0L;
+        logger.info("============ runInThreads ====================");
+
         if(null == callables)
             throw new IllegalStateException("must provides some operations to run...");
 
@@ -595,17 +602,17 @@ public abstract class EhcacheStreamingTestsBase {
             workerList.add(new ThreadWorker(callables.get(i), stopLatch, callableResults.get(i), exceptions.get(i)));
         }
 
-        try{
-            //start the workers
-            for (ThreadWorker worker : workerList) {
-                worker.start();
-            }
-        } finally {
-
+        //start the workers
+        start = System.nanoTime();
+        for (ThreadWorker worker : workerList) {
+            worker.start();
         }
 
         //wait that all operations are finished
         stopLatch.await();
+        end = System.nanoTime();
+        logger.info("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.info("============ end runInThreads ====================");
     }
 
     public class ThreadWorker<R> extends Thread {

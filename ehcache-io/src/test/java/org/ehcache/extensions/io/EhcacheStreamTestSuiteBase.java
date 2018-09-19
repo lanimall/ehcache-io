@@ -12,7 +12,7 @@ import org.junit.runners.Suite;
 
 @RunWith(Suite.class)
 @Suite.SuiteClasses({
-        EhcacheStreamMiscTest.class,
+        EhcacheStreamCasTest.class,
         EhcacheInputStreamTest.class,
         EhcacheOutputStreamTest.class,
         EhcacheStreamUtilsTest.class,
