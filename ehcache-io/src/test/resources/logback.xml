@@ -9,20 +9,32 @@
         <level value="error"/>
     </logger>
 
+    <logger name="com.terracottatech">
+        <level value="error"/>
+    </logger>
+
+    <logger name="com.terracotta">
+        <level value="error"/>
+    </logger>
+
     <!--<logger name="org.ehcache.extensions.io.impl.writers">-->
-        <!--<level value="debug"/>-->
+    <!--<level value="debug"/>-->
     <!--</logger>-->
 
     <!--<logger name="org.ehcache.extensions.io.impl.readers">-->
-        <!--<level value="debug"/>-->
+    <!--<level value="debug"/>-->
     <!--</logger>-->
 
-    <!--<logger name="org.ehcache.extensions.io.impl">-->
-        <!--<level value="debug"/>-->
+    <!--<logger name="org.ehcache.extensions.io.impl.utils">-->
+    <!--<level value="debug"/>-->
     <!--</logger>-->
 
-    <!--<logger name="org.ehcache.extensions.io.impl.EhcacheStreamMiscTest">-->
-        <!--<level value="info"/>-->
+    <!--<logger name="org.ehcache.extensions.io.impl.EhcacheStreamCasTest">-->
+    <!--<level value="debug"/>-->
+    <!--</logger>-->
+
+    <!--<logger name="org.ehcache.extensions.io.EhcacheStreamingTestsBase">-->
+        <!--<level value="debug"/>-->
     <!--</logger>-->
 
     <root level="info">
