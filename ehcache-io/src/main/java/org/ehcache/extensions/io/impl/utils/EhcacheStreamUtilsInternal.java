@@ -46,20 +46,19 @@ public class EhcacheStreamUtilsInternal {
         WRITE
     }
 
-
     //Main CAS loop util method used by the CAS readers/writers
-    public EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final Object cacheKey, final long mutationTimeoutMillis, final boolean clearCacheObjectBeforeMutate, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType) throws EhcacheStreamException {
+    public EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final Object cacheKey, final long timeoutMillis, final boolean resetCacheObjectBeforeMutate, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType) throws EhcacheStreamException {
         EhcacheStreamMaster mutatedStreamMaster = null;
         long t1 = System.currentTimeMillis();
         long t2 = t1; //this ensures that the while always happen at least once!
         boolean isMutated = false;
         long attempts = 0L;
-        while (!isMutated && t2 - t1 <= mutationTimeoutMillis) {
+        while (!isMutated && t2 - t1 <= timeoutMillis) {
             //get the master index from cache, unless override is set
             EhcacheStreamMaster initialStreamMasterFromCache = getStreamMasterFromCache(cacheKey);
 
             if(comparatorType.check(initialStreamMasterFromCache)) {
-                if(null == initialStreamMasterFromCache || clearCacheObjectBeforeMutate) {
+                if(null == initialStreamMasterFromCache || resetCacheObjectBeforeMutate) {
                     mutatedStreamMaster = new EhcacheStreamMaster();
                 } else {
                     mutatedStreamMaster = EhcacheStreamMaster.deepCopy(initialStreamMasterFromCache);
@@ -92,10 +91,113 @@ public class EhcacheStreamUtilsInternal {
 
         //if it's not mutated at the end of all the tries and timeout, throw timeout exception
         if (!isMutated) {
-            throw new EhcacheStreamTimeoutException(String.format("Could not acquire a read after trying for %d ms (timeout triggers at %d ms)", t2 - t1, mutationTimeoutMillis));
+            throw new EhcacheStreamTimeoutException(String.format("Could not perform operation within %d ms (timeout triggers at %d ms)", t2 - t1, timeoutMillis));
         }
 
         return mutatedStreamMaster;
+    }
+
+    //An atomic removal of a master stream entry + its related chunk entries.
+    //Return TRUE for success state... otherwise throws an exception.
+    public boolean atomicRemoveEhcacheStreamMasterInCache(final Object cacheKey, final long timeoutMillis) throws EhcacheStreamException {
+        EhcacheStreamMaster removedStreamMasterFromCache = null;
+        long t1 = System.currentTimeMillis();
+        long t2 = t1; //this ensures that the while always happen at least once!
+        boolean isRemoved = false;
+        long attempts = 0L;
+
+        //first, mutate to WRITE mode to protect against concurrent Writes or READs
+        EhcacheStreamMaster activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
+                cacheKey,
+                timeoutMillis,
+                false,
+                EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
+                EhcacheStreamMaster.MutationField.WRITERS,
+                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+        );
+
+        //If successful, CAS remove. Comparator for this CAS loop should be SINGLE WRITER
+        final EhcacheStreamMaster.ComparatorType comparatorType = EhcacheStreamMaster.ComparatorType.SINGLE_WRITER;
+        while (!isRemoved && t2 - t1 <= timeoutMillis) {
+            //get the master index from cache, unless override is set
+            removedStreamMasterFromCache = getStreamMasterFromCache(cacheKey);
+
+            if(comparatorType.check(removedStreamMasterFromCache)) {
+                //CAS remove stream master from cache (this op is the most important for consistency)
+                boolean removed = removeIfPresentEhcacheStreamMaster(cacheKey, removedStreamMasterFromCache);
+                if(removed) {
+                    if(isDebug)
+                        logger.debug("CAS removed object from cache: {}", removedStreamMasterFromCache.toString());
+
+                    //clear related chunks
+                    clearChunksFromStreamMaster(cacheKey, removedStreamMasterFromCache);
+
+                    //at this point, the object has been changed in cache as expected
+                    isRemoved = true;
+                }
+            }
+
+            if(!isRemoved) {
+                waitStrategy.doWait(attempts); //wait time
+                t2 = System.currentTimeMillis();
+                attempts++;
+            }
+        }
+
+        if(isDebug)
+            logger.debug("Total cas loop iterations: {}", attempts);
+
+        //if it's not mutated at the end of all the tries and timeout, throw timeout exception
+        if (!isRemoved) {
+            throw new EhcacheStreamTimeoutException(String.format("Could not remove cache entry within %d ms (timeout triggers at %d ms)", t2 - t1, timeoutMillis));
+        } else {
+            //check that the master entry is actually removed
+            if(null != getStreamMasterFromCache(cacheKey))
+                throw new EhcacheStreamException("Master Entry was not removed as expected");
+
+            //check that the other chunks are also removed
+            EhcacheStreamValue[] chunkValues = getStreamChunksFromStreamMaster(cacheKey, removedStreamMasterFromCache);
+            if(null != chunkValues && chunkValues.length > 0)
+                throw new EhcacheStreamException("Some chunk entries were not removed as expected");
+        }
+
+        return isRemoved;
+    }
+
+    public boolean removeStreamEntryWithExplicitLocks(final Object cacheKey, long timeout) throws EhcacheStreamException {
+        boolean removed = false;
+        try {
+            acquireExclusiveWriteOnMaster(cacheKey, timeout);
+
+            //get stream master before removal
+            EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache(cacheKey);
+
+            //remove stream master from cache (this op is the most important for consistency)
+            if(null != ehcacheStreamMaster) {
+                removed = removeIfPresentEhcacheStreamMaster(cacheKey, ehcacheStreamMaster);
+
+                // if success removal, clean up the chunks...
+                // if that fails it's not good for space usage, but data will still be inconsistent.
+                // and we'll catch this issue in the next verification steps...
+                if (removed)
+                    clearChunksFromStreamMaster(cacheKey, ehcacheStreamMaster);
+            } else {
+                removed = true;
+            }
+
+            //check that the master entry is actually removed
+            if(null != getStreamMasterFromCache(cacheKey))
+                throw new EhcacheStreamException("Master Entry was not removed as expected");
+
+            //check that the other chunks are also removed
+            EhcacheStreamValue[] chunkValues = getStreamChunksFromStreamMaster(cacheKey, ehcacheStreamMaster);
+            if(null != chunkValues && chunkValues.length > 0)
+                throw new EhcacheStreamException("Some chunk entries were not removed as expected");
+        } finally {
+            releaseExclusiveWriteOnMaster(cacheKey);
+        }
+
+        return removed;
     }
 
     public void acquireReadOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamException {

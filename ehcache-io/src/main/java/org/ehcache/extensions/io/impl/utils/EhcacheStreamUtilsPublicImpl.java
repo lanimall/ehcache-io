@@ -5,6 +5,8 @@ import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamKey;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -15,9 +17,11 @@ import java.util.List;
  * Created by fabien.sanglier on 8/2/18.
  */
 public class EhcacheStreamUtilsPublicImpl implements IEhcacheStreamUtils {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamUtilsPublicImpl.class);
+
     /*
      * The Internal Ehcache cache object
-     */
+    */
     final EhcacheStreamUtilsInternal ehcacheStreamUtilsInternal;
 
     public EhcacheStreamUtilsPublicImpl(Ehcache cache) {
@@ -39,35 +43,29 @@ public class EhcacheStreamUtilsPublicImpl implements IEhcacheStreamUtils {
      *
      */
     @Override
-    public synchronized boolean removeStreamEntry(final Object cacheKey, long timeout) throws EhcacheStreamException {
+    public boolean removeStreamEntry(final Object cacheKey, long timeout) throws EhcacheStreamException {
         boolean removed = false;
-        try {
-            ehcacheStreamUtilsInternal.acquireExclusiveWriteOnMaster(cacheKey, timeout);
 
-            //get stream master before removal
-            EhcacheStreamMaster ehcacheStreamMaster = ehcacheStreamUtilsInternal.getStreamMasterFromCache(cacheKey);
+        PropertyUtils.ConcurrencyMode concurrencyMode = PropertyUtils.getEhcacheIOStreamsConcurrencyMode();
+        if(logger.isDebugEnabled())
+            logger.debug("Creating a stream reader with Concurrency mode: {}", concurrencyMode.getPropValue());
 
-            //remove stream master from cache (this op is the most important for consistency)
-            removed = ehcacheStreamUtilsInternal.removeIfPresentEhcacheStreamMaster(cacheKey, ehcacheStreamMaster);
-
-            // if success removal, clean up the chunks...
-            // if that fails it's not good for space usage, but data will still be inconsistent.
-            // and we'll catch this issue in the next verification steps...
-            if(removed)
-                ehcacheStreamUtilsInternal.clearChunksFromStreamMaster(cacheKey, ehcacheStreamMaster);
-
-            //check that the master entry is actually removed
-            if(null != ehcacheStreamUtilsInternal.getStreamMasterFromCache(cacheKey))
-                throw new EhcacheStreamException("Master Entry was not removed as expected");
-
-            //check that the other chunks are also removed
-            EhcacheStreamValue[] chunkValues = ehcacheStreamUtilsInternal.getStreamChunksFromStreamMaster(cacheKey, ehcacheStreamMaster);
-            if(null != chunkValues && chunkValues.length > 0)
-                throw new EhcacheStreamException("Some chunk entries were not removed as expected");
-        } finally {
-            ehcacheStreamUtilsInternal.releaseExclusiveWriteOnMaster(cacheKey);
+        switch (concurrencyMode){
+            case WRITE_PRIORITY:
+            case READ_COMMITTED_CASLOCKS:
+                removed = ehcacheStreamUtilsInternal.atomicRemoveEhcacheStreamMasterInCache(
+                        cacheKey,
+                        timeout);
+                break;
+            case READ_COMMITTED_WITHLOCKS:
+                removed = ehcacheStreamUtilsInternal.removeStreamEntryWithExplicitLocks(
+                        cacheKey,
+                        timeout
+                );
+                break;
+            default:
+                throw new IllegalStateException("Not implemented");
         }
-
         return removed;
     }
 
