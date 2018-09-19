@@ -72,6 +72,9 @@ public class EhcacheStreamUtilsInternal {
                 //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed here...while others will fail their CAS ops...and spin back to try again later.
                 boolean replaced = replaceIfEqualEhcacheStreamMaster(cacheKey, initialStreamMasterFromCache, mutatedStreamMaster);
                 if (replaced) {
+                    if(isDebug)
+                        logger.debug("Mutated object CAS committed in cache: {}", mutatedStreamMaster.toString());
+
                     //at this point, the object has been changed in cache as expected
                     isMutated = true;
                 }
@@ -92,10 +95,6 @@ public class EhcacheStreamUtilsInternal {
             throw new EhcacheStreamTimeoutException(String.format("Could not acquire a read after trying for %d ms (timeout triggers at %d ms)", t2 - t1, mutationTimeoutMillis));
         }
 
-        if(isDebug)
-            logger.debug("mutatedStreamMaster: {}", mutatedStreamMaster.toString());
-
-        //return clone of the deep copy) the newOpenStreamMaster for later usage (for CAS replace) when we close
         return mutatedStreamMaster;
     }
 
