@@ -109,10 +109,18 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         this(chunkCount, 0, 0);
     }
 
-    private EhcacheStreamMaster(int chunkCount, int writers, int readers) {
+    public EhcacheStreamMaster(int chunkCount, int writers, int readers) {
         this.chunkCount = chunkCount;
         this.writers = writers;
         this.readers = readers;
+    }
+
+    private EhcacheStreamMaster(int chunkCount, int writers, int readers, long lastReadNanos, long lastWrittenNanos) {
+        this.chunkCount = chunkCount;
+        this.writers = writers;
+        this.readers = readers;
+        this.lastReadNanos = lastReadNanos;
+        this.lastWrittenNanos = lastWrittenNanos;
     }
 
     public void incrementChunkCount() {
@@ -160,7 +168,7 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
     }
 
     private void setReadNow(){
-        lastWrittenNanos = System.nanoTime();
+        lastReadNanos = System.nanoTime();
     }
 
     @Override
@@ -168,7 +176,9 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         return new EhcacheStreamMaster(
                 this.chunkCount,
                 this.writers,
-                this.readers);
+                this.readers,
+                this.lastReadNanos,
+                this.lastWrittenNanos);
     }
 
     public static EhcacheStreamMaster deepCopy(final EhcacheStreamMaster obj){
