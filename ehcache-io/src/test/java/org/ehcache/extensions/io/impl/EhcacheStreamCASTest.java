@@ -18,7 +18,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     private static final boolean isTrace = logger.isTraceEnabled();
     private static final boolean isDebug = logger.isDebugEnabled();
 
-    final int threadCount = 30;
+    final int threadCount = 10;
     final int iterations = 100;
     final long openTimeoutMillis = 20000;
 
