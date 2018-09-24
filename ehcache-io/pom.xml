@@ -6,7 +6,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ehcache.extensions.io</groupId>
     <artifactId>ehcache-io</artifactId>
-    <version>1.2-snapshot</version>
+    <version>1.2</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
