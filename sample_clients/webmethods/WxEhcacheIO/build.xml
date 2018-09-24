@@ -41,11 +41,6 @@
 
         <mkdir dir="${wxehcacheio.package.classes}" />
         <mkdir dir="${wxehcacheio.package.libs}" />
-
-        <!-- copy ehcache-io jar into the package -->
-        <copy todir="${wxehcacheio.package.libs}">
-            <fileset file="${wxehcacheio.runtime.ehcacheio.libs}/target/*.jar" />
-        </copy>
     </target>
 
     <target name="update.version" description="move the package to the dist folder before compiling" depends="prepare.compile">
@@ -64,6 +59,7 @@
         <path id="compile.classpath">
             <fileset dir="${wxehcacheio.lib.dir}" includes="**/*.jar" />
             <fileset dir="${wxehcacheio.package.libs}" includes="**/*.jar" />
+            <fileset file="${wxehcacheio.runtime.ehcacheio.libs}/target/*.jar" />
         </path>
 
         <mkdir dir="${wxehcacheio.package.classes}"/>
@@ -75,18 +71,15 @@
                failonerror="true"/>
     </target>
 
+    <target name="assemble.include.ehcacheio" description="move the package to the dist folder before compiling" depends="prepare.compile" if="wxehcacheio.runtime.ehcacheio.package.include">
+        <!-- copy ehcache-io jar into the package -->
+        <copy todir="${wxehcacheio.package.libs}/static">
+            <fileset file="${wxehcacheio.runtime.ehcacheio.libs}/target/*.jar" />
+        </copy>
+    </target>
+
     <!-- Assemble ISPackage -->
-    <target name="assemble" description="Copy IS package files, place the dependent jar and zip them together to create IS package" depends="compile">
-        <exec executable="cmd" dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}/pub" osfamily="windows">
-            <arg value="/c"/>
-            <arg value="bower update"/>
-        </exec>
-
-        <exec executable="/bin/bash" dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}/pub" osfamily="unix">
-            <arg value="-c"/>
-            <arg value="bower update"/>
-        </exec>
-
+    <target name="assemble" description="Copy IS package files, place the dependent jar and zip them together to create IS package" depends="compile, assemble.include.ehcacheio">
         <zip destfile="${wxehcacheio.target.dir}/${wxehcacheio.packagename}-${wxehcacheio.version}.zip">
             <zipfileset dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}" />
         </zip>
