@@ -1,0 +1,28 @@
+dist/
+libraries/
+*.class
+
+##############
+# eclipse #
+##############
+.project
+.metadata
+.classpath
+.settings/
+bin/**
+*.tmp
+*.bak
+*.swp
+
+#############
+# intelliJ #
+##############
+.idea
+*.ipr
+*.iml
+.settings
+
+# Package Files #
+*.jar
+*.war
+*.ear

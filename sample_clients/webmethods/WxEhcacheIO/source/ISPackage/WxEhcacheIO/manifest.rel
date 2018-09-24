@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <Values version="2.0">
-  <value name="name">WxEhcacheIO</value>
-  <value name="version">1.0</value>
+  <value name="name">@wxehcacheio.packagename@</value>
+  <value name="version">@wxehcacheio.version@</value>
   <value name="build"></value>
   <value name="patch_nums"></value>
   <value name="description"></value>
