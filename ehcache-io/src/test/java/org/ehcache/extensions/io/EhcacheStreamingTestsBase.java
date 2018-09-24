@@ -33,7 +33,7 @@ public abstract class EhcacheStreamingTestsBase {
     public static final String ENV_CACHEKEY_TYPE = "ehcache.tests.cachekeytype";
 
     public static final CacheKeyType DEFAULT_CACHEKEY_TYPE = CacheKeyType.COMPLEX_OBJECT;
-    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.CLUSTERED;
+    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.LOCAL_HEAP;
 
     protected static final int IN_FILE_SIZE = 10 * 1024 * 1024;
     protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
