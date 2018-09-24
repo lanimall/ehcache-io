@@ -45,31 +45,15 @@ public final class services
 		// [o] field:0:required found
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
-		String cacheManagerName = null;
-		String cacheName = null;
+		//get cache handle
+		Cache cache = getCache(pipelineCursor);
+		
 		Object cacheKey = null;
-		Cache cache = null;
-		
-		if (pipelineCursor.first("cacheManagerName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheManagerName = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("cacheName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheName = (String) pipelineCursor.getValue();
-		}
-		
 		if (pipelineCursor.first("key"))
 		{
 			//get the filename string object out of the pipeline
 			cacheKey = (String) pipelineCursor.getValue();
 		}
-		
-		//get the cache
-		cache = getCache(cacheManagerName, cacheName);
 		
 		boolean found = false;
 		try {
@@ -92,78 +76,55 @@ public final class services
 
 
 
-	public static final void getAsStream (IData pipeline)
+	public static final void createGetStream (IData pipeline)
         throws ServiceException
 	{
-		// --- <<IS-START(getAsStream)>> ---
+		// --- <<IS-START(createGetStream)>> ---
 		// @sigtype java 3.5
 		// [i] field:0:required cacheManagerName
 		// [i] field:0:required cacheName
 		// [i] object:0:required key
 		// [i] field:0:optional decompress {"true","false"}
-		// [o] object:0:required stream
+		// [o] object:0:required ehcacheInputStream
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
-		String cacheManagerName = null;
-		String cacheName = null;
-		String decompressStr = null;
-		Object cacheKey = null;
-		Cache cache = null;
-		
-		if (pipelineCursor.first("cacheManagerName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheManagerName = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("cacheName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheName = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("decompress"))
-		{
-			//get the filename string object out of the pipeline
-			decompressStr = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("key"))
-		{
-			//get the filename string object out of the pipeline
-			cacheKey = (String) pipelineCursor.getValue();
-		}
-		
-		//parse decompress value
-		boolean decompress = (null != decompressStr && "true".equalsIgnoreCase(decompressStr));
-		
-		//force returning null on key not found
-		boolean allowNullStream = true;
-		
-		//get the cache
-		cache = getCache(cacheManagerName, cacheName);
-		
-		InputStream ehcacheInputStream = null;
-		try {
-			ehcacheInputStream = EhcacheIOStreams.getInputStream(cache, cacheKey, allowNullStream);
-			if(null != ehcacheInputStream && ehcacheInputStream.available() > 0){
-				if(decompress){
-					ehcacheInputStream = new GZIPInputStream(ehcacheInputStream);
-				}
-			}
-		} catch (IOException e) {
-			//close the stream and nullify if there's an exception
-			closeStream(ehcacheInputStream);
-			ehcacheInputStream = null;
-			
-			throw new ServiceException(e);
-		}
+		InputStream ehcacheInputStream = createInputStream(pipelineCursor);
 		
 		//output section
 		pipelineCursor.last();
 		
 		//output stream
-		pipelineCursor.insertAfter("stream", ehcacheInputStream);
+		pipelineCursor.insertAfter("ehcacheInputStream", ehcacheInputStream);
+		
+		pipelineCursor.destroy();
+		// --- <<IS-END>> ---
+
+                
+	}
+
+
+
+	public static final void createPutStream (IData pipeline)
+        throws ServiceException
+	{
+		// --- <<IS-START(createPutStream)>> ---
+		// @sigtype java 3.5
+		// [i] field:0:required cacheManagerName
+		// [i] field:0:required cacheName
+		// [i] object:0:required key
+		// [i] field:0:optional append {"true","false"}
+		// [i] field:0:optional compress {"true","false"}
+		// [o] object:0:required ehcacheOutputStream
+		IDataCursor pipelineCursor = pipeline.getCursor();
+		
+		//create the OutputStream
+		OutputStream ehcacheOutputStream = createOutputStream(pipelineCursor);
+		
+		//output section
+		pipelineCursor.last();
+		
+		//output stream
+		pipelineCursor.insertAfter("ehcacheOutputStream", ehcacheOutputStream);
 		
 		pipelineCursor.destroy();
 		// --- <<IS-END>> ---
@@ -184,30 +145,14 @@ public final class services
 		// [o] object:1:required keys
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
-		String cacheManagerName = null;
-		String cacheName = null;
-		Cache cache = null;
+		//get cache handle
+		Cache cache = getCache(pipelineCursor);
+		
 		String excludeExpiredKeysStr = null;
-		
-		if (pipelineCursor.first("cacheManagerName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheManagerName = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("cacheName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheName = (String) pipelineCursor.getValue();
-		}
-		
 		if (pipelineCursor.first("excludeExpiredKeys"))
 		{
 			excludeExpiredKeysStr = (String) pipelineCursor.getValue();
 		}
-		
-		//get the cache
-		cache = getCache(cacheManagerName, cacheName);
 		
 		boolean excludeExpiredKeys = (null != excludeExpiredKeysStr && "true".equalsIgnoreCase(excludeExpiredKeysStr));
 		
@@ -240,50 +185,13 @@ public final class services
 		// [i] field:0:required cacheManagerName
 		// [i] field:0:required cacheName
 		// [i] object:0:required key
-		// [i] object:0:required stream
+		// [i] object:0:required inputStream
 		// [i] field:0:optional append {"true","false"}
 		// [i] field:0:optional compress {"true","false"}
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
 		InputStream inputStream = null;
-		String cacheManagerName = null;
-		String cacheName = null;
-		String appendStr = null;
-		String compressStr = null;
-		Object cacheKey = null;
-		Cache cache = null;
-		
-		if (pipelineCursor.first("cacheManagerName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheManagerName = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("cacheName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheName = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("key"))
-		{
-			//get the filename string object out of the pipeline
-			cacheKey = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("append"))
-		{
-			//get the filename string object out of the pipeline
-			appendStr = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("compress"))
-		{
-			//get the filename string object out of the pipeline
-			compressStr = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("stream"))
+		if (pipelineCursor.first("inputStream"))
 		{
 			Object o = pipelineCursor.getValue();
 			if(null != o){
@@ -299,20 +207,13 @@ public final class services
 			}
 		}
 		
-		boolean append = (null != appendStr && "true".equalsIgnoreCase(appendStr));
-		boolean compress = (null != compressStr && "true".equalsIgnoreCase(compressStr));
-		
-		//get the cache
-		cache = getCache(cacheManagerName, cacheName);
-		
 		if(null == inputStream)
-			throw new ServiceException("InputStream provided is null...should not be.");
+			throw new ServiceException("inputStream provided is null...should not be.");
 		
+		//create the OutputStream and copy to it directly
 		OutputStream ehcacheOutputStream = null;
 		try {
-			ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cacheKey, !append);
-			if(compress)
-				ehcacheOutputStream = new GZIPOutputStream(ehcacheOutputStream);
+			ehcacheOutputStream = createOutputStream(pipelineCursor);
 		
 			pipeStreamsWithBuffer(inputStream, ehcacheOutputStream, copyBufferSize);
 		} catch (IOException e) {
@@ -341,31 +242,15 @@ public final class services
 		// [o] field:0:required removed
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
-		String cacheManagerName = null;
-		String cacheName = null;
+		//get cache handle
+		Cache cache = getCache(pipelineCursor);
+		
 		Object cacheKey = null;
-		Cache cache = null;
-		
-		if (pipelineCursor.first("cacheManagerName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheManagerName = (String) pipelineCursor.getValue();
-		}
-		
-		if (pipelineCursor.first("cacheName"))
-		{
-			//get the filename string object out of the pipeline
-			cacheName = (String) pipelineCursor.getValue();
-		}
-		
 		if (pipelineCursor.first("key"))
 		{
 			//get the filename string object out of the pipeline
 			cacheKey = (String) pipelineCursor.getValue();
 		}
-		
-		//get the cache
-		cache = getCache(cacheManagerName, cacheName);
 		
 		boolean removed = false;
 		try {
@@ -389,6 +274,113 @@ public final class services
 	// --- <<IS-START-SHARED>> ---
 	static int copyBufferSize = 128*1024; //copy buffer
 	
+	public static OutputStream createOutputStream(IDataCursor pipelineCursor) throws ServiceException {
+		String cacheManagerName = null;
+		String cacheName = null;
+		Object cacheKey = null;
+		String appendStr = null;
+		String compressStr = null;
+		
+		//get cache handle
+		Cache cache = getCache(pipelineCursor);
+		
+		if (pipelineCursor.first("key"))
+		{
+			//get the filename string object out of the pipeline
+			cacheKey = (String) pipelineCursor.getValue();
+		}
+		
+		if (pipelineCursor.first("append"))
+		{
+			//get the filename string object out of the pipeline
+			appendStr = (String) pipelineCursor.getValue();
+		}
+		
+		if (pipelineCursor.first("compress"))
+		{
+			//get the filename string object out of the pipeline
+			compressStr = (String) pipelineCursor.getValue();
+		}
+		
+		boolean append = (null != appendStr && "true".equalsIgnoreCase(appendStr));
+		boolean compress = (null != compressStr && "true".equalsIgnoreCase(compressStr));
+		
+		return createOutputStream(cache, cacheKey, append, compress);
+	}
+	
+	public static OutputStream createOutputStream(Cache cache, Object cacheKey, boolean append, boolean compress) throws ServiceException {
+		validateParamsCacheKey(cacheKey);
+		
+		OutputStream ehcacheOutputStream = null;
+		try {
+			ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cacheKey, !append);
+			if(compress)
+				ehcacheOutputStream = new GZIPOutputStream(ehcacheOutputStream);
+		} catch (IOException e) {
+			closeStream(ehcacheOutputStream);
+			ehcacheOutputStream = null;
+			throw new ServiceException(e);
+		}
+		return ehcacheOutputStream;
+	}
+	
+	public static InputStream createInputStream(IDataCursor pipelineCursor) throws ServiceException {
+		String cacheManagerName = null;
+		String cacheName = null;
+		String decompressStr = null;
+		Object cacheKey = null;
+		
+		//get cache handle
+		Cache cache = getCache(pipelineCursor);
+		
+		if (pipelineCursor.first("key"))
+		{
+			//get the filename string object out of the pipeline
+			cacheKey = (String) pipelineCursor.getValue();
+		}
+		
+		if (pipelineCursor.first("decompress"))
+		{
+			//get the filename string object out of the pipeline
+			decompressStr = (String) pipelineCursor.getValue();
+		}
+		
+		//parse decompress value
+		boolean decompress = (null != decompressStr && "true".equalsIgnoreCase(decompressStr));
+		
+		//force returning null on key not found
+		boolean allowNullStream = true;
+		
+		return createInputStream(cache, cacheKey, allowNullStream, decompress);
+	}
+	
+	public static InputStream createInputStream(Cache cache, Object cacheKey, boolean allowNullStream, boolean decompress) throws ServiceException {
+		validateParamsCacheKey(cacheKey);
+		
+		InputStream ehcacheInputStream = null;
+		try {
+			ehcacheInputStream = EhcacheIOStreams.getInputStream(cache, cacheKey, allowNullStream);
+			if(null != ehcacheInputStream && ehcacheInputStream.available() > 0){
+				if(decompress){
+					ehcacheInputStream = new GZIPInputStream(ehcacheInputStream);
+				}
+			}
+		} catch (IOException e) {
+			//close the stream and nullify if there's an exception
+			closeStream(ehcacheInputStream);
+			ehcacheInputStream = null;
+			throw new ServiceException(e);
+		}
+		return ehcacheInputStream;
+	}
+	
+	public static void validateParamsCacheKey(Object cacheKey) throws ServiceException {
+		if (cacheKey == null)
+			throw new ServiceException("cacheKey may not be null");
+		else
+			return;
+	}
+	
 	public static void validateParams(String cacheManagerName) throws ServiceException {
 		if (cacheManagerName == null || cacheManagerName.trim().length() == 0)
 			throw new ServiceException("cacheManagerName may not be empty");
@@ -411,6 +403,29 @@ public final class services
 			throw new IllegalArgumentException("CacheManager is null...Check your configuration.");
 	
 		return cacheManager;
+	}
+	
+	public static Cache getCache(IDataCursor pipelineCursor) throws ServiceException {
+		String cacheManagerName = null;
+		String cacheName = null;
+		Cache cache = null;
+		
+		if (pipelineCursor.first("cacheManagerName"))
+		{
+			//get the filename string object out of the pipeline
+			cacheManagerName = (String) pipelineCursor.getValue();
+		}
+		
+		if (pipelineCursor.first("cacheName"))
+		{
+			//get the filename string object out of the pipeline
+			cacheName = (String) pipelineCursor.getValue();
+		}
+		
+		//get the cache
+		cache = getCache(cacheManagerName, cacheName);
+		
+		return cache;
 	}
 	
 	public static Cache getCache(String cacheManagerName, String cacheName) throws ServiceException {
