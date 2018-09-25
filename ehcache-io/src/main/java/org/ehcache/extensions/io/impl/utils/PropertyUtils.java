@@ -14,7 +14,7 @@ public class PropertyUtils {
     public static final String PROP_OUTPUTSTREAM_OVERRIDE = "ehcache.extension.io.outputstream.override";
     public static final String PROP_OUTPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.outputstream.opentimeout";
 
-    public static final int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 128 * 1024; // 128kb
+    public static final int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 256 * 1024; // 256kb
     public static final boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
     public static final int DEFAULT_INPUTSTREAM_BUFFER_SIZE = 512 * 1024; // 512kb
     public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 10000L;
