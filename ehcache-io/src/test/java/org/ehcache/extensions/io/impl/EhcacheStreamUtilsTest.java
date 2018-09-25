@@ -1,10 +1,7 @@
 package org.ehcache.extensions.io.impl;
 
-import org.ehcache.extensions.io.EhcacheStreamConcurrentException;
-import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsFactory;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;

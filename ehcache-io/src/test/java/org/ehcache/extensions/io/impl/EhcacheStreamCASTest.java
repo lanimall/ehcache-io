@@ -52,11 +52,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -66,7 +66,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> resultInc = new AtomicReference<Long>();
-            final AtomicReference<Class> exceptionInc = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exceptionInc = new AtomicReference<Throwable>();
 
             callableResults.add(resultInc);
             exceptions.add(exceptionInc);
@@ -105,11 +105,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -119,7 +119,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> resultInc = new AtomicReference<Long>();
-            final AtomicReference<Class> exceptionInc = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exceptionInc = new AtomicReference<Throwable>();
 
             callableResults.add(resultInc);
             exceptions.add(exceptionInc);
@@ -159,11 +159,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -173,7 +173,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Class> exception = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
 
             callableResults.add(result);
             exceptions.add(exception);
@@ -196,7 +196,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Class> exception = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
 
             callableResults.add(result);
             exceptions.add(exception);
@@ -235,11 +235,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -249,7 +249,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Class> exception = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
 
             callableResults.add(result);
             exceptions.add(exception);
@@ -297,11 +297,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -311,7 +311,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Class> exception = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
 
             callableResults.add(result);
             exceptions.add(exception);
@@ -334,7 +334,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Class> exception = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
 
             callableResults.add(result);
             exceptions.add(exception);
@@ -374,11 +374,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -388,7 +388,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Class> exception = new AtomicReference<Class>();
+            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
 
             callableResults.add(result);
             exceptions.add(exception);
@@ -437,11 +437,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -451,7 +451,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Class>());
+            exceptions.add(new AtomicReference<Throwable>());
             callables.add(new Callable<Long>() {
                 @Override
                 public Long call() throws Exception {
@@ -470,7 +470,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
             });
 
             callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Class>());
+            exceptions.add(new AtomicReference<Throwable>());
             callables.add(new Callable<Long>() {
                 @Override
                 public Long call() throws Exception {
@@ -489,7 +489,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
             });
 
             callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Class>());
+            exceptions.add(new AtomicReference<Throwable>());
             callables.add(new Callable<Long>() {
                 @Override
                 public Long call() throws Exception {
@@ -508,7 +508,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
             });
 
             callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Class>());
+            exceptions.add(new AtomicReference<Throwable>());
             callables.add(new Callable<Long>() {
                 @Override
                 public Long call() throws Exception {
@@ -553,11 +553,11 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Class>> exceptions;
+        List<AtomicReference<Throwable>> exceptions;
 
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
@@ -567,7 +567,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Class>());
+            exceptions.add(new AtomicReference<Throwable>());
             callables.add(new Callable<Long>() {
                 @Override
                 public Long call() throws Exception {
@@ -594,7 +594,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
             });
 
             callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Class>());
+            exceptions.add(new AtomicReference<Throwable>());
             callables.add(new Callable<Long>() {
                 @Override
                 public Long call() throws Exception {

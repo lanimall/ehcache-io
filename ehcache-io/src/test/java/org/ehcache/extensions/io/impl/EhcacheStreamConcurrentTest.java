@@ -35,7 +35,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     private static long NULL_CHECKSUM = -1;
     private ArrayList<Callable<Long>> callables;
     private List<AtomicReference<Long>> callableResults;
-    private List<AtomicReference<Class>> exceptions;
+    private List<AtomicReference<Throwable>> exceptions;
     private long inputFileCheckSum = NULL_CHECKSUM;
 
     private final int copyBufferSize = 128*1024;
@@ -66,7 +66,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         inputFileCheckSum = readFileFromDisk();
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Class>>();
+        exceptions = new ArrayList<AtomicReference<Throwable>>();
         cacheSetUp();
         streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
     }
@@ -167,7 +167,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         });
 
         callableResults.add(new AtomicReference<Long>());
-        exceptions.add(new AtomicReference<Class>());
+        exceptions.add(new AtomicReference<Throwable>());
     }
 
     private void addWriteCallable(final EhcacheOutputStreamTestParams ehcacheOuputStreamParams) throws EhcacheStreamException {
@@ -220,7 +220,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         });
 
         callableResults.add(new AtomicReference<Long>());
-        exceptions.add(new AtomicReference<Class>());
+        exceptions.add(new AtomicReference<Throwable>());
     }
 
     @Test
@@ -312,7 +312,9 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             Assert.assertEquals(inputFileCheckSum, callableResults.get(1).get().longValue());
         } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY){
             Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
-            Assert.assertEquals(EhcacheStreamConcurrentException.class, exceptions.get(1).get()); // read thread should have EhcacheStreamConcurrentException because the write took over
+
+            Assert.assertNotNull(exceptions.get(1).get()); // read thread should have EhcacheStreamConcurrentException because the write took over
+            Assert.assertEquals(EhcacheStreamIllegalStateException.class, exceptions.get(1).get().getClass()); // read thread should have EhcacheStreamIllegalStateException because the write took over
 
             Assert.assertEquals(inputFileCheckSum, callableResults.get(0).get().longValue());
             Assert.assertNull(callableResults.get(1).get());
@@ -576,7 +578,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
         Assert.assertEquals(inputFileCheckSum, callableResults.get(0).get().longValue());
 
-        Assert.assertEquals(EhcacheStreamTimeoutException.class, exceptions.get(1).get()); // read thread should have 1 exception
+        Assert.assertTrue(null != exceptions.get(1).get() && exceptions.get(1).get() instanceof EhcacheStreamTimeoutException); // read thread should have 1 exception
         Assert.assertNull(callableResults.get(1).get());
     }
 
@@ -626,14 +628,16 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                         PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS
                 )
         {
-            Assert.assertEquals(EhcacheStreamTimeoutException.class, exceptions.get(0).get()); // write thread should have 1 exception
+            Assert.assertTrue(null != exceptions.get(0).get() && exceptions.get(0).get() instanceof EhcacheStreamTimeoutException); // write thread should have 1 exception
             Assert.assertNull(exceptions.get(1).get()); // read thread should have 0 exception
 
             Assert.assertNull(callableResults.get(0).get());
             Assert.assertEquals(inputFileCheckSum, callableResults.get(1).get().longValue());
         } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY){
             Assert.assertNull(exceptions.get(0).get()); // write thread should have 0 exception
-            Assert.assertEquals(EhcacheStreamConcurrentException.class, exceptions.get(1).get()); // read thread should have EhcacheStreamConcurrentException because the write took over
+
+            Assert.assertNotNull(exceptions.get(1).get()); // read thread should have EhcacheStreamConcurrentException because the write took over
+            Assert.assertEquals(EhcacheStreamIllegalStateException.class, exceptions.get(1).get().getClass());
 
             Assert.assertEquals(checksumCacheAdded, callableResults.get(0).get().longValue());
             Assert.assertNull(callableResults.get(1).get());
