@@ -3,8 +3,6 @@ package org.ehcache.extensions.io.impl.utils;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamKey;
-import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
