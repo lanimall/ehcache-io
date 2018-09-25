@@ -20,20 +20,16 @@ import java.util.zip.CheckedOutputStream;
 public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheInputStreamTest.class);
 
-    private long inputFileCheckSum = -1L;
-
     @Before
     public void setup() throws Exception {
         setupParameterizedProperties();
         cacheSetUp();
-        inputFileCheckSum = copyFileToCache(getCacheKey());
     }
 
     @After
     public void cleanup() throws IOException {
         cacheCleanUp();
         cleanBigOutputFile();
-        inputFileCheckSum = -1L;
         cleanupParameterizedProperties();
     }
 
@@ -54,12 +50,19 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void copyCacheToFileUsingStreamSmallerCopyBuffer() throws Exception {
-        int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
-        int outBufferSize = 128 * 1024;
+    public void copyCacheToFileLargeReadBufferSmallCacheChunks() throws Exception {
+        int inBufferSize = 512 * 1024; //ehcache input stream large internal buffer
+        int outBufferSize = 12 * 1024; //small chunks in cache
         int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
+
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //first, copy file to cache
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true, outBufferSize);
+
+        Assert.assertTrue(getCache().getSize() > 0);
 
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey(), false, inBufferSize),new CRC32());
@@ -89,12 +92,20 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void copyCacheToFileUsingStreamLargerCopyBuffer() throws Exception {
-        int inBufferSize = 128 * 1024; //ehcache input stream internal buffer
-        int outBufferSize = 128 * 1024;
+    public void copyCacheToFileSmallReadBufferLargeCacheChunks() throws Exception {
+        int inBufferSize = 17 * 1024; //ehcache input stream internal buffer
+        int outBufferSize = 769 * 1024; //large cache chunks
         int copyBufferSize = 357 * 1024; //copy buffer size *larger* than ehcache input stream internal buffer to make sure it works that way
+
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
+
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //first, copy file to cache
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true, outBufferSize);
+
+        Assert.assertTrue(getCache().getSize() > 0);
 
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey(), false, inBufferSize),new CRC32());
@@ -129,6 +140,13 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
 
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //first, copy file to cache
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true);
+
+        Assert.assertTrue(getCache().getSize() > 0);
+
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey()),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
@@ -160,6 +178,13 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
     public void copyCacheToFileUsingStreamDefaultBuffersByteByByte() throws Exception {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
+
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //first, copy file to cache
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true);
+
+        Assert.assertTrue(getCache().getSize() > 0);
 
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey()),new CRC32());
@@ -194,6 +219,13 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
 
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //first, copy file to cache
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true);
+
+        Assert.assertTrue(getCache().getSize() > 0);
+
         final String cacheKey = "something-else";
 
         InputStream is = EhcacheIOStreams.getInputStream(getCache(), cacheKey, true);
@@ -205,6 +237,13 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         int copyBufferSize = 512 * 1024; //copy buffer size
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
+
+        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
+
+        //first, copy file to cache
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true);
+
+        Assert.assertTrue(getCache().getSize() > 0);
 
         final String cacheKeyNotExist = getCacheKey() + "doesNotExist";
 
