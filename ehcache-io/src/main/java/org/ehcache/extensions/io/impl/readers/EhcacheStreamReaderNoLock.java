@@ -1,7 +1,6 @@
 package org.ehcache.extensions.io.impl.readers;
 
 import net.sf.ehcache.Ehcache;
-import org.ehcache.extensions.io.EhcacheStreamConcurrentException;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
@@ -102,7 +101,7 @@ import org.slf4j.LoggerFactory;
                         currentStreamMaster.getLastWrittenNanos() == initialStreamMasterFromCache.getLastWrittenNanos();
 
         if(!isWeaklyConsistent)
-            throw new EhcacheStreamConcurrentException("Concurrent modification exception: EhcacheStreamMaster has changed since opening...concurrent write must have happened.");
+            throw new EhcacheStreamIllegalStateException("Concurrent modification exception: EhcacheStreamMaster has changed since opening...concurrent write must have happened.");
 
         // if cache entry is null, it's fine...means there's nothing to copy
         if(null == currentStreamMaster)

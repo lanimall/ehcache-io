@@ -1,7 +1,6 @@
 package org.ehcache.extensions.io.impl.writers;
 
 import net.sf.ehcache.Ehcache;
-import org.ehcache.extensions.io.EhcacheStreamConcurrentException;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
@@ -65,7 +64,7 @@ import java.util.Arrays;
 
                 boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialStreamMasterFromCache, activeStreamMaster);
                 if (!replaced)
-                    throw new EhcacheStreamConcurrentException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
+                    throw new EhcacheStreamIllegalStateException("Concurrent write not allowed - Current cache entry with key[" + getCacheKey() + "] is currently being written...");
 
                 //if the previous cas operation was successful, save (deep copy) the value from the cache into a instance variable
                 EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
@@ -111,7 +110,7 @@ import java.util.Arrays;
 
                 boolean replaced = getEhcacheStreamUtils().replaceIfEqualEhcacheStreamMaster(getCacheKey(), initialOpenedStreamMaster, activeStreamMaster);
                 if (!replaced)
-                    throw new EhcacheStreamConcurrentException("CAS replace failed: Could not close the ehcache stream index properly.");
+                    throw new EhcacheStreamIllegalStateException("CAS replace failed: Could not close the ehcache stream index properly.");
 
                 //release the lock
                 getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
