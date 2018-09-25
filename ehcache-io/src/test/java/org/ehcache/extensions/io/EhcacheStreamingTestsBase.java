@@ -580,7 +580,7 @@ public abstract class EhcacheStreamingTestsBase {
         }
     }
 
-    public void runInThreads(List<Callable<Long>> callables, List<AtomicReference<Long>> callableResults, List<AtomicReference<Class>> exceptions) throws InterruptedException {
+    public void runInThreads(List<Callable<Long>> callables, List<AtomicReference<Long>> callableResults, List<AtomicReference<Throwable>> exceptions) throws InterruptedException {
         long start = 0L, end = 0L;
         logger.info("============ runInThreads ====================");
 
@@ -619,9 +619,9 @@ public abstract class EhcacheStreamingTestsBase {
         private final Callable<R> callable;
         private final CountDownLatch doneLatch;
         private AtomicReference<R> callableResult;
-        private AtomicReference<Class> exception;
+        private AtomicReference<Throwable> exception;
 
-        public ThreadWorker(Callable<R> callable, CountDownLatch doneLatch, AtomicReference<R> callableResult, AtomicReference<Class> exception) {
+        public ThreadWorker(Callable<R> callable, CountDownLatch doneLatch, AtomicReference<R> callableResult, AtomicReference<Throwable> exception) {
             super();
             this.callable = callable;
             this.doneLatch = doneLatch;
@@ -635,7 +635,7 @@ public abstract class EhcacheStreamingTestsBase {
                 callableResult.set(callable.call());
             } catch (Exception e) {
                 if(null != exception)
-                    exception.set(e.getClass());
+                    exception.set(e);
                 logger.debug(e.getMessage(),e);
             } finally{
                 doneLatch.countDown();
