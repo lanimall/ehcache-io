@@ -34,6 +34,108 @@ public final class services
 
 
 
+	public static final void appendToStream (IData pipeline)
+        throws ServiceException
+	{
+		// --- <<IS-START(appendToStream)>> ---
+		// @sigtype java 3.5
+		// [i] object:0:required bytesOrInputStream
+		// [i] object:0:required outputStream
+		// [i] field:0:required copyBufferSize
+		IDataCursor pipelineCursor = pipeline.getCursor();
+		
+		OutputStream outputStream = null;
+		InputStream inputStream = null;
+		
+		//input stream
+		if (pipelineCursor.first("bytesOrInputStream"))
+		{
+			Object o = pipelineCursor.getValue();
+			if(null != o){
+				if (o instanceof byte[])
+				{
+					byte[] buf = (byte[]) pipelineCursor.getValue();
+					inputStream = new ByteArrayInputStream(buf);
+				}
+				else if (o instanceof InputStream)
+				{
+					inputStream = (InputStream) pipelineCursor.getValue();
+				}
+			}
+		}
+		
+		if(null == inputStream)
+			throw new ServiceException("inputStream provided is null...should not be.");
+		
+		//output stream
+		if (pipelineCursor.first("outputStream"))
+		{
+			outputStream = (OutputStream)pipelineCursor.getValue();
+		}
+		
+		if (outputStream == null)
+			throw new ServiceException("outputStream provided is null...should not be.");
+			
+		//stream copy buffer size
+		Integer copyBufferSize = null;
+		if (pipelineCursor.first("copyBufferSize"))
+		{
+			String copyBufferSizeStr = (String)pipelineCursor.getValue();
+			try{
+				if(null != copyBufferSizeStr && !"".equals(copyBufferSizeStr))
+					copyBufferSize = Integer.parseInt(copyBufferSizeStr);
+			} catch (NumberFormatException nfe){
+				copyBufferSize = null;
+			}	
+		}
+		
+		//create the OutputStream and copy to it directly
+		try {
+			if(copyBufferSize != null)
+				pipeStreamsWithBuffer(inputStream, outputStream, copyBufferSize);
+			else 
+				pipeStreamsByteByByte(inputStream, outputStream);
+		} catch (IOException e) {
+			throw new ServiceException(e);
+		}
+		
+		pipelineCursor.destroy();
+		// --- <<IS-END>> ---
+
+                
+	}
+
+
+
+	public static final void closeStream (IData pipeline)
+        throws ServiceException
+	{
+		// --- <<IS-START(closeStream)>> ---
+		// @sigtype java 3.5
+		// [i] object:0:required stream
+		IDataCursor pipelineCursor = pipeline.getCursor();
+		
+		Closeable stream = null;
+		if (pipelineCursor.first("stream"))
+		{
+			try{
+				stream = (Closeable)pipelineCursor.getValue();
+			} catch (ClassCastException cce){
+				throw new ServiceException("stream object does not implement Closeable...should not be.");
+			}
+		}
+		
+		//close the stream
+		closeStream(stream);
+		
+		pipelineCursor.destroy();
+		// --- <<IS-END>> ---
+
+                
+	}
+
+
+
 	public static final void containsStreamEntry (IData pipeline)
         throws ServiceException
 	{
@@ -85,6 +187,8 @@ public final class services
 		// [i] field:0:required cacheName
 		// [i] object:0:required key
 		// [i] field:0:optional decompress {"true","false"}
+		// [i] field:0:required bufferSize
+		// [i] field:0:required openTimeout
 		// [o] object:0:required ehcacheInputStream
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
@@ -114,6 +218,8 @@ public final class services
 		// [i] object:0:required key
 		// [i] field:0:optional append {"true","false"}
 		// [i] field:0:optional compress {"true","false"}
+		// [i] field:0:required bufferSize
+		// [i] field:0:required openTimeout
 		// [o] object:0:required ehcacheOutputStream
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
@@ -185,13 +291,15 @@ public final class services
 		// [i] field:0:required cacheManagerName
 		// [i] field:0:required cacheName
 		// [i] object:0:required key
-		// [i] object:0:required inputStream
+		// [i] object:0:required bytesOrInputStream
 		// [i] field:0:optional append {"true","false"}
 		// [i] field:0:optional compress {"true","false"}
+		// [i] field:0:required bufferSize
+		// [i] field:0:required openTimeout
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
 		InputStream inputStream = null;
-		if (pipelineCursor.first("inputStream"))
+		if (pipelineCursor.first("bytesOrInputStream"))
 		{
 			Object o = pipelineCursor.getValue();
 			if(null != o){
@@ -209,6 +317,19 @@ public final class services
 		
 		if(null == inputStream)
 			throw new ServiceException("inputStream provided is null...should not be.");
+		
+		//copy buffer size
+		int copyBufferSize = DEFAULT_COPY_BUFFERSIZE;
+		if (pipelineCursor.first("bufferSize"))
+		{
+			String copyBufferSizeStr = (String)pipelineCursor.getValue();
+			try{
+				if(null != copyBufferSizeStr && !"".equals(copyBufferSizeStr))
+					copyBufferSize = Integer.parseInt(copyBufferSizeStr);
+			} catch (NumberFormatException nfe){
+				copyBufferSize = DEFAULT_COPY_BUFFERSIZE;
+			}	
+		}
 		
 		//create the OutputStream and copy to it directly
 		OutputStream ehcacheOutputStream = null;
@@ -272,11 +393,10 @@ public final class services
 	}
 
 	// --- <<IS-START-SHARED>> ---
-	static int copyBufferSize = 128*1024; //copy buffer
+	static int DEFAULT_COPY_BUFFERSIZE = 128*1024; //default ehcache outputstream buffer size
+	static boolean DEFAULT_GET_ALLOW_NULL_STREAM = true; // allow null stream on get when key not found
 	
 	public static OutputStream createOutputStream(IDataCursor pipelineCursor) throws ServiceException {
-		String cacheManagerName = null;
-		String cacheName = null;
 		Object cacheKey = null;
 		String appendStr = null;
 		String compressStr = null;
@@ -304,16 +424,50 @@ public final class services
 		
 		boolean append = (null != appendStr && "true".equalsIgnoreCase(appendStr));
 		boolean compress = (null != compressStr && "true".equalsIgnoreCase(compressStr));
+	
+		//copy buffer size
+		Integer copyBufferSize = null;
+		if (pipelineCursor.first("bufferSize"))
+		{
+			String copyBufferSizeStr = (String)pipelineCursor.getValue();
+			try{
+				if(null != copyBufferSizeStr && !"".equals(copyBufferSizeStr))
+					copyBufferSize = Integer.parseInt(copyBufferSizeStr);
+			} catch (NumberFormatException nfe){
+				copyBufferSize = null;
+			}	
+		}
+	
+		//open timeout
+		Long openTimeout = null;
+		if (pipelineCursor.first("openTimeout"))
+		{
+			String openTimeoutStr = (String)pipelineCursor.getValue();
+			try{
+				if(null != openTimeoutStr && !"".equals(openTimeoutStr))
+					openTimeout = Long.parseLong(openTimeoutStr);
+			} catch (NumberFormatException nfe){
+				openTimeout = null;
+			}	
+		}
 		
-		return createOutputStream(cache, cacheKey, append, compress);
+		return createOutputStream(cache, cacheKey, append, compress, copyBufferSize, openTimeout);
 	}
 	
-	public static OutputStream createOutputStream(Cache cache, Object cacheKey, boolean append, boolean compress) throws ServiceException {
+	public static OutputStream createOutputStream(Cache cache, Object cacheKey, boolean append, boolean compress, Integer bufferSize, Long openTimeout) throws ServiceException {
 		validateParamsCacheKey(cacheKey);
 		
 		OutputStream ehcacheOutputStream = null;
 		try {
-			ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cacheKey, !append);
+			if(null == bufferSize && null == openTimeout)
+				ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cacheKey, !append);
+			else if (null != bufferSize && null == openTimeout)
+				ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cacheKey, !append, bufferSize);
+			else if (null == bufferSize && null != openTimeout)
+				ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cacheKey, !append, DEFAULT_COPY_BUFFERSIZE, openTimeout);
+			else if (null != bufferSize && null != openTimeout)
+				ehcacheOutputStream = EhcacheIOStreams.getOutputStream(cache, cacheKey, !append, bufferSize, openTimeout);
+				
 			if(compress)
 				ehcacheOutputStream = new GZIPOutputStream(ehcacheOutputStream);
 		} catch (IOException e) {
@@ -325,8 +479,6 @@ public final class services
 	}
 	
 	public static InputStream createInputStream(IDataCursor pipelineCursor) throws ServiceException {
-		String cacheManagerName = null;
-		String cacheName = null;
 		String decompressStr = null;
 		Object cacheKey = null;
 		
@@ -344,22 +496,57 @@ public final class services
 			//get the filename string object out of the pipeline
 			decompressStr = (String) pipelineCursor.getValue();
 		}
-		
+	
+		//copy buffer size
+		Integer copyBufferSize = null;
+		if (pipelineCursor.first("bufferSize"))
+		{
+			String copyBufferSizeStr = (String)pipelineCursor.getValue();
+			try{
+				if(null != copyBufferSizeStr && !"".equals(copyBufferSizeStr))
+					copyBufferSize = Integer.parseInt(copyBufferSizeStr);
+			} catch (NumberFormatException nfe){
+				copyBufferSize = null;
+			}	
+		}
+	
+		//open timeout
+		Long openTimeout = null;
+		if (pipelineCursor.first("openTimeout"))
+		{
+			String openTimeoutStr = (String)pipelineCursor.getValue();
+			try{
+				if(null != openTimeoutStr && !"".equals(openTimeoutStr))
+					openTimeout = Long.parseLong(openTimeoutStr);
+			} catch (NumberFormatException nfe){
+				openTimeout = null;
+			}	
+		}
+	
 		//parse decompress value
 		boolean decompress = (null != decompressStr && "true".equalsIgnoreCase(decompressStr));
 		
 		//force returning null on key not found
-		boolean allowNullStream = true;
+		boolean allowNullStream = DEFAULT_GET_ALLOW_NULL_STREAM;
 		
-		return createInputStream(cache, cacheKey, allowNullStream, decompress);
+		return createInputStream(cache, cacheKey, allowNullStream, decompress, copyBufferSize, openTimeout);
 	}
 	
-	public static InputStream createInputStream(Cache cache, Object cacheKey, boolean allowNullStream, boolean decompress) throws ServiceException {
+	public static InputStream createInputStream(Cache cache, Object cacheKey, boolean allowNullStream, boolean decompress, Integer bufferSize, Long openTimeout) throws ServiceException {
 		validateParamsCacheKey(cacheKey);
 		
 		InputStream ehcacheInputStream = null;
 		try {
-			ehcacheInputStream = EhcacheIOStreams.getInputStream(cache, cacheKey, allowNullStream);
+			
+			if(null == bufferSize && null == openTimeout)
+				ehcacheInputStream = EhcacheIOStreams.getInputStream(cache, cacheKey, allowNullStream);
+			else if (null != bufferSize && null == openTimeout)
+				ehcacheInputStream = EhcacheIOStreams.getInputStream(cache, cacheKey, allowNullStream, bufferSize);
+			else if (null == bufferSize && null != openTimeout)
+				ehcacheInputStream = EhcacheIOStreams.getInputStream(cache, cacheKey, allowNullStream, DEFAULT_COPY_BUFFERSIZE, openTimeout);
+			else if (null != bufferSize && null != openTimeout)
+				ehcacheInputStream = EhcacheIOStreams.getInputStream(cache, cacheKey, allowNullStream, bufferSize, openTimeout);
+			
 			if(null != ehcacheInputStream && ehcacheInputStream.available() > 0){
 				if(decompress){
 					ehcacheInputStream = new GZIPInputStream(ehcacheInputStream);

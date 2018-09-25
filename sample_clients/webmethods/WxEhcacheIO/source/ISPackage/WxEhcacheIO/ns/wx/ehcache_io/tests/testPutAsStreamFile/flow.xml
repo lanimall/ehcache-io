@@ -347,7 +347,7 @@
           <value name="field_password">false</value>
         </record>
         <value name="is_public">false</value>
-        <value name="field_name">inputStream</value>
+        <value name="field_name">bytesOrInputStream</value>
         <value name="field_type">object</value>
         <value name="field_dim">0</value>
         <value name="nillable">true</value>
@@ -393,6 +393,44 @@
         <array name="field_options" type="value" depth="1">
           <value>true</value>
           <value>false</value>
+        </array>
+        <value name="nillable">true</value>
+        <value name="form_qualified">false</value>
+        <value name="is_global">false</value>
+      </record>
+      <record javaclass="com.wm.util.Values">
+        <value name="node_type">record</value>
+        <value name="node_subtype">unknown</value>
+        <value name="node_comment"></value>
+        <record name="node_hints" javaclass="com.wm.util.Values">
+          <value name="field_usereditable">true</value>
+          <value name="field_largerEditor">false</value>
+          <value name="field_password">false</value>
+        </record>
+        <value name="is_public">false</value>
+        <value name="field_name">bufferSize</value>
+        <value name="field_type">string</value>
+        <value name="field_dim">0</value>
+        <array name="field_options" type="value" depth="1">
+        </array>
+        <value name="nillable">true</value>
+        <value name="form_qualified">false</value>
+        <value name="is_global">false</value>
+      </record>
+      <record javaclass="com.wm.util.Values">
+        <value name="node_type">record</value>
+        <value name="node_subtype">unknown</value>
+        <value name="node_comment"></value>
+        <record name="node_hints" javaclass="com.wm.util.Values">
+          <value name="field_usereditable">true</value>
+          <value name="field_largerEditor">false</value>
+          <value name="field_password">false</value>
+        </record>
+        <value name="is_public">false</value>
+        <value name="field_name">openTimeout</value>
+        <value name="field_type">string</value>
+        <value name="field_dim">0</value>
+        <array name="field_options" type="value" depth="1">
         </array>
         <value name="nillable">true</value>
         <value name="form_qualified">false</value>
@@ -572,7 +610,7 @@
 
   <!-- nodes -->
 
-<MAPCOPY FROM="/stream;3;0" TO="/inputStream;3;0">
+<MAPCOPY FROM="/stream;3;0" TO="/bytesOrInputStream;3;0">
 </MAPCOPY>
 </MAP>
 
@@ -652,7 +690,7 @@
         <value name="node_type">unknown</value>
         <value name="node_subtype">unknown</value>
         <value name="is_public">false</value>
-        <value name="field_name">inputStream</value>
+        <value name="field_name">bytesOrInputStream</value>
         <value name="field_type">object</value>
         <value name="field_dim">0</value>
         <value name="nillable">true</value>
@@ -776,10 +814,10 @@
 
   <!-- nodes -->
 
-<MAPDELETE FIELD="/inputStream;3;0">
+<MAPDELETE FIELD="/stream;3;0">
 </MAPDELETE>
 
-<MAPDELETE FIELD="/stream;3;0">
+<MAPDELETE FIELD="/bytesOrInputStream;3;0">
 </MAPDELETE>
 </MAP>
 </INVOKE>
