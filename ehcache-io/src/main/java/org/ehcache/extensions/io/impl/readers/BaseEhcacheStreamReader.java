@@ -31,11 +31,16 @@ public abstract class BaseEhcacheStreamReader extends BaseEhcacheStream implemen
         this.cacheChunkBytePos = 0;
     }
 
-    protected int copyCacheChunksIntoBuffer(final byte[] outBuf, final int bufferBytePos, final int chunksTotalCount) throws EhcacheStreamException {
-        int byteCopied = 0;
+    protected int copyCacheChunksIntoBuffer(final byte[] outBuf, final int initialBufferBytePos, final int chunksTotalCount) throws EhcacheStreamException {
+        final int initialBufferAvailableSize = outBuf.length - initialBufferBytePos;
+        int totalByteCopied = 0;
+        int cacheChunkAvailableSize = 0;
 
-        // let's get the cache chunk based on the internal index tracker
-        if(cacheChunkIndexPos < chunksTotalCount){
+        //repeat until current buffer is full or we reach the max chunk index
+        int currentByteCopied = 0;
+        int currentBufferAvailableSize = 0;
+        int currentBufferBytePos = 0;
+        while (totalByteCopied < initialBufferAvailableSize && cacheChunkIndexPos < chunksTotalCount) {
             EhcacheStreamValue cacheChunkValue = getEhcacheStreamUtils().getChunkValue(getCacheKey(), cacheChunkIndexPos);
 
             //TODO: IMPORTANT!! checking for null cacheChunkValue is not enough
@@ -45,38 +50,47 @@ public abstract class BaseEhcacheStreamReader extends BaseEhcacheStream implemen
             //TODO: EG. as a write happens, it would store the checksums of each chunks in the stream master object,
             //TODO: And then, on read, we could reference and cross check each chunk from cache against expected checksum
             //TODO: i think that would be a good improvement for data consistency.
-            if(null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
+            if (null != cacheChunkValue && null != cacheChunkValue.getChunk()) {
                 byte[] cacheChunk = cacheChunkValue.getChunk();
 
+                //get the amount of bytes that could be copied from the current cache chunk
+                cacheChunkAvailableSize = cacheChunk.length - cacheChunkBytePos;
+
+                //re-adjust the buffer available and buffer position numbers taking into consideration the total number of bytes already written
+                currentBufferAvailableSize = initialBufferAvailableSize - totalByteCopied;
+                currentBufferBytePos = initialBufferBytePos + totalByteCopied;
+
                 //calculate the number of bytes to copy from the cacheChunks into the destination buffer based on the buffer size that's available
-                if(cacheChunk.length - cacheChunkBytePos < outBuf.length - bufferBytePos){
-                    byteCopied = cacheChunk.length - cacheChunkBytePos;
+                if (cacheChunkAvailableSize < currentBufferAvailableSize) {
+                    currentByteCopied = cacheChunkAvailableSize;
                 } else {
-                    byteCopied = outBuf.length - bufferBytePos;
+                    currentByteCopied = currentBufferAvailableSize;
                 }
 
-                System.arraycopy(cacheChunk, cacheChunkBytePos, outBuf, bufferBytePos, byteCopied);
+                System.arraycopy(cacheChunk, cacheChunkBytePos, outBuf, currentBufferBytePos, currentByteCopied);
 
                 //track the chunk offset for next
-                if(byteCopied < cacheChunk.length - cacheChunkBytePos) {
-                    cacheChunkBytePos = cacheChunkBytePos + byteCopied;
+                if (currentByteCopied < cacheChunkAvailableSize) {
+                    cacheChunkBytePos = cacheChunkBytePos + currentByteCopied;
                 } else { // it means we'll need to use the next chunk
                     cacheChunkIndexPos++;
                     cacheChunkBytePos = 0;
                 }
+
+                //make sure to add the current bytes copied to the total
+                totalByteCopied += currentByteCopied;
             } else {
+                cacheChunkAvailableSize = 0;
+
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
                 throw new EhcacheStreamIllegalStateException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be " +
-                        "since we're within the cache total chunks [=" +  chunksTotalCount + "] boundaries." +
+                        "since we're within the cache total chunks [=" + chunksTotalCount + "] boundaries." +
                         "Make sure the cache chunk values are not evicted (eg. pinning is not enabled?). " +
                         "Also, if cache is eventual, the entries may not all be synced yet..." +
                         "Consider changing your cache consistency to [strong]");
             }
-        } else {
-            //if we are here, we know we're done as we reached the end of the chunks...
-            // BUT careful not to close here: the calling stream implementation may be calling this some more (eg. in case of buffer reading for example)
         }
 
-        return byteCopied;
+        return totalByteCopied;
     }
 }
