@@ -22,7 +22,7 @@ import org.slf4j.LoggerFactory;
 
     //This is the copy of the master cache entry at time of open
     //we will use it to compare what we get during the successive gets
-//    private EhcacheStreamMaster activeStreamMaster;
+    private EhcacheStreamMaster activeStreamMaster;
 
     private volatile boolean isOpen = false;
     private final long openTimeoutMillis;
@@ -47,7 +47,7 @@ import org.slf4j.LoggerFactory;
 
         if (!isOpen) {
             try {
-                getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
                         getCacheKey(),
                         openTimeoutMillis,
                         false,
@@ -91,6 +91,7 @@ import org.slf4j.LoggerFactory;
 
             //clean the internal vars
             isOpen = false;
+            activeStreamMaster = null;
             super.close();
         }
 
@@ -103,14 +104,11 @@ import org.slf4j.LoggerFactory;
         if(!isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader is not open...call open() first.");
 
-        int byteCopied = 0;
-
-        //get the stream master
-        EhcacheStreamMaster activeStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-
-        // if cache entry is null, it's fine...means there's nothing to copy
+        // activeStreamMaster may not be null here since the open should have created it even if it was not there...
         if(null == activeStreamMaster)
-            return byteCopied;
+            throw new EhcacheStreamIllegalStateException("activeStreamMaster should not be null at this point...");
+
+        int byteCopied = 0;
 
         // copy the cache chunks into the buffer based on the internal index tracker
         return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
