@@ -14,8 +14,11 @@ public class PropertyUtils {
     public static final String PROP_OUTPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.outputstream.opentimeout";
 
     public static final String PROP_CONCURRENCY_MODE = "ehcache.extension.io.concurrency.mode";
-    public static final String PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = "ehcache.extension.io.concurrency.cas.backoff.exponential.base";
-    public static final String PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = "ehcache.extension.io.concurrency.cas.backoff.exponential.cap";
+
+    public static final String PROP_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = "ehcache.extension.io.outputstream.concurrency.cas.backoff.exponential.base";
+    public static final String PROP_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = "ehcache.extension.io.outputstream.concurrency.cas.backoff.exponential.cap";
+    public static final String PROP_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = "ehcache.extension.io.inputstream.concurrency.cas.backoff.exponential.base";
+    public static final String PROP_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = "ehcache.extension.io.inputstream.concurrency.cas.backoff.exponential.cap";
 
     public static final int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 256 * 1024; // 256kb
     public static final boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
@@ -23,6 +26,23 @@ public class PropertyUtils {
     public static final long DEFAULT_OUTPUTSTREAM_OPEN_TIMEOUT = 10000L;
     public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
     public static final boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
+
+    public static final long DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = 2;
+    public static final long DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = 50;
+    public static final long DEFAULT_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = 1;
+    public static final long DEFAULT_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = 20;
+
+    //creating an exponential wait object to be use for busy wait cas loops
+    public static final WaitStrategy defaultWritesCasBackoffWaitStrategy = new ExponentialWait(
+            PropertyUtils.getOutputStreamCasLoopExponentialBackoffBase(),
+            PropertyUtils.getOutputStreamCasLoopExponentialBackoffCap()
+    );
+
+    //creating an exponential wait object to be use for busy wait cas loops
+    public static final WaitStrategy defaultReadsCasBackoffWaitStrategy = new ExponentialWait(
+            PropertyUtils.getInputStreamCasLoopExponentialBackoffBase(),
+            PropertyUtils.getInputStreamCasLoopExponentialBackoffCap()
+    );
 
     public static final ConcurrencyMode DEFAULT_CONCURRENCY_MODE = ConcurrencyMode.READ_COMMITTED_CASLOCKS;
 
@@ -47,11 +67,17 @@ public class PropertyUtils {
     public static final ConcurrencyMode getEhcacheIOStreamsConcurrencyMode(){
         return ConcurrencyMode.valueOfIgnoreCase(getPropertyAsString(PROP_CONCURRENCY_MODE, DEFAULT_CONCURRENCY_MODE.getPropValue()));
     }
-    public static final long getCasLoopExponentialBackoffBase(){
-        return getPropertyAsLong(PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS, ExponentialWait.DEFAULT_WAIT_BASE_MILLIS);
+    public static final long getOutputStreamCasLoopExponentialBackoffBase(){
+        return getPropertyAsLong(PROP_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS, DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS);
     }
-    public static final long getCasLoopExponentialBackoffCap(){
-        return getPropertyAsLong(PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS, ExponentialWait.DEFAULT_WAIT_CAP_MILLIS);
+    public static final long getOutputStreamCasLoopExponentialBackoffCap(){
+        return getPropertyAsLong(PROP_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS, DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS);
+    }
+    public static final long getInputStreamCasLoopExponentialBackoffBase(){
+        return getPropertyAsLong(PROP_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS, DEFAULT_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS);
+    }
+    public static final long getInputStreamCasLoopExponentialBackoffCap(){
+        return getPropertyAsLong(PROP_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS, DEFAULT_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS);
     }
 
     public static String getPropertyAsString(final Properties properties, final String key, final String defaultVal) {

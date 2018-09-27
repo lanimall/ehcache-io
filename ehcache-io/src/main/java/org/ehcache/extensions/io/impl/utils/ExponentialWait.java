@@ -12,17 +12,11 @@ public class ExponentialWait implements WaitStrategy {
     private static final Logger logger = LoggerFactory.getLogger(ExponentialWait.class);
     private static final boolean isTrace = logger.isTraceEnabled();
 
-    public static final long DEFAULT_WAIT_CAP_MILLIS = 5000;
-    public static final long DEFAULT_WAIT_BASE_MILLIS = 2;
     public static final boolean DEFAULT_WAIT_USE_JITTER = true;
 
     private final long base;
     private final long cap;
     private final boolean jitter;
-
-    public ExponentialWait() {
-        this(DEFAULT_WAIT_BASE_MILLIS,DEFAULT_WAIT_CAP_MILLIS,DEFAULT_WAIT_USE_JITTER);
-    }
 
     public ExponentialWait(long base, long cap) {
         this(base, cap, DEFAULT_WAIT_USE_JITTER);
