@@ -484,6 +484,34 @@ public abstract class EhcacheStreamingTestsBase {
         return outputChecksum;
     }
 
+    public long copyFileToCacheStream(OutputStream os) throws IOException {
+        int fileReadBufferSize = 32 * 1024;
+        long start = 0L, end = 0L;
+        long inputChecksum = 0L;
+        int copyBufferSize = 32*1024;
+
+        logger.debug("============ copyFileToCache ====================");
+        logger.debug("Before Cache Size = " + cache.getSize());
+
+        try (
+                CheckedInputStream is = new CheckedInputStream(new BufferedInputStream(Files.newInputStream(IN_FILE_PATH),fileReadBufferSize),new CRC32());
+        )
+        {
+            start = System.nanoTime();
+            pipeStreamsWithBuffer(is, os, copyBufferSize);
+            end = System.nanoTime();
+
+            inputChecksum = is.getChecksum().getValue();
+        }
+
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Input: %d",inputChecksum));
+        logger.debug("After Cache Size = " + cache.getSize());
+        logger.debug("============================================");
+
+        return inputChecksum;
+    }
+
     public long readFileFromDisk() throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
@@ -535,9 +563,33 @@ public abstract class EhcacheStreamingTestsBase {
             outputChecksum = os.getChecksum().getValue();
         }
 
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
         logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
         Assert.assertEquals(inputChecksum, outputChecksum);
 
+        return outputChecksum;
+    }
+
+    public long readFileFromCacheStream(final InputStream is) throws IOException {
+        int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
+        long start = 0L, end = 0L;
+        long outputChecksum = 0L;
+
+        logger.debug("============ readFileFromCacheStream ====================");
+
+        try (
+                CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(new ByteArrayOutputStream()), new CRC32())
+        )
+        {
+            start = System.nanoTime();
+            pipeStreamsWithBuffer(is, os, copyBufferSize);
+            end = System.nanoTime();
+
+            outputChecksum = os.getChecksum().getValue();
+        }
+
+        logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
+        logger.debug(String.format("CheckSums Output = %d",outputChecksum));
         return outputChecksum;
     }
 
