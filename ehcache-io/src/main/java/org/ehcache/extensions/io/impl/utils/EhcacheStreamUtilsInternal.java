@@ -164,7 +164,7 @@ public class EhcacheStreamUtilsInternal {
         return isRemoved;
     }
 
-    public boolean removeStreamEntryWithExplicitLocks(final Object cacheKey, long timeout) throws EhcacheStreamException {
+    public boolean atomicRemoveEhcacheStreamMasterInCacheExplicitLocks(final Object cacheKey, long timeout) throws EhcacheStreamException {
         boolean removed = false;
         try {
             acquireExclusiveWriteOnMaster(cacheKey, timeout);
@@ -200,14 +200,15 @@ public class EhcacheStreamUtilsInternal {
         return removed;
     }
 
-    public void acquireReadOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamException {
+    public void acquireReadOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamTimeoutException, EhcacheStreamIllegalStateException {
         EhcacheStreamKey key = buildMasterKey(cacheKey);
         try {
             boolean locked = tryLockInternal(key,LockType.READ,timeout);
             if(!locked)
                 throw new EhcacheStreamTimeoutException("Could not acquire the internal ehcache read lock on key [" + key.toString() + "] within timeout [" + timeout + "ms]");
         } catch (InterruptedException e) {
-            throw new EhcacheStreamException("Unexpected interrupt error: Could not acquire the internal ehcache read lock", e);
+            Thread.currentThread().interrupt();
+            throw new EhcacheStreamIllegalStateException("Unexpected interrupt error: Could not acquire the internal ehcache read lock", e);
         }
     }
 
@@ -215,14 +216,15 @@ public class EhcacheStreamUtilsInternal {
         releaseLockInternal(buildMasterKey(cacheKey), LockType.READ);
     }
 
-    public void acquireExclusiveWriteOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamException {
+    public void acquireExclusiveWriteOnMaster(final Object cacheKey, long timeout) throws EhcacheStreamTimeoutException, EhcacheStreamIllegalStateException {
         EhcacheStreamKey key = buildMasterKey(cacheKey);
         try {
             boolean locked = tryLockInternal(key, LockType.WRITE, timeout);
             if(!locked)
                 throw new EhcacheStreamTimeoutException("Could not acquire the internal ehcache write lock on key [" + key.toString() + "] within timeout [" + timeout + "ms]");
         } catch (InterruptedException e) {
-            throw new EhcacheStreamException("Unexpected interrupt error: Could not acquire the internal ehcache write lock", e);
+            Thread.currentThread().interrupt();
+            throw new EhcacheStreamIllegalStateException("Unexpected interrupt error: Could not acquire the internal ehcache write lock", e);
         }
     }
 
