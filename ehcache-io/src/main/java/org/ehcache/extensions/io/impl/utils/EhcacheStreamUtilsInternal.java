@@ -4,6 +4,7 @@ import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
 import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamKey;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
@@ -28,14 +29,6 @@ public class EhcacheStreamUtilsInternal {
      */
     final Ehcache cache;
 
-    /*
-     * creating an exponential wait object to be use for busy wait cas loops
-     */
-    final WaitStrategy waitStrategy = new ExponentialWait(
-            PropertyUtils.getCasLoopExponentialBackoffBase(),
-            PropertyUtils.getCasLoopExponentialBackoffCap()
-    );
-
     public EhcacheStreamUtilsInternal(Ehcache cache) {
         this.cache = cache;
     }
@@ -50,7 +43,7 @@ public class EhcacheStreamUtilsInternal {
     }
 
     //Main CAS loop util method used by the CAS readers/writers
-    public EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final Object cacheKey, final long timeoutMillis, final boolean resetCacheObjectBeforeMutate, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType) throws EhcacheStreamException {
+    public EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final Object cacheKey, final long timeoutMillis, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
         EhcacheStreamMaster mutatedStreamMaster = null;
         long t1 = System.currentTimeMillis();
         long t2 = t1; //this ensures that the while always happen at least once!
@@ -61,7 +54,7 @@ public class EhcacheStreamUtilsInternal {
             EhcacheStreamMaster initialStreamMasterFromCache = getStreamMasterFromCache(cacheKey);
 
             if(comparatorType.check(initialStreamMasterFromCache)) {
-                if(null == initialStreamMasterFromCache || resetCacheObjectBeforeMutate) {
+                if(null == initialStreamMasterFromCache) {
                     mutatedStreamMaster = new EhcacheStreamMaster();
                 } else {
                     mutatedStreamMaster = EhcacheStreamMaster.deepCopy(initialStreamMasterFromCache);
@@ -100,9 +93,13 @@ public class EhcacheStreamUtilsInternal {
         return mutatedStreamMaster;
     }
 
+    public boolean atomicRemoveEhcacheStreamMasterInCache(final Object cacheKey, final long timeoutMillis) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
+        return atomicRemoveEhcacheStreamMasterInCache(cacheKey, timeoutMillis, PropertyUtils.defaultWritesCasBackoffWaitStrategy);
+    }
+
     //An atomic removal of a master stream entry + its related chunk entries.
     //Return TRUE for success state... otherwise throws an exception.
-    public boolean atomicRemoveEhcacheStreamMasterInCache(final Object cacheKey, final long timeoutMillis) throws EhcacheStreamException {
+    public boolean atomicRemoveEhcacheStreamMasterInCache(final Object cacheKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
         EhcacheStreamMaster removedStreamMasterFromCache = null;
         long t1 = System.currentTimeMillis();
         long t2 = t1; //this ensures that the while always happen at least once!
@@ -113,10 +110,10 @@ public class EhcacheStreamUtilsInternal {
         EhcacheStreamMaster activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
                 cacheKey,
                 timeoutMillis,
-                false,
                 EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                 EhcacheStreamMaster.MutationField.WRITERS,
-                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                waitStrategy
         );
 
         //If successful, CAS remove. Comparator for this CAS loop should be SINGLE WRITER
@@ -156,12 +153,12 @@ public class EhcacheStreamUtilsInternal {
         } else {
             //check that the master entry is actually removed
             if(null != getStreamMasterFromCache(cacheKey))
-                throw new EhcacheStreamException("Master Entry was not removed as expected");
+                throw new EhcacheStreamIllegalStateException("Master Entry was not removed as expected");
 
             //check that the other chunks are also removed
             EhcacheStreamValue[] chunkValues = getStreamChunksFromStreamMaster(cacheKey, removedStreamMasterFromCache);
             if(null != chunkValues && chunkValues.length > 0)
-                throw new EhcacheStreamException("Some chunk entries were not removed as expected");
+                throw new EhcacheStreamIllegalStateException("Some chunk entries were not removed as expected");
         }
 
         return isRemoved;
@@ -354,9 +351,13 @@ public class EhcacheStreamUtilsInternal {
     public void clearChunksFromStreamMaster(final Object cacheKey, final EhcacheStreamMaster ehcacheStreamMasterIndex) {
         if(null != ehcacheStreamMasterIndex){
             //remove all the chunk entries
+            List keys = new ArrayList<>(ehcacheStreamMasterIndex.getChunkCount());
             for(int i = 0; i < ehcacheStreamMasterIndex.getChunkCount(); i++){
-                cache.remove(new EhcacheStreamKey(cacheKey, i));
+                keys.add(new EhcacheStreamKey(cacheKey, i));
             }
+
+            //actual removal
+            cache.removeAll(keys);
         }
     }
 
