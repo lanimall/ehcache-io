@@ -35,7 +35,7 @@ import org.slf4j.LoggerFactory;
 
     //This is the copy of the master cache entry at time of open
     //we will use it to compare what we get during the successive gets
-    EhcacheStreamMaster initialStreamMasterFromCache = null;
+    private EhcacheStreamMaster activeStreamMaster;
 
     private volatile boolean isOpen = false;
     private final long openTimeoutMillis;
@@ -45,7 +45,6 @@ import org.slf4j.LoggerFactory;
         this.openTimeoutMillis = openTimeoutMillis;
     }
 
-    //TODO: implement something better to return a better size
     //this is meant to be a general estimate without guarantees
     @Override
     public int getSize() {
@@ -60,7 +59,7 @@ import org.slf4j.LoggerFactory;
 
         if (!isOpen) {
             try {
-                initialStreamMasterFromCache = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
                         getCacheKey(),
                         openTimeoutMillis,
                         EhcacheStreamMaster.ComparatorType.NO_WRITER,
@@ -83,7 +82,7 @@ import org.slf4j.LoggerFactory;
     @Override
     public void close() throws EhcacheStreamException {
         this.isOpen = false;
-        this.initialStreamMasterFromCache = null;
+        this.activeStreamMaster = null;
         super.close();
     }
 
@@ -94,23 +93,16 @@ import org.slf4j.LoggerFactory;
 
         int byteCopied = 0;
 
-        //because we didn't increment the reader count, we need to check the cache to see if anything has changed since being open
-        //And since we're not really atomic anyway (since we didn't lock anything in the open()), a simple get and compare would do i think...
-        //overall, let's compare if the cache entry has not been written since we opened (the lastWritten bit would have changed)
-        EhcacheStreamMaster currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-        boolean isWeaklyConsistent =
-                currentStreamMaster != null &&
-                        currentStreamMaster.getChunkCount() == initialStreamMasterFromCache.getChunkCount() &&
-                        currentStreamMaster.getLastWrittenNanos() == initialStreamMasterFromCache.getLastWrittenNanos();
+        // activeStreamMaster should not be null here since the open should have created it even if it was not there...
+        // but let's check and log anyway just in case ... and returns nothing to copy
+        if(null == activeStreamMaster) {
+            if(logger.isWarnEnabled())
+                logger.warn("activeStreamMaster should not be null here since the open should have created it even if it was not there...");
 
-        if(!isWeaklyConsistent)
-            throw new EhcacheStreamIllegalStateException("Concurrent modification exception: EhcacheStreamMaster has changed since opening...concurrent write must have happened.");
-
-        // if cache entry is null, it's fine...means there's nothing to copy
-        if(null == currentStreamMaster)
             return byteCopied;
+        }
 
         // copy the cache chunks into the buffer based on the internal index tracker
-        return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, currentStreamMaster.getChunkCount());
+        return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
     }
 }

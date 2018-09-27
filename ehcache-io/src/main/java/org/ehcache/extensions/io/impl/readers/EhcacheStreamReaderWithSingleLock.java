@@ -3,7 +3,9 @@ package org.ehcache.extensions.io.impl.readers;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,6 +32,8 @@ import org.slf4j.LoggerFactory;
     private EhcacheStreamMaster activeStreamMaster;
 
     private volatile boolean isOpen = false;
+    private volatile boolean isOpenLockAcquired = false;
+
     private final long openTimeoutMillis;
 
     public EhcacheStreamReaderWithSingleLock(Ehcache cache, Object cacheKey, long openTimeoutMillis) {
@@ -37,7 +41,6 @@ import org.slf4j.LoggerFactory;
         this.openTimeoutMillis = openTimeoutMillis;
     }
 
-    //TODO: implement something better to return a better size
     //this is meant to be a general estimate without guarantees
     @Override
     public int getSize() {
@@ -51,17 +54,22 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
-            getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), openTimeoutMillis);
-
             try {
-                EhcacheStreamMaster ehcacheStreamMasterFromCache = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
-                activeStreamMaster = EhcacheStreamMaster.deepCopy(ehcacheStreamMasterFromCache);
+                try {
+                    getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), openTimeoutMillis);
+
+                    isOpenLockAcquired = true;
+                }  catch (EhcacheStreamTimeoutException te){
+                    throw new EhcacheStreamTimeoutException("Could not open the reader within timeout",te);
+                }
+
+                activeStreamMaster = EhcacheStreamMaster.deepCopy(
+                        getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey())
+                );
 
                 isOpen = true;
             } catch (Exception exc){
-                //release lock
-                getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
-                isOpen = false;
+                closeInternal();
                 throw exc;
             }
         }
@@ -81,15 +89,26 @@ import org.slf4j.LoggerFactory;
     @Override
     public void close() throws EhcacheStreamException {
         if (isOpen) {
-            getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
-
-            activeStreamMaster = null;
-            isOpen = false;
+            closeInternal();
             super.close();
         }
 
         if (isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should be closed at this point: something unexpected happened.");
+    }
+
+    private void closeInternal() throws EhcacheStreamException {
+        try {
+            if (isOpenLockAcquired) {
+                //release the lock
+                getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+            }
+        } finally {
+            //clean the internal vars
+            isOpen = false;
+            isOpenLockAcquired = false;
+            activeStreamMaster = null;
+        }
     }
 
     @Override
@@ -99,9 +118,14 @@ import org.slf4j.LoggerFactory;
 
         int byteCopied = 0;
 
-        // if cache entry is null, it's fine...means there's nothing to copy
-        if(null == activeStreamMaster)
+        // activeStreamMaster should not be null here since the open should have created it even if it was not there...
+        // but let's check and log anyway just in case ... and returns nothing to copy
+        if(null == activeStreamMaster) {
+            if(logger.isWarnEnabled())
+                logger.warn("activeStreamMaster should not be null here since the open should have created it even if it was not there...");
+
             return byteCopied;
+        }
 
         // copy the cache chunks into the buffer based on the internal index tracker
         return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());

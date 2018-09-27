@@ -3,6 +3,7 @@ package org.ehcache.extensions.io.impl.readers;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.ExponentialWait;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
@@ -28,6 +29,8 @@ import org.slf4j.LoggerFactory;
     private EhcacheStreamMaster activeStreamMaster;
 
     private volatile boolean isOpen = false;
+    private volatile boolean isOpenMasterMutated = false;
+
     private final long openTimeoutMillis;
 
     public EhcacheStreamReaderCasLock(Ehcache cache, Object cacheKey, long openTimeoutMillis) {
@@ -49,14 +52,20 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
-            activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                    getCacheKey(),
-                    openTimeoutMillis,
-                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                    EhcacheStreamMaster.MutationField.READERS,
-                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
-            );
+            try {
+                activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                        getCacheKey(),
+                        openTimeoutMillis,
+                        EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                        EhcacheStreamMaster.MutationField.READERS,
+                        EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                        PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                );
+
+                isOpenMasterMutated = true;
+            } catch (EhcacheStreamTimeoutException te){
+                throw new EhcacheStreamTimeoutException("Could not open the reader within timeout",te);
+            }
 
             isOpen = true;
         }
@@ -86,7 +95,7 @@ import org.slf4j.LoggerFactory;
 
     private void closeInternal() throws EhcacheStreamException {
         try {
-            if (null != activeStreamMaster) {
+            if (isOpenMasterMutated) {
                 // finalize the EhcacheStreamMaster value by saving it in cache with reader count decremented --
                 // this op must happen otherwise this entry will remain un-writeable forever until manual cleanup
                 getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
@@ -97,12 +106,11 @@ import org.slf4j.LoggerFactory;
                         EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
                         PropertyUtils.defaultReadsCasBackoffWaitStrategy
                 );
-            } else {
-                throw new EhcacheStreamIllegalStateException("activeStreamMaster should not be null at this point...Something must be wrong here.");
             }
         } finally {
             //clean the internal vars
             isOpen = false;
+            isOpenMasterMutated = false;
             activeStreamMaster = null;
         }
     }
@@ -112,11 +120,16 @@ import org.slf4j.LoggerFactory;
         if(!isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader is not open...call open() first.");
 
-        // activeStreamMaster may not be null here since the open should have created it even if it was not there...
-        if(null == activeStreamMaster)
-            throw new EhcacheStreamIllegalStateException("activeStreamMaster should not be null at this point...");
-
         int byteCopied = 0;
+
+        // activeStreamMaster should not be null here since the open should have created it even if it was not there...
+        // but let's check and log anyway just in case ... and returns nothing to copy
+        if(null == activeStreamMaster) {
+            if(logger.isWarnEnabled())
+                    logger.warn("activeStreamMaster should not be null here since the open should have created it even if it was not there...");
+
+            return byteCopied;
+        }
 
         // copy the cache chunks into the buffer based on the internal index tracker
         return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
