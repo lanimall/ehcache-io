@@ -4,6 +4,9 @@ import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.utils.ExponentialWait;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
+import org.ehcache.extensions.io.impl.utils.WaitStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,10 +63,10 @@ import org.slf4j.LoggerFactory;
                 initialStreamMasterFromCache = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
                         getCacheKey(),
                         openTimeoutMillis,
-                        false,
                         EhcacheStreamMaster.ComparatorType.NO_WRITER,
                         EhcacheStreamMaster.MutationField.READERS,
-                        EhcacheStreamMaster.MutationType.NONE   //here, on purpose, we don't want to increment anything...kind of a silent read so if there's a write, it will acquire its write
+                        EhcacheStreamMaster.MutationType.NONE,   //here, on purpose, we don't want to increment anything...kind of a silent read so if there's a write, it will acquire its write
+                        PropertyUtils.defaultReadsCasBackoffWaitStrategy
                 );
 
                 isOpen = true;
@@ -96,7 +99,7 @@ import org.slf4j.LoggerFactory;
         //overall, let's compare if the cache entry has not been written since we opened (the lastWritten bit would have changed)
         EhcacheStreamMaster currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
         boolean isWeaklyConsistent =
-                        currentStreamMaster != null &&
+                currentStreamMaster != null &&
                         currentStreamMaster.getChunkCount() == initialStreamMasterFromCache.getChunkCount() &&
                         currentStreamMaster.getLastWrittenNanos() == initialStreamMasterFromCache.getLastWrittenNanos();
 

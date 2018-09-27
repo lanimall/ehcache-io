@@ -4,6 +4,9 @@ import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.utils.ExponentialWait;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
+import org.ehcache.extensions.io.impl.utils.WaitStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -46,21 +49,16 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
-            try {
-                activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                        getCacheKey(),
-                        openTimeoutMillis,
-                        false,
-                        EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                        EhcacheStreamMaster.MutationField.READERS,
-                        EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
-                );
+            activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                    getCacheKey(),
+                    openTimeoutMillis,
+                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                    EhcacheStreamMaster.MutationField.READERS,
+                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
+            );
 
-                isOpen = true;
-            } catch (Exception exc){
-                isOpen = false;
-                throw exc;
-            }
+            isOpen = true;
         }
 
         if (!isOpen)
@@ -78,25 +76,35 @@ import org.slf4j.LoggerFactory;
     @Override
     public void close() throws EhcacheStreamException {
         if(isOpen) {
-            // finalize the EhcacheStreamMaster value by saving it in cache with reader count decremented --
-            // this op must happen otherwise this entry will remain un-writeable forever until manual cleanup
-            getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                    getCacheKey(),
-                    openTimeoutMillis,
-                    false,
-                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                    EhcacheStreamMaster.MutationField.READERS,
-                    EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
-            );
-
-            //clean the internal vars
-            isOpen = false;
-            activeStreamMaster = null;
+            closeInternal();
             super.close();
         }
 
         if (isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should be closed at this point: something unexpected happened.");
+    }
+
+    private void closeInternal() throws EhcacheStreamException {
+        try {
+            if (null != activeStreamMaster) {
+                // finalize the EhcacheStreamMaster value by saving it in cache with reader count decremented --
+                // this op must happen otherwise this entry will remain un-writeable forever until manual cleanup
+                getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                        getCacheKey(),
+                        openTimeoutMillis,
+                        EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                        EhcacheStreamMaster.MutationField.READERS,
+                        EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                        PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                );
+            } else {
+                throw new EhcacheStreamIllegalStateException("activeStreamMaster should not be null at this point...Something must be wrong here.");
+            }
+        } finally {
+            //clean the internal vars
+            isOpen = false;
+            activeStreamMaster = null;
+        }
     }
 
     @Override
