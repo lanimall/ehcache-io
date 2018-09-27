@@ -3,6 +3,7 @@ package org.ehcache.extensions.io.impl.utils;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamKey;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -56,7 +57,7 @@ public class EhcacheStreamUtilsPublicImpl implements IEhcacheStreamUtils {
                         timeout);
                 break;
             case READ_COMMITTED_WITHLOCKS:
-                removed = ehcacheStreamUtilsInternal.removeStreamEntryWithExplicitLocks(
+                removed = ehcacheStreamUtilsInternal.atomicRemoveEhcacheStreamMasterInCacheExplicitLocks(
                         cacheKey,
                         timeout
                 );
@@ -95,10 +96,41 @@ public class EhcacheStreamUtilsPublicImpl implements IEhcacheStreamUtils {
             Iterator it = internalKeys.iterator();
             while( it.hasNext() ) {
                 Object cacheKey = it.next();
-                if( null != cacheKey
+                if(null != cacheKey
                         && cacheKey.getClass().equals(EhcacheStreamKey.class)
                         && ((EhcacheStreamKey)cacheKey).getChunkIndex() == EhcacheStreamKey.MASTER_INDEX){
                     publicKeys.add(((EhcacheStreamKey)cacheKey).getCacheKey());
+                }
+            }
+        } else {
+            publicKeys = Collections.emptyList();
+        }
+
+        return publicKeys;
+    }
+
+    @Override
+    public List getAllStreamEntryKeysFilteredByState(boolean checkForExpiry, boolean includeCurrentWrites, boolean includeCurrentReads){
+        List publicKeys;
+        List internalKeys = (checkForExpiry)?ehcacheStreamUtilsInternal.getCache().getKeysWithExpiryCheck():ehcacheStreamUtilsInternal.getCache().getKeys();
+
+        if(null != internalKeys && internalKeys.size() > 0) {
+            publicKeys = new ArrayList(internalKeys.size());
+            Iterator it = internalKeys.iterator();
+            while( it.hasNext() ) {
+                Object cacheKey = it.next();
+                if(null != cacheKey
+                        && cacheKey.getClass().equals(EhcacheStreamKey.class)
+                        && ((EhcacheStreamKey)cacheKey).getChunkIndex() == EhcacheStreamKey.MASTER_INDEX){
+
+                    EhcacheStreamMaster ehcacheStreamMaster = ehcacheStreamUtilsInternal.getStreamMasterFromCache(((EhcacheStreamKey)cacheKey).getCacheKey());
+                    if(includeCurrentWrites && ehcacheStreamMaster.getWriters()>0) {
+                        publicKeys.add(((EhcacheStreamKey) cacheKey).getCacheKey());
+                    }
+
+                    if(includeCurrentReads && ehcacheStreamMaster.getReaders()>0) {
+                        publicKeys.add(((EhcacheStreamKey) cacheKey).getCacheKey());
+                    }
                 }
             }
         } else {
