@@ -54,9 +54,9 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         CHUNKS {
             @Override
             public void mutate(EhcacheStreamMaster streamMaster, MutationType mutationType) {
-                if(mutationType == MutationType.INCREMENT) streamMaster.incrementChunkCount();
+                if(mutationType == MutationType.INCREMENT) streamMaster.getAndIncrementChunkCount();
                 else if (mutationType == MutationType.INCREMENT_MARK_NOW){
-                    streamMaster.incrementChunkCount();
+                    streamMaster.getAndIncrementChunkCount();
                     streamMaster.setWrittenNow();
                 }
                 else if (mutationType == MutationType.DECREMENT_MARK_NOW) throw new IllegalStateException("Not supported");
@@ -123,8 +123,12 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         this.lastWrittenNanos = lastWrittenNanos;
     }
 
-    public void incrementChunkCount() {
-        chunkCount++;
+    public int getAndIncrementChunkCount() {
+        return chunkCount++;
+    }
+
+    public void resetChunkCount() {
+        chunkCount = 0;
     }
 
     public int getChunkCount() {

@@ -144,10 +144,7 @@ import java.util.Arrays;
 
         if(count > 0) {
             // let's add the chunk (overwrite anything in cache)
-            getEhcacheStreamUtils().putChunkValue(getCacheKey(), activeStreamMaster.getChunkCount(), Arrays.copyOf(buf, count));
-
-            //increment the chunk count
-            activeStreamMaster.incrementChunkCount();
+            getEhcacheStreamUtils().putChunkValue(getCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), Arrays.copyOf(buf, count));
         }
     }
 }
