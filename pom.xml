@@ -6,7 +6,7 @@
     <groupId>org.ehcache.extensions.io</groupId>
     <artifactId>ehcache-io-parent</artifactId>
     <packaging>pom</packaging>
-    <version>1.2</version>
+    <version>1.2.1</version>
     <modules>
         <module>ehcache-io</module>
     </modules>
