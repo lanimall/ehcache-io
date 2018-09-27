@@ -33,7 +33,7 @@ public abstract class EhcacheStreamingTestsBase {
     public static final String ENV_CACHEKEY_TYPE = "ehcache.tests.cachekeytype";
 
     public static final CacheKeyType DEFAULT_CACHEKEY_TYPE = CacheKeyType.COMPLEX_OBJECT;
-    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.CLUSTERED;
+    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.CLUSTERED_EVENTUAL;
 
     protected static final int IN_FILE_SIZE = 10 * 1024 * 1024;
     protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
@@ -49,10 +49,10 @@ public abstract class EhcacheStreamingTestsBase {
     private static final Object CACHEKEY_TYPE_CUSTOMOBJECT = CustomPublicKey.generateRandom();
 
     @Parameterized.Parameter(0)
-    public PropertyUtils.ConcurrencyMode concurrencyMode;
+    public PropertyUtils.ConcurrencyMode concurrencyMode = PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS;
 
     @Parameterized.Parameter(1)
-    public CacheKeyType cacheKeyType;
+    public CacheKeyType cacheKeyType = CacheKeyType.COMPLEX_OBJECT;
 
     @Parameterized.Parameters
     public static Collection params() {
@@ -61,17 +61,24 @@ public abstract class EhcacheStreamingTestsBase {
                 {PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS, CacheKeyType.STRING},
                 {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, CacheKeyType.COMPLEX_OBJECT},
                 {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, CacheKeyType.STRING},
-                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.STRING},
-                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.COMPLEX_OBJECT}
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.COMPLEX_OBJECT},
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.STRING}
         });
     }
 
     public void setupParameterizedProperties() {
+        logger.info("============ setupParameterizedProperties ====================");
+
+        logger.info("Setting up concurrency mode = {}", concurrencyMode.getPropValue());
+        logger.info("Setting up cacheKey type = {}", cacheKeyType.getPropValue());
+
         System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, concurrencyMode.getPropValue());
         System.setProperty(ENV_CACHEKEY_TYPE, cacheKeyType.getPropValue());
     }
 
     public void cleanupParameterizedProperties() {
+        logger.info("============ cleanupParameterizedProperties ====================");
+
         System.clearProperty(PropertyUtils.PROP_CONCURRENCY_MODE);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
     }
@@ -142,7 +149,7 @@ public abstract class EhcacheStreamingTestsBase {
                 return "FileStoreOffheap";
             }
         },
-        CLUSTERED("clustered") {
+        CLUSTERED_STRONG("clustered_strong") {
             public String getCacheConfigPath(){
                 return "classpath:ehcache_distributed.xml";
             }
@@ -152,7 +159,20 @@ public abstract class EhcacheStreamingTestsBase {
             }
 
             public String getCacheName(){
-                return "FileStoreDistributed";
+                return "FileStoreDistributedStrong";
+            }
+        },
+        CLUSTERED_EVENTUAL("clustered_eventual") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedEventual";
             }
         };
 
@@ -176,8 +196,10 @@ public abstract class EhcacheStreamingTestsBase {
                     return LOCAL_HEAP;
                 else if (LOCAL_OFFHEAP.propValue.equalsIgnoreCase(cacheTestTypeStr))
                     return LOCAL_OFFHEAP;
-                else if (CLUSTERED.propValue.equalsIgnoreCase(cacheTestTypeStr))
-                    return CLUSTERED;
+                else if (CLUSTERED_EVENTUAL.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_EVENTUAL;
+                else if (CLUSTERED_STRONG.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_STRONG;
                 else
                     throw new IllegalArgumentException("CacheTestType [" + ((null != cacheTestTypeStr) ? cacheTestTypeStr : "null") + "] is not valid");
             } else {
