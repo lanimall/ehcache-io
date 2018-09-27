@@ -13,4 +13,6 @@ public interface IEhcacheStreamUtils {
     boolean containsStreamEntry(Object cacheKey);
 
     List getAllStreamEntryKeys(boolean checkForExpiry);
+
+    List getAllStreamEntryKeysFilteredByState(boolean checkForExpiry, boolean includeCurrentWrites, boolean includeCurrentReads);
 }
