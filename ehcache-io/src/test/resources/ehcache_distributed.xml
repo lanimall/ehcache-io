@@ -10,7 +10,7 @@
     <defaultCache eternal="false" maxElementsInMemory="100000"
                   timeToIdleSeconds="120" timeToLiveSeconds="120" maxElementsOnDisk="1000000"/>
 
-    <cache name="FileStoreDistributed"
+    <cache name="FileStoreDistributedStrong"
            maxEntriesLocalHeap="100"
            eternal="true">
 
@@ -19,6 +19,21 @@
 
         <!-- should be set to strong to keep consistent across the cluster -->
         <terracotta consistency="strong">
+            <nonstop immediateTimeout="false" timeoutMillis="30000">
+                <timeoutBehavior type="exception" />
+            </nonstop>
+        </terracotta>
+    </cache>
+
+    <cache name="FileStoreDistributedEventual"
+           maxEntriesLocalHeap="100"
+           eternal="true">
+
+        <!-- must be pinned inCache to avoid cache entries being thrown out randomly -->
+        <pinning store="inCache"></pinning>
+
+        <!-- should be set to strong to keep consistent across the cluster -->
+        <terracotta consistency="eventual">
             <nonstop immediateTimeout="false" timeoutMillis="30000">
                 <timeoutBehavior type="exception" />
             </nonstop>
