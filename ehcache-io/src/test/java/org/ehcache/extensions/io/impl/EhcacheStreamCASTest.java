@@ -3,6 +3,7 @@ package org.ehcache.extensions.io.impl;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
+import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,7 +21,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
     final int threadCount = 10;
     final int iterations = 100;
-    final long openTimeoutMillis = 20000;
+    final long openTimeoutMillis = 60000;
 
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
@@ -60,8 +61,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -77,11 +76,12 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT
-                        );                    }
+                                EhcacheStreamMaster.MutationType.INCREMENT,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                        );
+                    }
                     return null;
                 }
             });
@@ -113,8 +113,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -130,10 +128,10 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_READER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT
+                                EhcacheStreamMaster.MutationType.INCREMENT,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -167,8 +165,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -184,11 +180,12 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
-                        );                    }
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                        );
+                    }
                     return null;
                 }
             });
@@ -207,11 +204,12 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
-                        );                    }
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                        );
+                    }
                     return null;
                 }
             });
@@ -243,8 +241,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -260,18 +256,18 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
                         );
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -305,8 +301,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -322,11 +316,12 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
-                        );                    }
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                        );
+                    }
                     return null;
                 }
             });
@@ -345,11 +340,12 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
-                        );                    }
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                        );
+                    }
                     return null;
                 }
             });
@@ -382,8 +378,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -399,18 +393,18 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
                         );
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -445,8 +439,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -459,10 +451,10 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -478,10 +470,10 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -497,10 +489,10 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -516,10 +508,10 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -561,8 +553,6 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
-        final boolean override = false;
-
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
         for(int i = 0; i < threadCount; i++) {
@@ -575,18 +565,18 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
                         );
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                                 EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
                         );
                     }
                     return null;
@@ -602,18 +592,18 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
                         );
                         streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
                                 getCacheKey(),
                                 openTimeoutMillis,
-                                override,
                                 EhcacheStreamMaster.ComparatorType.NO_WRITER,
                                 EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW
+                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
                         );
                     }
                     return null;
