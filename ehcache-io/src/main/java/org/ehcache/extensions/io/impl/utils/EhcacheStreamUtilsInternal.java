@@ -31,7 +31,10 @@ public class EhcacheStreamUtilsInternal {
     /*
      * creating an exponential wait object to be use for busy wait cas loops
      */
-    final WaitStrategy waitStrategy = new ExponentialWait(2L, 15L, true);
+    final WaitStrategy waitStrategy = new ExponentialWait(
+            PropertyUtils.getCasLoopExponentialBackoffBase(),
+            PropertyUtils.getCasLoopExponentialBackoffCap()
+    );
 
     public EhcacheStreamUtilsInternal(Ehcache cache) {
         this.cache = cache;
@@ -91,7 +94,7 @@ public class EhcacheStreamUtilsInternal {
 
         //if it's not mutated at the end of all the tries and timeout, throw timeout exception
         if (!isMutated) {
-            throw new EhcacheStreamTimeoutException(String.format("Could not perform operation within %d ms (timeout triggers at %d ms)", t2 - t1, timeoutMillis));
+            throw new EhcacheStreamTimeoutException(String.format("Could not perform operation within %d internal retries totalling %d ms (timeout triggers at %d ms)", attempts, t2 - t1, timeoutMillis));
         }
 
         return mutatedStreamMaster;

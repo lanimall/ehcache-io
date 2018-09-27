@@ -6,13 +6,16 @@ import java.util.Properties;
  * Created by fabien.sanglier on 9/14/18.
  */
 public class PropertyUtils {
-    public static final String PROP_CONCURRENCY_MODE = "ehcache.extension.io.concurrency.mode";
     public static final String PROP_INPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.inputstream.buffersize";
     public static final String PROP_INPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.inputstream.opentimeout";
     public static final String PROP_INPUTSTREAM_ALLOW_NULLSTREAM = "ehcache.extension.io.inputstream.allownull";
     public static final String PROP_OUTPUTSTREAM_BUFFERSIZE = "ehcache.extension.io.outputstream.buffersize";
     public static final String PROP_OUTPUTSTREAM_OVERRIDE = "ehcache.extension.io.outputstream.override";
     public static final String PROP_OUTPUTSTREAM_OPEN_TIMEOUTS = "ehcache.extension.io.outputstream.opentimeout";
+
+    public static final String PROP_CONCURRENCY_MODE = "ehcache.extension.io.concurrency.mode";
+    public static final String PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = "ehcache.extension.io.concurrency.cas.backoff.exponential.base";
+    public static final String PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = "ehcache.extension.io.concurrency.cas.backoff.exponential.cap";
 
     public static final int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 256 * 1024; // 256kb
     public static final boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
@@ -43,6 +46,12 @@ public class PropertyUtils {
     }
     public static final ConcurrencyMode getEhcacheIOStreamsConcurrencyMode(){
         return ConcurrencyMode.valueOfIgnoreCase(getPropertyAsString(PROP_CONCURRENCY_MODE, DEFAULT_CONCURRENCY_MODE.getPropValue()));
+    }
+    public static final long getCasLoopExponentialBackoffBase(){
+        return getPropertyAsLong(PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS, ExponentialWait.DEFAULT_WAIT_BASE_MILLIS);
+    }
+    public static final long getCasLoopExponentialBackoffCap(){
+        return getPropertyAsLong(PROP_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS, ExponentialWait.DEFAULT_WAIT_CAP_MILLIS);
     }
 
     public static String getPropertyAsString(final Properties properties, final String key, final String defaultVal) {

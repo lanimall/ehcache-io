@@ -12,9 +12,9 @@ public class ExponentialWait implements WaitStrategy {
     private static final Logger logger = LoggerFactory.getLogger(ExponentialWait.class);
     private static final boolean isTrace = logger.isTraceEnabled();
 
-    protected static final long DEFAULT_WAIT_CAP_MILLIS = 10000;
-    protected static final long DEFAULT_WAIT_BASE_MILLIS = 100;
-    protected static final boolean DEFAULT_WAIT_USE_JITTER = true;
+    public static final long DEFAULT_WAIT_CAP_MILLIS = 5000;
+    public static final long DEFAULT_WAIT_BASE_MILLIS = 2;
+    public static final boolean DEFAULT_WAIT_USE_JITTER = true;
 
     private final long base;
     private final long cap;
