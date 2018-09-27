@@ -552,7 +552,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long ehcacheWriteOpenTimeout = 500L;
         final int writerBeforeOpenOrderPosition = 0; //first position: ensured write thread starts before read thread
         final long writerSleepDuringCopyMillis = 0L;
-        final long writerSleepAfterCopyBeforeCloseMillis = 600L; //this is larger than the read lock
+        final long writerSleepAfterCopyBeforeCloseMillis = 1000L; //this is larger than the read lock
         final boolean override = true;
 
         addWriteCallable(
@@ -612,7 +612,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         final long ehcacheReadOpenTimeout = 500L;
         final int readerBeforeOpenOrderPosition = 0; //first position: ensured read thread starts before write thread
         final long readerSleepDuringCopyMillis = 0L;
-        final long readerSleepAfterCopyBeforeCloseMillis = 600L;
+        final long readerSleepAfterCopyBeforeCloseMillis = 1000L;
         final boolean allowNullStream = false;
 
         addReadCallable(
