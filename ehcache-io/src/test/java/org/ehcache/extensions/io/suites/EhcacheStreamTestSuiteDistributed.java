@@ -13,7 +13,7 @@ public class EhcacheStreamTestSuiteDistributed extends EhcacheStreamTestSuiteBas
     @BeforeClass
     public static void setup() throws Exception {
         EhcacheStreamTestSuiteBase.setup();
-        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHETEST_TYPE, EhcacheStreamingTestsBase.CacheTestType.CLUSTERED.getPropValue());
+        System.setProperty(EhcacheStreamingTestsBase.ENV_CACHETEST_TYPE, EhcacheStreamingTestsBase.CacheTestType.CLUSTERED_STRONG.getPropValue());
     }
 
     @AfterClass
