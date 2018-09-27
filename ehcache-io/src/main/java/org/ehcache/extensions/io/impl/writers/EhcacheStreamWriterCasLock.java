@@ -6,14 +6,11 @@ import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.utils.ExponentialWait;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
-import org.ehcache.extensions.io.impl.utils.WaitStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Created by fabien.sanglier on 7/24/18.
@@ -38,6 +35,8 @@ import java.util.concurrent.atomic.AtomicInteger;
     private final boolean override;
 
     private volatile boolean isOpen = false;
+    private volatile boolean isOpenMasterMutated = false;
+
     private final long openTimeoutMillis;
 
     public EhcacheStreamWriterCasLock(final Ehcache cache, final Object cacheKey, final boolean override, final long openTimeoutMillis) {
@@ -54,16 +53,22 @@ import java.util.concurrent.atomic.AtomicInteger;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
-            //first, let's mark as write
             try {
-                activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                        getCacheKey(),
-                        openTimeoutMillis,
-                        EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                        EhcacheStreamMaster.MutationField.WRITERS,
-                        EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                        PropertyUtils.defaultWritesCasBackoffWaitStrategy
-                );
+                try {
+                    //first, let's mark as write
+                    activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                            getCacheKey(),
+                            openTimeoutMillis,
+                            EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
+                            EhcacheStreamMaster.MutationField.WRITERS,
+                            EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                            PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                    );
+
+                    isOpenMasterMutated = true;
+                }  catch (EhcacheStreamTimeoutException te){
+                    throw new EhcacheStreamTimeoutException("Could not open the stream within timeout",te);
+                }
 
                 //then once exclusive write, deal with override flag
                 //if override set, let's clear the chunks for the master to keep things clean, and reset the chunk count on the local master instance
@@ -78,8 +83,6 @@ import java.util.concurrent.atomic.AtomicInteger;
                 }
 
                 isOpen = true;
-            } catch (EhcacheStreamTimeoutException te){
-                throw new EhcacheStreamTimeoutException("Could not open the stream within timeout",te);
             } catch (Exception exc){
                 closeInternal();
                 throw exc;
@@ -104,9 +107,8 @@ import java.util.concurrent.atomic.AtomicInteger;
                 boolean replaced = getEhcacheStreamUtils().replaceIfPresentEhcacheStreamMaster(getCacheKey(), activeStreamMaster);
                 if (!replaced)
                     throw new EhcacheStreamIllegalStateException("Could not save the final ehcache stream index properly in cache...aborting");
-
-                closeInternal();
             }
+            closeInternal();
         }
 
         if (isOpen)
@@ -115,8 +117,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
     private void closeInternal() throws EhcacheStreamException {
         try {
-            // finally, reset the write state atomically so this entry can be written/read by others
-            if (null != activeStreamMaster && activeStreamMaster.getWriters() == 1) {
+            // reset the write state atomically so this entry can be written/read by others
+            if (isOpenMasterMutated) {
                 try {
                     getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
                             getCacheKey(),
@@ -129,12 +131,11 @@ import java.util.concurrent.atomic.AtomicInteger;
                 } catch (EhcacheStreamTimeoutException te) {
                     throw new EhcacheStreamTimeoutException("Could not close the stream within timeout", te);
                 }
-            } else {
-                throw new EhcacheStreamIllegalStateException("The active stream master has multiple writer on close operation, this is not supported. Something must be wrong here.");
             }
         } finally {
             //clean the internal vars
             isOpen = false;
+            isOpenMasterMutated = false;
             activeStreamMaster = null;
         }
     }
@@ -148,9 +149,13 @@ import java.util.concurrent.atomic.AtomicInteger;
         if(!isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter is not open...call open() first.");
 
+        // activeStreamMaster should not be null here since the open should have created it even if it was not there...
+        if(null == activeStreamMaster) {
+            throw new EhcacheStreamIllegalStateException("activeStreamMaster should not be null at this point...");
+        }
+
         //only 1 thread at a time should be able to reach this method...
         // because all other threads should be waiting in the tryOpen method still
-
         if(count > 0) {
             // let's add the chunk (overwrite anything in cache)
             getEhcacheStreamUtils().putChunkValue(getCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), Arrays.copyOf(buf, count));
