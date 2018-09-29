@@ -199,6 +199,13 @@ public abstract class EhcacheStreamingTestsBase {
                 return DEFAULT_CACHETEST_TYPE;
             }
         }
+
+        @Override
+        public String toString() {
+            return "CacheTestType{" +
+                    "propValue='" + propValue + '\'' +
+                    '}';
+        }
     }
 
     public class EhcacheInputStreamParams{
