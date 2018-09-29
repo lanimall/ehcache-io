@@ -4,7 +4,7 @@ import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
-import org.ehcache.extensions.io.impl.model.EhcacheStreamValue;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamChunk;
 
 /**
  * Created by fabien.sanglier on 9/17/18.
@@ -41,7 +41,7 @@ public abstract class BaseEhcacheStreamReader extends BaseEhcacheStream implemen
         int currentBufferAvailableSize = 0;
         int currentBufferBytePos = 0;
         while (totalByteCopied < initialBufferAvailableSize && cacheChunkIndexPos < chunksTotalCount) {
-            EhcacheStreamValue cacheChunkValue = getEhcacheStreamUtils().getChunkValue(getCacheKey(), cacheChunkIndexPos);
+            EhcacheStreamChunk cacheChunkValue = getEhcacheStreamUtils().getChunkValue(getPublicCacheKey(), cacheChunkIndexPos);
 
             //TODO: IMPORTANT!! checking for null cacheChunkValue is not enough
             //TODO: what if the cacheChunk was just being replaced by another write for example?
