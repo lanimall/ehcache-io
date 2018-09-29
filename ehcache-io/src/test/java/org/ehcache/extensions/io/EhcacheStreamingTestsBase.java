@@ -33,7 +33,7 @@ public abstract class EhcacheStreamingTestsBase {
     public static final String ENV_CACHEKEY_TYPE = "ehcache.tests.cachekeytype";
 
     public static final CacheKeyType DEFAULT_CACHEKEY_TYPE = CacheKeyType.COMPLEX_OBJECT;
-    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.CLUSTERED_EVENTUAL;
+    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.LOCAL_HEAP;
 
     protected static final int IN_FILE_SIZE = 10 * 1024 * 1024;
     protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
@@ -57,28 +57,21 @@ public abstract class EhcacheStreamingTestsBase {
     @Parameterized.Parameters
     public static Collection params() {
         return Arrays.asList(new Object[][]{
-                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS, CacheKeyType.COMPLEX_OBJECT},
                 {PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS, CacheKeyType.STRING},
-                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, CacheKeyType.COMPLEX_OBJECT},
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS, CacheKeyType.COMPLEX_OBJECT},
                 {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, CacheKeyType.STRING},
-                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.COMPLEX_OBJECT},
-                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.STRING}
+                {PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS, CacheKeyType.COMPLEX_OBJECT},
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.STRING},
+                {PropertyUtils.ConcurrencyMode.WRITE_PRIORITY, CacheKeyType.COMPLEX_OBJECT}
         });
     }
 
     public void setupParameterizedProperties() {
-        logger.info("============ setupParameterizedProperties ====================");
-
-        logger.info("Setting up concurrency mode = {}", concurrencyMode.getPropValue());
-        logger.info("Setting up cacheKey type = {}", cacheKeyType.getPropValue());
-
         System.setProperty(PropertyUtils.PROP_CONCURRENCY_MODE, concurrencyMode.getPropValue());
         System.setProperty(ENV_CACHEKEY_TYPE, cacheKeyType.getPropValue());
     }
 
     public void cleanupParameterizedProperties() {
-        logger.info("============ cleanupParameterizedProperties ====================");
-
         System.clearProperty(PropertyUtils.PROP_CONCURRENCY_MODE);
         System.clearProperty(EhcacheStreamingTestsBase.ENV_CACHEKEY_TYPE);
     }
@@ -444,6 +437,20 @@ public abstract class EhcacheStreamingTestsBase {
         System.clearProperty(PropertyUtils.PROP_OUTPUTSTREAM_BUFFERSIZE);
         System.clearProperty(PropertyUtils.PROP_OUTPUTSTREAM_OVERRIDE);
         System.clearProperty(PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS);
+    }
+
+    public void printAllTestProperties() {
+        logger.info("============ printAllTestProperties ====================");
+        logger.info("{}={}", ENV_CACHETEST_TYPE, PropertyUtils.getPropertyAsString(ENV_CACHETEST_TYPE, DEFAULT_CACHETEST_TYPE.getPropValue()));
+        logger.info("{}={}", ENV_CACHEKEY_TYPE, PropertyUtils.getPropertyAsString(ENV_CACHEKEY_TYPE, DEFAULT_CACHEKEY_TYPE.getPropValue()));
+        logger.info("{}={}", PropertyUtils.PROP_CONCURRENCY_MODE, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_CONCURRENCY_MODE, "null"));
+
+        logger.info("{}={}", PropertyUtils.PROP_INPUTSTREAM_BUFFERSIZE, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_INPUTSTREAM_BUFFERSIZE, "null"));
+        logger.info("{}={}", PropertyUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_INPUTSTREAM_OPEN_TIMEOUTS, "null"));
+        logger.info("{}={}", PropertyUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_INPUTSTREAM_ALLOW_NULLSTREAM, "null"));
+        logger.info("{}={}", PropertyUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_OUTPUTSTREAM_BUFFERSIZE, "null"));
+        logger.info("{}={}", PropertyUtils.PROP_OUTPUTSTREAM_OVERRIDE, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_OUTPUTSTREAM_OVERRIDE, "null"));
+        logger.info("{}={}", PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, "null"));
     }
 
     public long copyFileToCache(final Object publicCacheKey) throws IOException {
