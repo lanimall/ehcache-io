@@ -4,9 +4,7 @@ import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.utils.ExponentialWait;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
-import org.ehcache.extensions.io.impl.utils.WaitStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -15,7 +13,12 @@ import org.slf4j.LoggerFactory;
  */
 
 /*
- * doc TBD
+ * This implementation will wait initially if a write is currently being done,
+ * BUT it will not broadcast a READ state so a WRITE will be able to be acquired during this READ.
+ * The benefit is that a write will never wait on this read (write  priority) and there's no need to "unlock" at the end
+ * The drawback is that an error may be thrown upon discovery that a write is going on...
+ * And to discover if read is inconsistent, I have to fetch the master entry on each read to do a simple consistency check based on last written nano time
+ * which does not seem to be a performance impact due to local caching
  */
 
 /*package protected*/ class EhcacheStreamReaderNoLock extends BaseEhcacheStreamReader implements EhcacheStreamReader {
@@ -48,7 +51,7 @@ import org.slf4j.LoggerFactory;
     //this is meant to be a general estimate without guarantees
     @Override
     public int getSize() {
-        EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+        EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey());
         return (null == temp)? 0: 1;
     }
 
@@ -58,9 +61,12 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
+            if(isDebug)
+                logger.debug("Trying to open a reader for key={}", (null != getPublicCacheKey())? getPublicCacheKey().toString():"null");
+
             try {
                 activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                        getCacheKey(),
+                        getPublicCacheKey(),
                         openTimeoutMillis,
                         EhcacheStreamMaster.ComparatorType.NO_WRITER,
                         EhcacheStreamMaster.MutationField.READERS,
@@ -101,6 +107,18 @@ import org.slf4j.LoggerFactory;
 
             return byteCopied;
         }
+
+        //because we didn't increment the reader count, we need to check the cache to see if anything has changed since being open
+        //And since we're not really atomic anyway (since we didn't lock anything in the open()), a simple get and compare would do i think...
+        //overall, let's compare if the cache entry has not been written since we opened (the lastWritten bit would have changed)
+        EhcacheStreamMaster currentStreamMaster = getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey());
+        boolean isWeaklyConsistent =
+                currentStreamMaster != null &&
+                        currentStreamMaster.getChunkCount() == activeStreamMaster.getChunkCount() &&
+                        currentStreamMaster.getLastWrittenNanos() == activeStreamMaster.getLastWrittenNanos();
+
+        if(!isWeaklyConsistent)
+            throw new EhcacheStreamIllegalStateException("Concurrent modification exception: EhcacheStreamMaster has changed since opening: a concurrent write must have happened. Consider retrying in a bit.");
 
         // copy the cache chunks into the buffer based on the internal index tracker
         return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
