@@ -350,7 +350,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
             // check the stream master from cache at the end of the initial write
             testObjectCheckBefore = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
-            logger.debug("BEFORE - EhcacheStreamMaster check from cache: {}", (null != testObjectCheckBefore) ? testObjectCheckBefore.toString() : "null");
+            logger.debug("BEFORE - EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheckBefore));
 
             Assert.assertEquals(initialCacheSize - 1, testObjectCheckBefore.getChunkCount());
             Assert.assertEquals(0, testObjectCheckBefore.getReaders());
@@ -389,7 +389,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         // check the final stream master from cache at the end
         EhcacheStreamMaster testObjectCheckAfter = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
-        logger.debug("AFTER - EhcacheStreamMaster check from cache: {}", (null != testObjectCheckAfter) ? testObjectCheckAfter.toString() : "null");
+        logger.debug("AFTER - EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheckAfter));
 
         if(PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS) {
             Assert.assertNotNull(testObjectCheckAfter);
@@ -464,7 +464,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         // check the stream master from cache at the end of the initial write
         EhcacheStreamMaster testObjectCheckBefore = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
-        logger.debug("BEFORE - EhcacheStreamMaster check from cache: {}", testObjectCheckBefore);
+        logger.debug("BEFORE - EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheckBefore));
 
         Assert.assertEquals(expectedCacheSize - 1, testObjectCheckBefore.getChunkCount());
         Assert.assertEquals(0, testObjectCheckBefore.getReaders());
@@ -500,7 +500,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         // check the final stream master from cache at the end
         EhcacheStreamMaster testObjectCheckAfter = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
-        logger.debug("AFTER - EhcacheStreamMaster check from cache: {}", testObjectCheckAfter);
+        logger.debug("AFTER - EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheckAfter));
         Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
     }
 
@@ -717,7 +717,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             else
                 this.index++;
 
-            logger.debug("Current index updated to {}. Waking up all other WAITING threads.", this.index);
+            logger.debug("Current index updated to {}. Waking up all other WAITING threads.", index);
             notifyAll();
         }
     }
