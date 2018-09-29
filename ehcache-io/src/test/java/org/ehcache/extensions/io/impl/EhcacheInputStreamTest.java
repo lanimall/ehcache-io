@@ -20,19 +20,6 @@ import java.util.zip.CheckedOutputStream;
 public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheInputStreamTest.class);
 
-    @Before
-    public void setup() throws Exception {
-        setupParameterizedProperties();
-        cacheSetUp();
-    }
-
-    @After
-    public void cleanup() throws IOException {
-        cacheCleanUp();
-        cleanBigOutputFile();
-        cleanupParameterizedProperties();
-    }
-
     @BeforeClass
     public static void oneTimeSetup() throws Exception {
         logger.debug("============ Starting EhcacheInputStreamTest ====================");
@@ -49,8 +36,24 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         logger.debug("============ Finished EhcacheInputStreamTest ====================");
     }
 
+    @Before
+    public void setup() throws Exception {
+        setupParameterizedProperties();
+        cacheSetUp();
+        printAllTestProperties();
+    }
+
+    @After
+    public void cleanup() throws IOException {
+        cacheCleanUp();
+        cleanBigOutputFile();
+        cleanupParameterizedProperties();
+    }
+
     @Test
     public void copyCacheToFileLargeReadBufferSmallCacheChunks() throws Exception {
+        logger.info("============ copyCacheToFileLargeReadBufferSmallCacheChunks ====================");
+
         int inBufferSize = 512 * 1024; //ehcache input stream large internal buffer
         int outBufferSize = 12 * 1024; //small chunks in cache
         int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
@@ -69,7 +72,6 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
-            logger.info("============ copyCacheToFileUsingStreamSmallerCopyBuffer ====================");
             logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
@@ -93,6 +95,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void copyCacheToFileSmallReadBufferLargeCacheChunks() throws Exception {
+        logger.info("============ copyCacheToFileSmallReadBufferLargeCacheChunks ====================");
+
         int inBufferSize = 17 * 1024; //ehcache input stream internal buffer
         int outBufferSize = 769 * 1024; //large cache chunks
         int copyBufferSize = 357 * 1024; //copy buffer size *larger* than ehcache input stream internal buffer to make sure it works that way
@@ -112,7 +116,6 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
         )
         {
-            logger.info("============ copyCacheToFileUsingStreamLargerCopyBuffer ====================");
             logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
@@ -136,6 +139,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void copyCacheToFileUsingStreamDefaultBuffers() throws Exception {
+        logger.info("============ copyCacheToFileUsingStreamDefaultBuffers ====================");
+
         int copyBufferSize = 512 * 1024; //copy buffer size
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
@@ -152,7 +157,6 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
-            logger.info("============ copyCacheToFileUsingStreamDefaultBuffers ====================");
             logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
@@ -176,6 +180,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void copyCacheToFileUsingStreamDefaultBuffersByteByByte() throws Exception {
+        logger.info("============ copyCacheToFileUsingStreamDefaultBuffersByteByByte ====================");
+
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
 
@@ -191,7 +197,6 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
-            logger.info("============ copyCacheToFileUsingStreamDefaultBuffersByteByByte ====================");
             logger.debug("Before Cache Size = " + getCache().getSize());
 
             start = System.nanoTime();;
@@ -215,6 +220,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void copyCacheToFileNoCacheKeyAllowsNullStream() throws Exception {
+        logger.info("============ copyCacheToFileNoCacheKeyAllowsNullStream ====================");
+
         int copyBufferSize = 512 * 1024; //copy buffer size
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
@@ -234,6 +241,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void copyCacheToFileNoCacheKeyNoNullStream() throws Exception {
+        logger.info("============ copyCacheToFileNoCacheKeyNoNullStream ====================");
+
         int copyBufferSize = 512 * 1024; //copy buffer size
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
@@ -252,8 +261,6 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
         )
         {
-            logger.info("============ copyCacheToFileNoCacheKey ====================");
-
             int beforeCacheSize = getCache().getSize();
             logger.debug("Before Cache Size = " + beforeCacheSize);
 

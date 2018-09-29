@@ -10,9 +10,7 @@ import org.junit.runners.Parameterized;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.CRC32;
@@ -43,6 +41,7 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
     public void setup() throws Exception {
         setupParameterizedProperties();
         cacheSetUp();
+        printAllTestProperties();
     }
 
     @After
@@ -53,6 +52,8 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testRemoveExistingStreamEntry() throws Exception {
+        logger.info("============ testRemoveExistingStreamEntry ====================");
+
         long openTimeout = 10000L;
 
         Assert.assertEquals(0, getCache().getSize());
@@ -69,6 +70,8 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testRemoveNonExistingStreamEntry() throws Exception {
+        logger.info("============ testRemoveNonExistingStreamEntry ====================");
+
         long openTimeout = 10000L;
         Assert.assertEquals(0, getCache().getSize());
 
@@ -80,6 +83,8 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testContainsExistingStreamEntry() throws Exception {
+        logger.info("============ testContainsExistingStreamEntry ====================");
+
         copyFileToCache(getCacheKey());
 
         Assert.assertTrue(getCache().getSize() > 1); // should be at least 2 (master key + chunk key)
@@ -91,6 +96,8 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testContainsNonExistingStreamEntry() throws Exception {
+        logger.info("============ testContainsNonExistingStreamEntry ====================");
+
         Assert.assertEquals(0, getCache().getSize());
 
         boolean found = EhcacheStreamUtilsFactory.getUtils(getCache()).containsStreamEntry(getCacheKey());
@@ -100,6 +107,8 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testGetAllStreamEntryKeys() throws Exception {
+        logger.info("============ testGetAllStreamEntryKeys ====================");
+
         boolean expirationCheck = false;
 
         copyFileToCache(getCacheKey());
@@ -115,6 +124,8 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testGetAllStreamEntryKeysExpirationCheck() throws Exception {
+        logger.info("============ testGetAllStreamEntryKeysExpirationCheck ====================");
+
         boolean expirationCheck = true;
 
         copyFileToCache(getCacheKey());
@@ -129,12 +140,13 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testGetAllStreamEntryKeysFilteredByStateWrites() throws Exception {
+    public void testGetAllStreamEntryKeysFilteredWritesOnly() throws Exception {
+        logger.info("============ testGetAllStreamEntryKeysFilteredWritesOnly ====================");
+
         final boolean cacheWriteOverride = true;
         final int cacheWriteBufferSize = PropertyUtils.getOutputStreamBufferSize();
         boolean expirationCheck = true;
         boolean includeCurrentWrites = true;
-        boolean includeCurrentReads = false;
 
         //will copy a good value in cache
         copyFileToCache(getCacheKey());
@@ -150,7 +162,7 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
                 outputStreams.add(os);
             }
 
-            List keys = EhcacheStreamUtilsFactory.getUtils(getCache()).getAllStreamEntryKeysFilteredByState(expirationCheck, includeCurrentWrites, includeCurrentReads);
+            List keys = EhcacheStreamUtilsFactory.getUtils(getCache()).getAllStreamEntryKeys(expirationCheck, false, false, false, includeCurrentWrites);
 
             Assert.assertNotNull(keys);
             Assert.assertEquals(iterations, keys.size());
@@ -171,49 +183,94 @@ public class EhcacheStreamUtilsTest extends EhcacheStreamingTestsBase {
             if(null != os)
                 os.close();
         }
+
+        logger.info("============ testGetAllStreamEntryKeysFilteredWritesOnly end ====================");
     }
 
     @Test
-    public void testGetAllStreamEntryKeysFilteredByStateReads() throws Exception {
+    public void testGetAllStreamEntryKeysFilteredReadsOnly() throws Exception {
+        logger.info("============ testGetAllStreamEntryKeysFilteredReadsOnly ====================");
+
         final int cacheReadBufferSize = PropertyUtils.getInputStreamBufferSize();
         boolean expirationCheck = true;
-        boolean includeCurrentWrites = false;
         boolean includeCurrentReads = true;
-
         int iterations = 10;
-        List<InputStream> inputStreams = new ArrayList<InputStream>(iterations);
-        try {
-            for(int i = 0; i < iterations; i++) {
-                String cacheKey = getCacheKey().toString() + i;
 
-                //will copy a good value in cache
-                copyFileToCache(cacheKey);
-
-                //and now, will read to cache another value, BUT will not close the stream
-                InputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), cacheKey, false, cacheReadBufferSize), new CRC32());
-                readFileFromCacheStream(is);
-
-                inputStreams.add(is);
-            }
-
-            List keys = EhcacheStreamUtilsFactory.getUtils(getCache()).getAllStreamEntryKeysFilteredByState(expirationCheck, includeCurrentWrites, includeCurrentReads);
-
-            Assert.assertNotNull(keys);
-            if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY){
-                Assert.assertEquals(0, keys.size());
-            } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS) {
-                Assert.assertEquals(0, keys.size());
-            } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS) {
-                Assert.assertEquals(iterations, keys.size());
+        if(PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS ||
+                PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY)
+        {
+            List<InputStream> inputStreams = null;
+            try {
+                //leave entries in open state on purpose to see if we catch the keys totals properly.
+                //NOTE: this approach is only safe with CAS because with explicit locks, I notice deadlocks leaving locks opened with LOCAL_HEAP tests
+                //This is because ehcache explicit locking with local heap caches works by locking segments, not single keys...
+                //and as such, a left opened read lock will block a full segment against writing...which will deadlock the test
+                inputStreams = new ArrayList<InputStream>(iterations);
                 for (int i = 0; i < iterations; i++) {
-                    Assert.assertEquals(getCacheKey().toString() + i, keys.get(keys.indexOf(getCacheKey().toString() + i)));
+                    String cacheKey = getCacheKey().toString() + i * 1123;
+
+                    //will copy a good value in cache
+                    copyFileToCache(cacheKey);
+
+                    //and now, will read to cache another value, BUT will not close the stream
+                    InputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), cacheKey, false, cacheReadBufferSize), new CRC32());
+                    readFileFromCacheStream(is);
+
+                    // >>> HERE we leave open for now!
+
+                    inputStreams.add(is);
+                }
+
+                List keys = EhcacheStreamUtilsFactory.getUtils(getCache()).getAllStreamEntryKeys(expirationCheck, false, false, includeCurrentReads, false);
+
+                Assert.assertNotNull(keys);
+                if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY) {
+                    Assert.assertEquals(0, keys.size());
+                } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS) {
+                    Assert.assertEquals(iterations, keys.size());
+                    for (int i = 0; i < iterations; i++) {
+                        Assert.assertEquals(getCacheKey().toString() + i * 1123, keys.get(keys.indexOf(getCacheKey().toString() + i * 1123)));
+                    }
+                }
+            } finally {
+                for(InputStream is: inputStreams) {
+                    if (null != is)
+                        is.close();
                 }
             }
-        } finally {
-            for(InputStream is: inputStreams) {
-                if (null != is)
-                    is.close();
+        } else {
+            List<InputStream> inputStreams = null;
+            try {
+                inputStreams = new ArrayList<InputStream>(iterations);
+                for (int i = 0; i < iterations; i++) {
+                    String cacheKey = getCacheKey().toString() + i * 1123;
+
+                    //will copy a good value in cache
+                    copyFileToCache(cacheKey);
+
+                    //and now, will read to cache another value, BUT will not close the stream
+                    try (
+                            InputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), cacheKey, false, cacheReadBufferSize), new CRC32());
+                    )
+                    {
+                        readFileFromCacheStream(is);
+
+                        // >>> HERE we will close just to avoid deadlocks (and anyway, with explicit locking, there's not a godo way to query the locks in play...
+                        // so this getAllStreamEntryKeysFiltered really does not make sense with explicit locks...so not a big deal here.
+
+                    }
+                }
+
+                List keys = EhcacheStreamUtilsFactory.getUtils(getCache()).getAllStreamEntryKeys(expirationCheck, false, false, includeCurrentReads, false);
+                Assert.assertEquals(0, keys.size());
+            } finally {
+                for(InputStream is: inputStreams) {
+                    if (null != is)
+                        is.close();
+                }
             }
         }
+
+        logger.info("============ testGetAllStreamEntryKeysFilteredReadsOnly end ====================");
     }
 }

@@ -45,6 +45,7 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         setupParameterizedProperties();
         cacheSetUp();
         inputFileCheckSum = readFileFromDisk();
+        printAllTestProperties();
     }
 
     @After
@@ -97,6 +98,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteDefaults() throws IOException {
+        logger.info("============ testCopyFileToCacheByteByByteDefaults ====================");
+
         long outputChecksum = testCopyFileToCacheByteByByte(null, null); //this should be same as override!!
 
         //get the file from cache again
@@ -109,6 +112,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteOverride() throws IOException {
+        logger.info("============ testCopyFileToCacheByteByByteOverride ====================");
+
         long outputChecksum = testCopyFileToCacheByteByByte(true, null);
 
         //get the file from cache again
@@ -121,6 +126,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteAppend() throws IOException {
+        logger.info("============ testCopyFileToCacheByteByByteAppend ====================");
+
         long outputChecksum = testCopyFileToCacheByteByByte(false, null);
 
         //get the file from cache again
@@ -133,6 +140,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteOverrideMultipleTimes() throws IOException {
+        logger.info("============ testCopyFileToCacheByteByByteOverrideMultipleTimes ====================");
+
         int copyIterations = 5;
 
         testCopyFileToCacheByteByByteOverride();
@@ -152,6 +161,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheByteByByteAppendMultipleTimes() throws IOException {
+        logger.info("============ testCopyFileToCacheByteByByteAppendMultipleTimes ====================");
+
         int copyIterations = 5;
 
         testCopyFileToCacheByteByByteAppend();
@@ -175,8 +186,6 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
         int copyBufferSize = 128*1024;
-
-        logger.info("============ testCopyFileToCacheWithBuffer With Override=" + override + " ====================");
 
         OutputStream ehcacheOutputStream;
         if(null == override && null == bufferSize)
@@ -213,6 +222,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferDefaults() throws IOException {
+        logger.info("============ testCopyFileToCacheWithBufferDefaults ====================");
+
         long outputChecksum = testCopyFileToCacheWithBuffer(null, null); //this should be same as override!!
 
         //get the file from cache again
@@ -225,6 +236,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferOverride() throws IOException {
+        logger.info("============ testCopyFileToCacheWithBufferOverride ====================");
+
         long outputChecksum = testCopyFileToCacheWithBuffer(true, null);
 
         //get the file from cache again
@@ -237,6 +250,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferAppend() throws IOException {
+        logger.info("============ testCopyFileToCacheWithBufferAppend ====================");
+
         long outputChecksum = testCopyFileToCacheWithBuffer(false, null);
 
         //get the file from cache again
@@ -249,6 +264,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferOverrideMultipleTimes() throws IOException {
+        logger.info("============ testCopyFileToCacheWithBufferOverrideMultipleTimes ====================");
+
         int copyIterations = 5;
 
         testCopyFileToCacheWithBufferOverride();
@@ -268,6 +285,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheWithBufferAppendMultipleTimes() throws IOException {
+        logger.info("============ testCopyFileToCacheWithBufferAppendMultipleTimes ====================");
+
         int copyIterations = 5;
 
         testCopyFileToCacheWithBufferAppend();
@@ -291,8 +310,6 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int inBufferSize = 32*1024;
-
-        logger.info("============ testCopyFileToCacheInOneShot ====================");
 
         OutputStream ehcacheOutputStream;
         if(null == override && null == bufferSize)
@@ -334,6 +351,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotDefaults() throws IOException {
+        logger.info("============ testCopyFileToCacheInOneShotDefaults ====================");
+
         long outputChecksum = testCopyFileToCacheInOneShot(null, null); //this should be same as override!!
 
         //get the file from cache again
@@ -346,6 +365,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotOverride() throws IOException {
+        logger.info("============ testCopyFileToCacheInOneShotOverride ====================");
+
         long outputChecksum = testCopyFileToCacheInOneShot(true, null);
 
         //get the file from cache again
@@ -358,6 +379,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotAppend() throws IOException {
+        logger.info("============ testCopyFileToCacheInOneShotAppend ====================");
+
         long outputChecksum = testCopyFileToCacheInOneShot(false, null);
 
         //get the file from cache again
@@ -370,6 +393,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotOverrideMultipleTimes() throws IOException {
+        logger.info("============ testCopyFileToCacheInOneShotOverrideMultipleTimes ====================");
+
         int copyIterations = 5;
 
         testCopyFileToCacheInOneShotOverride();
@@ -389,6 +414,8 @@ public class EhcacheOutputStreamTest extends EhcacheStreamingTestsBase {
 
     @Test
     public void testCopyFileToCacheInOneShotAppendMultipleTimes() throws IOException {
+        logger.info("============ testCopyFileToCacheInOneShotAppendMultipleTimes ====================");
+
         int copyIterations = 5;
 
         testCopyFileToCacheInOneShotAppend();
