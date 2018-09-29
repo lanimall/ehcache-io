@@ -158,5 +158,12 @@ public class PropertyUtils {
                 return DEFAULT_CONCURRENCY_MODE;
             }
         }
+
+        @Override
+        public String toString() {
+            return "ConcurrencyMode{" +
+                    "propValue='" + propValue + '\'' +
+                    '}';
+        }
     }
 }

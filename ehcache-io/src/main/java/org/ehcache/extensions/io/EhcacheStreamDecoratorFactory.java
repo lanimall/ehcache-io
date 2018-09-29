@@ -2,6 +2,7 @@ package org.ehcache.extensions.io;
 
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.constructs.CacheDecoratorFactory;
+import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +40,7 @@ public class EhcacheStreamDecoratorFactory extends CacheDecoratorFactory {
                         sb.append(";");
                     sb.append(prop.getKey()).append("=").append(prop.getValue());
                 }
-                logger.debug("Decorator properties : {}", sb.toString());
+                logger.debug("Decorator properties : {}", EhcacheStreamUtilsInternal.toStringSafe(sb));
             }
         }
 

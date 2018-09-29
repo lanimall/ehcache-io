@@ -4,6 +4,7 @@ import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -62,7 +63,7 @@ import org.slf4j.LoggerFactory;
 
         if (!isOpen) {
             if(isDebug)
-                logger.debug("Trying to open a reader for key={}", (null != getPublicCacheKey())? getPublicCacheKey().toString():"null");
+                logger.debug("Trying to open a reader for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
             try {
                 activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(

@@ -2,6 +2,7 @@ package org.ehcache.extensions.io.impl.readers;
 
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,7 +24,7 @@ public class EhcacheStreamReadersFactory {
         EhcacheStreamReader ehcacheStreamReader;
         PropertyUtils.ConcurrencyMode concurrencyMode = PropertyUtils.getEhcacheIOStreamsConcurrencyMode();
         if(logger.isDebugEnabled())
-            logger.debug("Creating a stream reader with Concurrency mode: {}", concurrencyMode.getPropValue());
+            logger.debug("Creating a stream reader with Concurrency mode: {}", EhcacheStreamUtilsInternal.toStringSafe(concurrencyMode));
 
         switch (concurrencyMode){
             case READ_COMMITTED_CASLOCKS:

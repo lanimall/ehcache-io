@@ -36,7 +36,7 @@ public class EhcacheStreamUtilsInternal {
         WRITE
     }
 
-    private static final String toStringSafe(Object obj){
+    public static final String toStringSafe(Object obj){
         return (null != obj)?obj.toString():"null";
     }
 
