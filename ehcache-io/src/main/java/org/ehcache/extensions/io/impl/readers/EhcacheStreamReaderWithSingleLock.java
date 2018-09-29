@@ -5,7 +5,6 @@ import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -44,7 +43,7 @@ import org.slf4j.LoggerFactory;
     //this is meant to be a general estimate without guarantees
     @Override
     public int getSize() {
-        EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+        EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey());
         return (null == temp)? 0: 1;
     }
 
@@ -54,9 +53,12 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
+            if(isDebug)
+                logger.debug("Trying to open a reader for key={}", (null != getPublicCacheKey())? getPublicCacheKey().toString():"null");
+
             try {
                 try {
-                    getEhcacheStreamUtils().acquireReadOnMaster(getCacheKey(), openTimeoutMillis);
+                    getEhcacheStreamUtils().acquireReadOnMaster(getPublicCacheKey(), openTimeoutMillis);
 
                     isOpenLockAcquired = true;
                 }  catch (EhcacheStreamTimeoutException te){
@@ -64,7 +66,7 @@ import org.slf4j.LoggerFactory;
                 }
 
                 activeStreamMaster = EhcacheStreamMaster.deepCopy(
-                        getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey())
+                        getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey())
                 );
 
                 isOpen = true;
@@ -101,7 +103,7 @@ import org.slf4j.LoggerFactory;
         try {
             if (isOpenLockAcquired) {
                 //release the lock
-                getEhcacheStreamUtils().releaseReadOnMaster(getCacheKey());
+                getEhcacheStreamUtils().releaseReadOnMaster(getPublicCacheKey());
             }
         } finally {
             //clean the internal vars
@@ -118,12 +120,8 @@ import org.slf4j.LoggerFactory;
 
         int byteCopied = 0;
 
-        // activeStreamMaster should not be null here since the open should have created it even if it was not there...
-        // but let's check and log anyway just in case ... and returns nothing to copy
+        // If the cache entry was not there, activeStreamMaster can be null here only in the case of explicit locks
         if(null == activeStreamMaster) {
-            if(logger.isWarnEnabled())
-                logger.warn("activeStreamMaster should not be null here since the open should have created it even if it was not there...");
-
             return byteCopied;
         }
 

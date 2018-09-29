@@ -53,11 +53,14 @@ import java.util.Arrays;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
+            if(isDebug)
+                logger.debug("Trying to open a writer for key={}", (null != getPublicCacheKey())? getPublicCacheKey().toString():"null");
+
             try {
                 try {
                     //first, let's mark as write
                     activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                            getCacheKey(),
+                            getPublicCacheKey(),
                             openTimeoutMillis,
                             EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                             EhcacheStreamMaster.MutationField.WRITERS,
@@ -76,7 +79,7 @@ import java.util.Arrays;
                     if(isDebug)
                         logger.debug("Override requested: Clearing previous chunks...");
 
-                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), activeStreamMaster);
+                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getPublicCacheKey(), activeStreamMaster);
 
                     //reset chunk count
                     activeStreamMaster.resetChunkCount();
@@ -104,7 +107,7 @@ import java.util.Arrays;
         if(isOpen) {
             if(null != activeStreamMaster) {
                 // finalize the EhcacheStreamMaster value with new chunk count by saving it in cache
-                boolean replaced = getEhcacheStreamUtils().replaceIfPresentEhcacheStreamMaster(getCacheKey(), activeStreamMaster);
+                boolean replaced = getEhcacheStreamUtils().replaceIfPresentEhcacheStreamMaster(getPublicCacheKey(), activeStreamMaster);
                 if (!replaced)
                     throw new EhcacheStreamIllegalStateException("Could not save the final ehcache stream index properly in cache...aborting");
             }
@@ -121,7 +124,7 @@ import java.util.Arrays;
             if (isOpenMasterMutated) {
                 try {
                     getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                            getCacheKey(),
+                            getPublicCacheKey(),
                             openTimeoutMillis,
                             EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                             EhcacheStreamMaster.MutationField.WRITERS,
@@ -158,7 +161,7 @@ import java.util.Arrays;
         // because all other threads should be waiting in the tryOpen method still
         if(count > 0) {
             // let's add the chunk (overwrite anything in cache)
-            getEhcacheStreamUtils().putChunkValue(getCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), Arrays.copyOf(buf, count));
+            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), Arrays.copyOf(buf, count));
         }
     }
 }

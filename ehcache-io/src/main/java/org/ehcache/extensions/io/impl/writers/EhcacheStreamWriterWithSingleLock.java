@@ -43,16 +43,19 @@ import java.util.Arrays;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
+            if(isDebug)
+                logger.debug("Trying to open a writer for key={}", (null != getPublicCacheKey())? getPublicCacheKey().toString():"null");
+
             try {
                 try {
                     //always try to acquire the lock first
-                    getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getCacheKey(), openTimeoutMillis);
+                    getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getPublicCacheKey(), openTimeoutMillis);
 
                     isOpenLockAcquired = true;
 
                     //Let's mark as write
                     activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                            getCacheKey(),
+                            getPublicCacheKey(),
                             openTimeoutMillis,
                             EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                             EhcacheStreamMaster.MutationField.WRITERS,
@@ -71,7 +74,7 @@ import java.util.Arrays;
                     if(isDebug)
                         logger.debug("Override requested: Clearing previous chunks...");
 
-                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getCacheKey(), activeStreamMaster);
+                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getPublicCacheKey(), activeStreamMaster);
 
                     //reset chunk count
                     activeStreamMaster.resetChunkCount();
@@ -93,7 +96,7 @@ import java.util.Arrays;
         if(isOpen) {
             if(null != activeStreamMaster) {
                 // finalize the EhcacheStreamMaster value with new chunk count by saving it in cache
-                boolean replaced = getEhcacheStreamUtils().replaceIfPresentEhcacheStreamMaster(getCacheKey(), activeStreamMaster);
+                boolean replaced = getEhcacheStreamUtils().replaceIfPresentEhcacheStreamMaster(getPublicCacheKey(), activeStreamMaster);
                 if (!replaced)
                     throw new EhcacheStreamIllegalStateException("Could not save the final ehcache stream index properly in cache...aborting");
 
@@ -111,7 +114,7 @@ import java.util.Arrays;
             if (isOpenMasterMutated) {
                 try {
                     getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                            getCacheKey(),
+                            getPublicCacheKey(),
                             openTimeoutMillis,
                             EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                             EhcacheStreamMaster.MutationField.WRITERS,
@@ -126,7 +129,7 @@ import java.util.Arrays;
             try {
                 if (isOpenLockAcquired) {
                     //release lock
-                    getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getCacheKey());
+                    getEhcacheStreamUtils().releaseExclusiveWriteOnMaster(getPublicCacheKey());
                 }
             } finally {
                 //clean the internal vars
@@ -155,8 +158,34 @@ import java.util.Arrays;
         //only 1 thread at a time should be able to reach this method...
         // because all other threads should be waiting in the tryOpen method still
         if(count > 0) {
+            int chunkCount = activeStreamMaster.getChunkCount();
+
             // let's add the chunk (overwrite anything in cache)
-            getEhcacheStreamUtils().putChunkValue(getCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), Arrays.copyOf(buf, count));
+            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), chunkCount, Arrays.copyOf(buf, count));
+
+            activeStreamMaster.getAndIncrementChunkCount();
+//
+//            try {
+//                try {
+//                    getEhcacheStreamUtils().tryLockInternal(
+//                            getEhcacheStreamUtils().buildChunkKey(getPublicCacheKey(), chunkCount),
+//                            EhcacheStreamUtilsInternal.LockType.WRITE,
+//                            openTimeoutMillis
+//                    );
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                // let's add the chunk (overwrite anything in cache)
+//                getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), chunkCount, Arrays.copyOf(buf, count));
+//            } finally {
+//                getEhcacheStreamUtils().releaseLockInternal(
+//                        getEhcacheStreamUtils().buildChunkKey(getPublicCacheKey(), chunkCount),
+//                        EhcacheStreamUtilsInternal.LockType.WRITE
+//                );
+//            }
+//
+//            activeStreamMaster.getAndIncrementChunkCount();
         }
     }
 }

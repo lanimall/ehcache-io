@@ -5,9 +5,7 @@ import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.utils.ExponentialWait;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
-import org.ehcache.extensions.io.impl.utils.WaitStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -42,7 +40,7 @@ import org.slf4j.LoggerFactory;
     //this is meant to be a general estimate without guarantees
     @Override
     public int getSize() {
-        EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getCacheKey());
+        EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey());
         return (null == temp)? 0: 1;
     }
 
@@ -52,9 +50,12 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
+            if(isDebug)
+                logger.debug("Trying to open a reader for key={}", (null != getPublicCacheKey())? getPublicCacheKey().toString():"null");
+
             try {
                 activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                        getCacheKey(),
+                        getPublicCacheKey(),
                         openTimeoutMillis,
                         EhcacheStreamMaster.ComparatorType.NO_WRITER,
                         EhcacheStreamMaster.MutationField.READERS,
@@ -99,7 +100,7 @@ import org.slf4j.LoggerFactory;
                 // finalize the EhcacheStreamMaster value by saving it in cache with reader count decremented --
                 // this op must happen otherwise this entry will remain un-writeable forever until manual cleanup
                 getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
-                        getCacheKey(),
+                        getPublicCacheKey(),
                         openTimeoutMillis,
                         EhcacheStreamMaster.ComparatorType.NO_WRITER,
                         EhcacheStreamMaster.MutationField.READERS,
