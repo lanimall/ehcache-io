@@ -252,6 +252,7 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
                 ", readers=" + readers +
                 ", lastReadNanos=" + lastReadNanos +
                 ", lastWrittenNanos=" + lastWrittenNanos +
-                '}';
+                '}' +
+                ", hashcode=" + hashCode();
     }
 }
