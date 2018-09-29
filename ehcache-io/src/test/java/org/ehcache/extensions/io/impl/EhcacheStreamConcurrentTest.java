@@ -625,7 +625,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         final long ehcacheReadOpenTimeout = 500L;
         final int readerBeforeOpenOrderPosition = 0; //first position: ensured read thread starts before write thread
-        final long readerSleepDuringCopyMillis = 0L;
+        final long readerSleepDuringCopyMillis = 50L;
         final long readerSleepAfterCopyBeforeCloseMillis = 1000L;
         final boolean allowNullStream = false;
 
