@@ -23,7 +23,7 @@ public class EhcacheStreamWritersFactory {
         EhcacheStreamWriter ehcacheStreamWriter;
         PropertyUtils.ConcurrencyMode concurrencyMode = PropertyUtils.getEhcacheIOStreamsConcurrencyMode();
         if(logger.isDebugEnabled())
-            logger.debug("Creating a stream reader with Concurrency mode: {}", concurrencyMode.getPropValue());
+            logger.debug("Creating a stream writer with Concurrency mode: {}", concurrencyMode.getPropValue());
 
         switch (concurrencyMode){
             case WRITE_PRIORITY:
