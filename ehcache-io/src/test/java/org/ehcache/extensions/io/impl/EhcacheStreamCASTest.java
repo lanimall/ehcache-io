@@ -40,6 +40,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     @Before
     public void setup() throws Exception {
         cacheSetUp();
+        printAllTestProperties();
     }
 
     @After
