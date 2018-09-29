@@ -11,18 +11,18 @@ public abstract class BaseEhcacheStream {
 
     private final EhcacheStreamUtilsInternal ehcacheStreamUtils;
 
-    private final Object cacheKey;
+    private final Object publicCacheKey;
 
-    protected BaseEhcacheStream(Ehcache cache, Object cacheKey) {
+    protected BaseEhcacheStream(Ehcache cache, Object publicCacheKey) {
         this.ehcacheStreamUtils = new EhcacheStreamUtilsInternal(cache);
-        this.cacheKey = cacheKey;
+        this.publicCacheKey = publicCacheKey;
     }
 
     public EhcacheStreamUtilsInternal getEhcacheStreamUtils() {
         return ehcacheStreamUtils;
     }
 
-    public Object getCacheKey() {
-        return cacheKey;
+    public Object getPublicCacheKey() {
+        return publicCacheKey;
     }
 }
