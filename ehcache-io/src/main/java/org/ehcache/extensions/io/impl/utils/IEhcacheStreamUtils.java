@@ -8,11 +8,11 @@ import java.util.List;
  * Created by fabien.sanglier on 9/14/18.
  */
 public interface IEhcacheStreamUtils {
-    boolean removeStreamEntry(Object cacheKey, long timeout) throws EhcacheStreamException;
+    boolean removeStreamEntry(final Object cacheKey, long timeout) throws EhcacheStreamException;
 
-    boolean containsStreamEntry(Object cacheKey);
+    boolean containsStreamEntry(final Object cacheKey);
 
     List getAllStreamEntryKeys(boolean checkForExpiry);
 
-    List getAllStreamEntryKeysFilteredByState(boolean checkForExpiry, boolean includeCurrentWrites, boolean includeCurrentReads);
+    List getAllStreamEntryKeys(boolean checkForExpiry, boolean includeNoReads, boolean includeNoWrites, boolean includeReadsOnly, boolean includeWritesOnly);
 }
