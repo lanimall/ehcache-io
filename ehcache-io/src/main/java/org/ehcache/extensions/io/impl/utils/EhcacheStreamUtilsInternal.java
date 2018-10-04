@@ -155,7 +155,10 @@ public class EhcacheStreamUtilsInternal {
             if(null != internalKeys && internalKeys.size() > 0) {
                 publicKeys = new ArrayList(internalKeys.size());
                 Iterator it = internalKeys.iterator();
-                if(includeNoReads && includeNoWrites && includeWritesOnly && includeReadsOnly) {
+
+                //if all true or all false, return all keys
+                if(includeNoReads && includeNoWrites && includeWritesOnly && includeReadsOnly
+                        || !includeNoReads && !includeNoWrites && !includeWritesOnly && !includeReadsOnly) {
                     while (it.hasNext()) {
                         Object internalKey = it.next();
                         if (null != internalKey

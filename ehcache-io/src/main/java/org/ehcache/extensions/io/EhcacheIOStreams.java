@@ -32,15 +32,10 @@ public class EhcacheIOStreams {
     }
 
     /**
-     * Get a list of all the public keys (the key objects used by the client apps) in cache
-     *
-     * @return      List of public key objects
-     */
-
-    /**
      * Get list of all the cache entry keys
      *
      * @param      cache  the backend cache
+     * @param      excludeExpiredKeys  make sure no expired keys are returned
      * @return     List of stream entry keys in cache
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
@@ -48,6 +43,24 @@ public class EhcacheIOStreams {
         checkValid(cache);
 
         return EhcacheStreamUtilsFactory.getUtils(cache).getAllStreamEntryKeys(excludeExpiredKeys);
+    }
+
+    /**
+     * Get list of all the cache entry keys
+     *
+     * @param       cache  the backend cache
+     * @param       excludeExpiredKeys  make sure no expired keys are returned
+     * @param       includeNoReads  includes keys with no read state
+     * @param       includeNoWrites  includes keys with no write state
+     * @param       includeReadsOnly  includes keys with read state
+     * @param       includeWritesOnly  includes keys with write state
+     * @return     List of stream entry keys in cache that satisfy the filters
+     * @exception  EhcacheStreamException if cache or cacheKey are not valid
+     */
+    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys, boolean includeNoReads, boolean includeNoWrites, boolean includeReadsOnly, boolean includeWritesOnly) throws EhcacheStreamException {
+        checkValid(cache);
+
+        return EhcacheStreamUtilsFactory.getUtils(cache).getAllStreamEntryKeys(excludeExpiredKeys, includeNoReads, includeNoWrites, includeReadsOnly, includeWritesOnly);
     }
 
     /**
