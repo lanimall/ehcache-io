@@ -219,7 +219,7 @@ public class EhcacheStreamUtilsInternal {
                     boolean replaced = replaceIfEqualEhcacheStreamMaster(internalKey, initialStreamMasterFromCache, mutatedStreamMaster);
                     if (replaced) {
                         if (isDebug)
-                            logger.debug("Mutated object for key {} committed in cache: {}", toStringSafe(internalKey), mutatedStreamMaster.toString());
+                            logger.debug("Successful Atomic Object Mutation for key {} / value {}", toStringSafe(internalKey), toStringSafe(mutatedStreamMaster));
 
                         //at this point, the object has been changed in cache as expected
                         isMutated = true;
@@ -236,11 +236,11 @@ public class EhcacheStreamUtilsInternal {
             //if it's not mutated at the end of all the tries and timeout, throw timeout exception
             if (!isMutated) {
                 throw new EhcacheStreamTimeoutException(String.format(
-                        "Could not perform CAS mutate operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(internalKey), attempts, t2 - t1, timeoutMillis));
+                        "Could not perform Atomic mutate operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(internalKey), attempts, t2 - t1, timeoutMillis));
             } else {
                 if (isDebug)
                     logger.debug(String.format(
-                            "Successfully performed CAS mutate operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(internalKey), attempts, t2 - t1, timeoutMillis));
+                            "Successfully performed Atomic mutate operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(internalKey), attempts, t2 - t1, timeoutMillis));
             }
 
             return mutatedStreamMaster;
@@ -253,11 +253,7 @@ public class EhcacheStreamUtilsInternal {
         //An atomic removal of a master stream entry + its related chunk entries.
         //Return TRUE for success state... otherwise throws an exception.
         boolean atomicRemoveEhcacheStreamMasterInCache(final EhcacheStreamMasterKey ehcacheStreamMasterKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
-            EhcacheStreamMaster removedStreamMasterFromCache = null;
-            long t1 = System.currentTimeMillis();
-            long t2 = t1; //this ensures that the while always happen at least once!
-            boolean isRemoved = false;
-            long attempts = 0L;
+            boolean isRemoved;
 
             //first, mutate to WRITE mode to protect against concurrent Writes or READs
             EhcacheStreamMaster activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
@@ -269,51 +265,22 @@ public class EhcacheStreamUtilsInternal {
                     waitStrategy
             );
 
-            //If successful, CAS remove. Comparator for this CAS loop should be SINGLE WRITER
-            final EhcacheStreamMaster.ComparatorType comparatorType = EhcacheStreamMaster.ComparatorType.SINGLE_WRITER;
-            while (!isRemoved && t2 - t1 <= timeoutMillis) {
-                //get the master index from cache, unless override is set
-                removedStreamMasterFromCache = getStreamMasterFromCache(ehcacheStreamMasterKey);
+            //CAS remove stream master from cache (this op is the most important for consistency)
+            isRemoved = removeIfPresentEhcacheStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
+            if (isRemoved) {
+                if (isDebug)
+                    logger.debug("Successful Atomic Remove operation for key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster));
 
-                if (comparatorType.check(removedStreamMasterFromCache)) {
-                    //CAS remove stream master from cache (this op is the most important for consistency)
-                    boolean removed = removeIfPresentEhcacheStreamMaster(ehcacheStreamMasterKey, removedStreamMasterFromCache);
-                    if (removed) {
-                        if (isDebug)
-                            logger.debug("CAS removed object from cache: {}", toStringSafe(removedStreamMasterFromCache));
+                //clear related chunks
+                clearChunksFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
 
-                        //clear related chunks
-                        clearChunksFromStreamMaster(ehcacheStreamMasterKey, removedStreamMasterFromCache);
-
-                        //at this point, the object has been changed in cache as expected
-                        isRemoved = true;
-                    }
-                }
-
-                if (!isRemoved) {
-                    waitStrategy.doWait(attempts); //wait time
-                    attempts++;
-                }
-                t2 = System.currentTimeMillis();
-            }
-
-            //if it's not mutated at the end of all the tries and timeout, throw timeout exception
-            if (!isRemoved) {
-                throw new EhcacheStreamTimeoutException(String.format(
-                        "Could not perform CAS remove operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(ehcacheStreamMasterKey), attempts, t2 - t1, timeoutMillis));
-            } else {
                 if (isDebug)
                     logger.debug(String.format(
-                            "Successfully performed CAS remove operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(ehcacheStreamMasterKey), attempts, t2 - t1, timeoutMillis));
-
-                //check that the master entry is actually removed
-                if (null != getStreamMasterFromCache(ehcacheStreamMasterKey))
-                    throw new EhcacheStreamIllegalStateException("Master Entry was not removed as expected");
-
-                //check that the other chunks are also removed
-                EhcacheStreamChunk[] chunkValues = getStreamChunksFromStreamMaster(ehcacheStreamMasterKey, removedStreamMasterFromCache);
-                if (null != chunkValues && chunkValues.length > 0)
-                    throw new EhcacheStreamIllegalStateException("Some chunk entries were not removed as expected");
+                            "Successfully removed all the chunks related to key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
+            } else {
+                //if it's not mutated at the end of all the tries and timeout, throw timeout exception
+                throw new EhcacheStreamIllegalStateException(String.format(
+                        "Could not perform Atomic Remove operation on key [%s]", toStringSafe(ehcacheStreamMasterKey)));
             }
 
             return isRemoved;
@@ -390,11 +357,6 @@ public class EhcacheStreamUtilsInternal {
         void releaseExclusiveWriteOnMaster(final EhcacheStreamMasterKey ehcacheStreamMasterKey) {
             releaseLockInternal(ehcacheStreamMasterKey, LockType.WRITE);
         }
-
-//
-//    public void clearChunksFromCacheKey(final Object cacheKey) {
-//        clearChunksFromStreamMaster(cacheKey, getStreamMasterFromCache(cacheKey));
-//    }
 
         // isReadLockedByCurrentThread throws a "UnsupportedOperationException Querying of read lock is not supported" for standalone ehcache...
         // fallback to non-query mode if we reach that
