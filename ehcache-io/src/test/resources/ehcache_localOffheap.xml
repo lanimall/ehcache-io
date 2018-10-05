@@ -14,5 +14,16 @@
 
         <!-- must be pinned inCache to avoid cache entries being thrown out randomly -->
         <pinning store="inCache"></pinning>
+
+        <searchable keys="false" values="false" allowDynamicIndexing="false">
+            <searchAttribute name="publicKey" expression="key.cacheKey"/>
+            <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastReadNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWrittenNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+        </searchable>
     </cache>
 </ehcache>

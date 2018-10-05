@@ -23,6 +23,17 @@
                 <timeoutBehavior type="exception" />
             </nonstop>
         </terracotta>
+
+        <searchable keys="false" values="false" allowDynamicIndexing="false">
+            <searchAttribute name="publicKey" expression="key.cacheKey"/>
+            <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastReadNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWrittenNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+        </searchable>
     </cache>
 
     <cache name="FileStoreDistributedEventual"
@@ -38,5 +49,16 @@
                 <timeoutBehavior type="exception" />
             </nonstop>
         </terracotta>
+
+        <searchable keys="false" values="false" allowDynamicIndexing="false">
+            <searchAttribute name="publicKey" expression="key.cacheKey"/>
+            <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastReadNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWrittenNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+        </searchable>
     </cache>
 </ehcache>
