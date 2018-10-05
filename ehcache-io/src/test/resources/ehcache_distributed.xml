@@ -25,7 +25,10 @@
         </terracotta>
 
         <searchable keys="false" values="false" allowDynamicIndexing="false">
-            <searchAttribute name="publicKey" expression="key.cacheKey"/>
+            <searchAttribute name="publicKey" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <!-- if the custom key is a complex object, you can extract any attribute using expression -->
+            <!--<searchAttribute name="publicKey1" expression="key.cacheKey.attr1.subattr2"/>-->
+
             <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
@@ -51,7 +54,10 @@
         </terracotta>
 
         <searchable keys="false" values="false" allowDynamicIndexing="false">
-            <searchAttribute name="publicKey" expression="key.cacheKey"/>
+            <searchAttribute name="publicKey" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <!-- if the custom key is a complex object, you can extract any attribute using expression -->
+            <!--<searchAttribute name="publicKey1" expression="key.cacheKey.attr1.subattr2"/>-->
+
             <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
