@@ -27,6 +27,8 @@ public class EhcacheStreamKeyExtractor implements AttributeExtractor {
     public static final Integer FIELDNAME_CACHEKEYTYPE_CHUNKKEY = new Integer(1);
     public static final Integer FIELDNAME_CACHEKEYTYPE_OTHER = new Integer(2); //this is more to verify nothing else is coming into the cache
 
+    public EhcacheStreamKeyExtractor(){}
+
     public EhcacheStreamKeyExtractor(Properties properties) {
     }
 

@@ -25,6 +25,8 @@ public class EhcacheStreamValueExtractor implements AttributeExtractor {
     public static final Long FIELDNAME_MASTER_LASTREADNANOS_DEFAULT_NULL = new Long(-1L);
     public static final Long FIELDNAME_MASTER_LASTWRITENANOS_DEFAULT_NULL = new Long(-1L);
 
+    public EhcacheStreamValueExtractor(){}
+
     public EhcacheStreamValueExtractor(Properties properties) {
     }
 
