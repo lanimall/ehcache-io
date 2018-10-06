@@ -33,10 +33,6 @@
     <!--<level value="debug"/>-->
     <!--</logger>-->
 
-    <!--<logger name="org.ehcache.extensions.io.impl.EhcacheStreamCasTest">-->
-    <!--<level value="debug"/>-->
-    <!--</logger>-->
-
     <!--<logger name="org.ehcache.extensions.io.EhcacheStreamingTestsBase">-->
         <!--<level value="debug"/>-->
     <!--</logger>-->

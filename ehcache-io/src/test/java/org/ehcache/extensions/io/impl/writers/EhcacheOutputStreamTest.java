@@ -1,4 +1,4 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.writers;
 
 import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;

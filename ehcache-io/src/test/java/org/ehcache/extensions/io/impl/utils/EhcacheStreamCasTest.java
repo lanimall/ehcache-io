@@ -1,9 +1,7 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.utils;
 
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
-import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +47,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testCasLoopReplaceIncrementsReadersInThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementsReadersInThreads ====================");
+    public void testOpenReadersInThreads() throws Exception {
+        logger.info("============ Starting testOpenReadersInThreads ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -64,6 +62,15 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
+        //first, let's open and close a writer to make sure there's a master entry in cache
+        try {
+            streamUtilsInternal.openWriteOnMaster(getCacheKey(), openTimeoutMillis);
+        } finally {
+            streamUtilsInternal.closeWriteOnMaster(getCacheKey(), openTimeoutMillis);
+        }
+
+        Assert.assertEquals(1, getCache().getSize()); // should be 1 now
+
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> resultInc = new AtomicReference<Long>();
             final AtomicReference<Throwable> exceptionInc = new AtomicReference<Throwable>();
@@ -74,13 +81,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.openReadOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -93,6 +96,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
         for(int i = 0; i < threadCount; i++) {
             Assert.assertNull(exceptions.get(i).get()); // should have 0 exception
         }
+
+        Assert.assertEquals(1, getCache().getSize()); // should still be 1 now
 
         // check the final counter
         EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
@@ -101,60 +106,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testCasLoopReplaceIncrementsWritersInThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementsWritersInThreads ====================");
-
-        List<Callable<Long>> callables;
-        List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Throwable>> exceptions;
-
-        callables = new ArrayList<Callable<Long>>();
-        callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Throwable>>();
-
-        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
-
-        final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
-
-        for(int i = 0; i < threadCount; i++) {
-            final AtomicReference<Long> resultInc = new AtomicReference<Long>();
-            final AtomicReference<Throwable> exceptionInc = new AtomicReference<Throwable>();
-
-            callableResults.add(resultInc);
-            exceptions.add(exceptionInc);
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for (int i = 0; i < iterations; i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_READER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
-                        );
-                    }
-                    return null;
-                }
-            });
-        }
-
-        runInThreads(callables, callableResults, exceptions);
-
-        for(int i = 0; i < threadCount; i++) {
-            Assert.assertNull(exceptions.get(i).get()); // should have 0 exception
-        }
-
-        // check the final counter
-        EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
-        logger.debug("Final EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheck));
-        Assert.assertEquals(threadCount*iterations,testObjectCheck.getWriters());
-    }
-
-    @Test
-    public void testCasLoopReplaceIncrementAndDecrementReadersInDifferentThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementAndDecrementReadersInDifferentThreads ====================");
+    public void testOpenAndCloseReadersInDifferentThreads() throws Exception {
+        logger.info("============ Starting testOpenAndCloseReadersInDifferentThreads ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -178,13 +131,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.openReadOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -202,13 +151,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.closeReadOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -229,8 +174,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testCasLoopReplaceIncrementAndDecrementReadersInSameThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementAndDecrementReadersInSameThreads ====================");
+    public void testOpenAndCloseReadersInSameThreads() throws Exception {
+        logger.info("============ Starting testOpenAndCloseReadersInSameThreads ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -254,22 +199,17 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
-                        );
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
-                        );
+                        try {
+                            streamUtilsInternal.openReadOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        } finally {
+                            streamUtilsInternal.closeReadOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        }
                     }
                     return null;
                 }
@@ -289,8 +229,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testCasLoopReplaceIncrementAndDecrementWritersInDifferentThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementAndDecrementWritersInDifferentThreads ====================");
+    public void testOpenAndCloseWritersInDifferentThreads() throws Exception {
+        logger.info("============ Starting testOpenAndCloseWritersInDifferentThreads ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -314,13 +254,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.openWriteOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -338,13 +274,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.closeWriteOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -366,8 +298,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testCasLoopReplaceIncrementAndDecrementWritersInSameThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementAndDecrementWritersInSameThreads ====================");
+    public void testOpenAndCloseWritersInSameThreads() throws Exception {
+        logger.info("============ Starting testOpenAndCloseWritersInSameThreads ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -391,22 +323,17 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
-                        );
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
-                        );
+                        try {
+                            streamUtilsInternal.openWriteOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        } finally {
+                            streamUtilsInternal.closeWriteOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        }
                     }
                     return null;
                 }
@@ -427,8 +354,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testCasLoopReplaceIncrementAndDecrementReadersWritersInDifferentThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementAndDecrementReadersWritersInDifferentThreads ====================");
+    public void testOpenAndCloseReadersWritersInDifferentThreads() throws Exception {
+        logger.info("============ Starting testOpenAndCloseReadersWritersInDifferentThreads ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -449,13 +376,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.openWriteOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -468,13 +391,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.closeWriteOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -487,13 +406,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.openReadOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -506,13 +421,9 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
+                        streamUtilsInternal.closeReadOnMaster(
                                 getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                                openTimeoutMillis
                         );
                     }
                     return null;
@@ -563,22 +474,17 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
-                        );
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
-                                EhcacheStreamMaster.MutationField.WRITERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultWritesCasBackoffWaitStrategy
-                        );
+                        try {
+                            streamUtilsInternal.openWriteOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        } finally {
+                            streamUtilsInternal.closeWriteOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        }
                     }
                     return null;
                 }
@@ -590,22 +496,17 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
-                        );
-                        streamUtilsInternal.atomicMutateEhcacheStreamMasterInCache(
-                                getCacheKey(),
-                                openTimeoutMillis,
-                                EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                                EhcacheStreamMaster.MutationField.READERS,
-                                EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                                PropertyUtils.defaultReadsCasBackoffWaitStrategy
-                        );
+                        try {
+                            streamUtilsInternal.openReadOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        } finally {
+                            streamUtilsInternal.closeReadOnMaster(
+                                    getCacheKey(),
+                                    openTimeoutMillis
+                            );
+                        }
                     }
                     return null;
                 }

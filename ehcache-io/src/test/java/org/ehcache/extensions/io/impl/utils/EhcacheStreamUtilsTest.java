@@ -1,9 +1,7 @@
-package org.ehcache.extensions.io.impl;
+package org.ehcache.extensions.io.impl.utils;
 
 import org.ehcache.extensions.io.EhcacheIOStreams;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
-import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsFactory;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.*;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
