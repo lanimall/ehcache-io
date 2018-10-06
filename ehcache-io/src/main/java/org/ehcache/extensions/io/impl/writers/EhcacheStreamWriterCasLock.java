@@ -7,7 +7,6 @@ import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -60,13 +59,9 @@ import java.util.Arrays;
             try {
                 try {
                     //first, let's mark as write
-                    activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                    activeStreamMaster = getEhcacheStreamUtils().openWriteOnMaster(
                             getPublicCacheKey(),
-                            openTimeoutMillis,
-                            EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                            EhcacheStreamMaster.MutationField.WRITERS,
-                            EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                            PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                            openTimeoutMillis
                     );
 
                     isOpenMasterMutated = true;
@@ -124,13 +119,9 @@ import java.util.Arrays;
             // reset the write state atomically so this entry can be written/read by others
             if (isOpenMasterMutated) {
                 try {
-                    getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                    getEhcacheStreamUtils().closeWriteOnMaster(
                             getPublicCacheKey(),
-                            openTimeoutMillis,
-                            EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
-                            EhcacheStreamMaster.MutationField.WRITERS,
-                            EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                            PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                            openTimeoutMillis
                     );
                 } catch (EhcacheStreamTimeoutException te) {
                     throw new EhcacheStreamTimeoutException("Could not close the stream within timeout", te);

@@ -5,7 +5,6 @@ import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,13 +65,9 @@ import org.slf4j.LoggerFactory;
                 logger.debug("Trying to open a reader for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
             try {
-                activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                activeStreamMaster = getEhcacheStreamUtils().openSilentReadOnMaster(
                         getPublicCacheKey(),
-                        openTimeoutMillis,
-                        EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                        EhcacheStreamMaster.MutationField.READERS,
-                        EhcacheStreamMaster.MutationType.NONE,   //here, on purpose, we don't want to increment anything...kind of a silent read so if there's a write, it will acquire its write
-                        PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                        openTimeoutMillis
                 );
 
                 isOpen = true;

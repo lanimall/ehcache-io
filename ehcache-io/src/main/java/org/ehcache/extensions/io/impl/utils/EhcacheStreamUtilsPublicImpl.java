@@ -45,12 +45,12 @@ public class EhcacheStreamUtilsPublicImpl implements IEhcacheStreamUtils {
         switch (concurrencyMode){
             case WRITE_PRIORITY:
             case READ_COMMITTED_CASLOCKS:
-                removed = ehcacheStreamUtilsInternal.atomicRemoveEhcacheStreamMasterInCache(
+                removed = ehcacheStreamUtilsInternal.removeEhcacheStream(
                         cacheKey,
                         timeout);
                 break;
             case READ_COMMITTED_WITHLOCKS:
-                removed = ehcacheStreamUtilsInternal.atomicRemoveEhcacheStreamMasterInCacheExplicitLocks(
+                removed = ehcacheStreamUtilsInternal.removeEhcacheStreamExplicitLocks(
                         cacheKey,
                         timeout
                 );

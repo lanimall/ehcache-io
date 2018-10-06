@@ -64,15 +64,54 @@ public class EhcacheStreamUtilsInternal {
         );
     }
 
-    public EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final Object publicCacheKey, long timeoutMillis, EhcacheStreamMaster.ComparatorType comparatorType, EhcacheStreamMaster.MutationField mutationField, EhcacheStreamMaster.MutationType mutationType, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.atomicMutateEhcacheStreamMasterInCache(buildStreamMasterKey(publicCacheKey), timeoutMillis, comparatorType, mutationField, mutationType, waitStrategy);
+    public EhcacheStreamMaster openWriteOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
+        return ehcacheStreamUtilsInternalImpl.openWriteOnMaster(
+                buildStreamMasterKey(publicCacheKey),
+                timeoutMillis,
+                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+        );
     }
 
-    public boolean atomicRemoveEhcacheStreamMasterInCache(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.atomicRemoveEhcacheStreamMasterInCache(buildStreamMasterKey(publicCacheKey), timeoutMillis);
+    public EhcacheStreamMaster closeWriteOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
+        return ehcacheStreamUtilsInternalImpl.closeWriteOnMaster(
+                buildStreamMasterKey(publicCacheKey),
+                timeoutMillis,
+                PropertyUtils.defaultWritesCasBackoffWaitStrategy
+        );
     }
 
-    public boolean atomicRemoveEhcacheStreamMasterInCacheExplicitLocks(final Object publicCacheKey, long timeout) throws EhcacheStreamException {
+    public EhcacheStreamMaster openReadOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
+        return ehcacheStreamUtilsInternalImpl.openReadOnMaster(
+                buildStreamMasterKey(publicCacheKey),
+                timeoutMillis,
+                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+        );
+    }
+
+    public EhcacheStreamMaster openSilentReadOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
+        return ehcacheStreamUtilsInternalImpl.openSilentReadOnMaster(
+                buildStreamMasterKey(publicCacheKey),
+                timeoutMillis,
+                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+        );
+    }
+
+    public EhcacheStreamMaster closeReadOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
+        return ehcacheStreamUtilsInternalImpl.closeReadOnMaster(
+                buildStreamMasterKey(publicCacheKey),
+                timeoutMillis,
+                PropertyUtils.defaultReadsCasBackoffWaitStrategy
+        );
+    }
+
+    public boolean removeEhcacheStream(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
+        return ehcacheStreamUtilsInternalImpl.atomicRemoveEhcacheStreamMasterInCache(
+                buildStreamMasterKey(publicCacheKey),
+                timeoutMillis,
+                PropertyUtils.defaultWritesCasBackoffWaitStrategy);
+    }
+
+    public boolean removeEhcacheStreamExplicitLocks(final Object publicCacheKey, long timeout) throws EhcacheStreamException {
         return ehcacheStreamUtilsInternalImpl.atomicRemoveEhcacheStreamMasterInCacheExplicitLocks(buildStreamMasterKey(publicCacheKey), timeout);
     }
 
@@ -177,10 +216,10 @@ public class EhcacheStreamUtilsInternal {
                             EhcacheStreamMaster ehcacheStreamMaster = getStreamMasterFromCache(ehcacheStreamMasterKey);
                             if (
                                     includeNoReads && ehcacheStreamMaster.getReaders() == 0 ||
-                                    includeNoWrites && ehcacheStreamMaster.getWriters() == 0 ||
-                                    includeWritesOnly && ehcacheStreamMaster.getWriters() > 0 ||
-                                    includeReadsOnly && ehcacheStreamMaster.getReaders() > 0
-                            ) {
+                                            includeNoWrites && ehcacheStreamMaster.getWriters() == 0 ||
+                                            includeWritesOnly && ehcacheStreamMaster.getWriters() > 0 ||
+                                            includeReadsOnly && ehcacheStreamMaster.getReaders() > 0
+                                    ) {
                                 publicKeys.add(ehcacheStreamMasterKey.getCacheKey());
                             }
                         }
@@ -193,13 +232,69 @@ public class EhcacheStreamUtilsInternal {
             return publicKeys;
         }
 
+        EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+            return atomicMutateEhcacheStreamMasterInCache(
+                    internalKey,
+                    timeoutMillis,
+                    EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
+                    EhcacheStreamMaster.MutationField.WRITERS,
+                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                    waitStrategy
+            );
+        }
+
+        EhcacheStreamMaster closeWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+            return atomicMutateEhcacheStreamMasterInCache(
+                    internalKey,
+                    timeoutMillis,
+                    EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
+                    EhcacheStreamMaster.MutationField.WRITERS,
+                    EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                    waitStrategy
+            );
+        }
+
+        EhcacheStreamMaster openReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+            return atomicMutateEhcacheStreamMasterInCache(
+                    internalKey,
+                    timeoutMillis,
+                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                    EhcacheStreamMaster.MutationField.READERS,
+                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                    waitStrategy
+            );
+        }
+
+        EhcacheStreamMaster openSilentReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+            return atomicMutateEhcacheStreamMasterInCache(
+                    internalKey,
+                    timeoutMillis,
+                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                    EhcacheStreamMaster.MutationField.READERS,
+                    EhcacheStreamMaster.MutationType.NONE,   //here, on purpose, we don't want to increment anything...kind of a silent read so if there's a write, it will acquire its write
+                    waitStrategy
+            );
+        }
+
+        EhcacheStreamMaster closeReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+            return atomicMutateEhcacheStreamMasterInCache(
+                    internalKey,
+                    timeoutMillis,
+                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                    EhcacheStreamMaster.MutationField.READERS,
+                    EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                    waitStrategy
+            );
+        }
+
         //Main CAS loop util method used by the CAS readers/writers
         EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             EhcacheStreamMaster mutatedStreamMaster = null;
+            boolean isMutated = false;
             long t1 = System.currentTimeMillis();
             long t2 = t1; //this ensures that the while always happen at least once!
-            boolean isMutated = false;
             long attempts = 0L;
+
             while (!isMutated && t2 - t1 <= timeoutMillis) {
                 //get the master index from cache, unless override is set
                 EhcacheStreamMaster initialStreamMasterFromCache = getStreamMasterFromCache(internalKey);
@@ -216,14 +311,7 @@ public class EhcacheStreamUtilsInternal {
 
                     //concurrency check with CAS: let's save the initial EhcacheStreamMaster in cache, while making sure it hasn't change so far
                     //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed here...while others will fail their CAS ops...and spin back to try again later.
-                    boolean replaced = replaceIfEqualEhcacheStreamMaster(internalKey, initialStreamMasterFromCache, mutatedStreamMaster);
-                    if (replaced) {
-                        if (isDebug)
-                            logger.debug("Successful Atomic Object Mutation for key {} / value {}", toStringSafe(internalKey), toStringSafe(mutatedStreamMaster));
-
-                        //at this point, the object has been changed in cache as expected
-                        isMutated = true;
-                    }
+                    isMutated = replaceIfEqualEhcacheStreamMaster(internalKey, initialStreamMasterFromCache, mutatedStreamMaster);
                 }
 
                 if (!isMutated) {
@@ -236,18 +324,15 @@ public class EhcacheStreamUtilsInternal {
             //if it's not mutated at the end of all the tries and timeout, throw timeout exception
             if (!isMutated) {
                 throw new EhcacheStreamTimeoutException(String.format(
-                        "Could not perform Atomic mutate operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(internalKey), attempts, t2 - t1, timeoutMillis));
+                        "Could not perform Atomic mutate operation [%s,%s,%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms]) - Key [%s]", toStringSafe(mutationField), toStringSafe(mutationType), toStringSafe(comparatorType), attempts, t2 - t1, timeoutMillis, toStringSafe(internalKey)));
             } else {
-                if (isDebug)
+                if (isDebug) {
                     logger.debug(String.format(
-                            "Successfully performed Atomic mutate operation on key [%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms])", toStringSafe(internalKey), attempts, t2 - t1, timeoutMillis));
+                            "Successfully performed Atomic mutate operation [%s,%s,%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms]) - Key [%s] / Returned Mutated Object [%s]", toStringSafe(mutationField), toStringSafe(mutationType), toStringSafe(comparatorType), attempts, t2 - t1, timeoutMillis, toStringSafe(internalKey), toStringSafe(mutatedStreamMaster)));
+                }
             }
 
             return mutatedStreamMaster;
-        }
-
-        boolean atomicRemoveEhcacheStreamMasterInCache(final EhcacheStreamMasterKey internalKey, final long timeoutMillis) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
-            return atomicRemoveEhcacheStreamMasterInCache(internalKey, timeoutMillis, PropertyUtils.defaultWritesCasBackoffWaitStrategy);
         }
 
         //An atomic removal of a master stream entry + its related chunk entries.
@@ -256,12 +341,9 @@ public class EhcacheStreamUtilsInternal {
             boolean isRemoved;
 
             //first, mutate to WRITE mode to protect against concurrent Writes or READs
-            EhcacheStreamMaster activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
+            EhcacheStreamMaster activeStreamMaster = openWriteOnMaster(
                     ehcacheStreamMasterKey,
                     timeoutMillis,
-                    EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                    EhcacheStreamMaster.MutationField.WRITERS,
-                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
                     waitStrategy
             );
 

@@ -6,7 +6,6 @@ import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
-import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -55,13 +54,9 @@ import org.slf4j.LoggerFactory;
                 logger.debug("Trying to open a reader for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
             try {
-                activeStreamMaster = getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                activeStreamMaster = getEhcacheStreamUtils().openReadOnMaster(
                         getPublicCacheKey(),
-                        openTimeoutMillis,
-                        EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                        EhcacheStreamMaster.MutationField.READERS,
-                        EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                        PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                        openTimeoutMillis
                 );
 
                 isOpenMasterMutated = true;
@@ -100,13 +95,9 @@ import org.slf4j.LoggerFactory;
             if (isOpenMasterMutated) {
                 // finalize the EhcacheStreamMaster value by saving it in cache with reader count decremented --
                 // this op must happen otherwise this entry will remain un-writeable forever until manual cleanup
-                getEhcacheStreamUtils().atomicMutateEhcacheStreamMasterInCache(
+                getEhcacheStreamUtils().closeReadOnMaster(
                         getPublicCacheKey(),
-                        openTimeoutMillis,
-                        EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                        EhcacheStreamMaster.MutationField.READERS,
-                        EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
-                        PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                        openTimeoutMillis
                 );
             }
         } finally {
