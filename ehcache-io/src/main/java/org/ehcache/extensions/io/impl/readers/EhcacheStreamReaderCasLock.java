@@ -59,7 +59,8 @@ import org.slf4j.LoggerFactory;
                         openTimeoutMillis
                 );
 
-                isOpenMasterMutated = true;
+                if(null != activeStreamMaster && activeStreamMaster.getReaders() > 0)
+                    isOpenMasterMutated = true;
             } catch (EhcacheStreamTimeoutException te){
                 throw new EhcacheStreamTimeoutException("Could not open the reader within timeout",te);
             }
@@ -115,12 +116,8 @@ import org.slf4j.LoggerFactory;
 
         int byteCopied = 0;
 
-        // activeStreamMaster should not be null here since the open should have created it even if it was not there...
-        // but let's check and log anyway just in case ... and returns nothing to copy
+        // activeStreamMaster could be null here if there was no entry in cache in the first place...
         if(null == activeStreamMaster) {
-            if(logger.isWarnEnabled())
-                    logger.warn("activeStreamMaster should not be null here since the open should have created it even if it was not there...");
-
             return byteCopied;
         }
 
