@@ -236,6 +236,7 @@ public class EhcacheStreamUtilsInternal {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
                     timeoutMillis,
+                    false,
                     EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                     EhcacheStreamMaster.MutationField.WRITERS,
                     EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
@@ -247,6 +248,7 @@ public class EhcacheStreamUtilsInternal {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
                     timeoutMillis,
+                    false,
                     EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                     EhcacheStreamMaster.MutationField.WRITERS,
                     EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
@@ -258,6 +260,7 @@ public class EhcacheStreamUtilsInternal {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
                     timeoutMillis,
+                    true,
                     EhcacheStreamMaster.ComparatorType.NO_WRITER,
                     EhcacheStreamMaster.MutationField.READERS,
                     EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
@@ -269,6 +272,7 @@ public class EhcacheStreamUtilsInternal {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
                     timeoutMillis,
+                    true,
                     EhcacheStreamMaster.ComparatorType.NO_WRITER,
                     EhcacheStreamMaster.MutationField.READERS,
                     EhcacheStreamMaster.MutationType.NONE,   //here, on purpose, we don't want to increment anything...kind of a silent read so if there's a write, it will acquire its write
@@ -280,6 +284,7 @@ public class EhcacheStreamUtilsInternal {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
                     timeoutMillis,
+                    true,
                     EhcacheStreamMaster.ComparatorType.NO_WRITER,
                     EhcacheStreamMaster.MutationField.READERS,
                     EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
@@ -288,7 +293,7 @@ public class EhcacheStreamUtilsInternal {
         }
 
         //Main CAS loop util method used by the CAS readers/writers
-        EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+        EhcacheStreamMaster atomicMutateEhcacheStreamMasterInCache(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, final boolean exitOnNullCacheEntry, final EhcacheStreamMaster.ComparatorType comparatorType, final EhcacheStreamMaster.MutationField mutationField, final EhcacheStreamMaster.MutationType mutationType, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             EhcacheStreamMaster mutatedStreamMaster = null;
             boolean isMutated = false;
             long t1 = System.currentTimeMillis();
@@ -299,21 +304,26 @@ public class EhcacheStreamUtilsInternal {
                 //get the master index from cache, unless override is set
                 EhcacheStreamMaster initialStreamMasterFromCache = getStreamMasterFromCache(internalKey);
 
-                if (comparatorType.check(initialStreamMasterFromCache)) {
-                    if (null == initialStreamMasterFromCache) {
-                        mutatedStreamMaster = new EhcacheStreamMaster();
-                    } else {
-                        mutatedStreamMaster = EhcacheStreamMaster.deepCopy(initialStreamMasterFromCache);
+                if(exitOnNullCacheEntry && null == initialStreamMasterFromCache){
+                    isMutated = true;
+                } else {
+                    if (comparatorType.check(initialStreamMasterFromCache)) {
+                        if (null == initialStreamMasterFromCache) {
+                            mutatedStreamMaster = new EhcacheStreamMaster();
+                        } else {
+                            mutatedStreamMaster = EhcacheStreamMaster.deepCopy(initialStreamMasterFromCache);
+                        }
+
+                        //mutation as requested
+                        mutationField.mutate(mutatedStreamMaster, mutationType);
+
+                        //concurrency check with CAS: let's save the initial EhcacheStreamMaster in cache, while making sure it hasn't change so far
+                        //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed here...while others will fail their CAS ops...and spin back to try again later.
+                        isMutated = replaceIfEqualEhcacheStreamMaster(internalKey, initialStreamMasterFromCache, mutatedStreamMaster);
                     }
-
-                    //mutation as requested
-                    mutationField.mutate(mutatedStreamMaster, mutationType);
-
-                    //concurrency check with CAS: let's save the initial EhcacheStreamMaster in cache, while making sure it hasn't change so far
-                    //if multiple threads are trying to do this replace on same key, only one thread is guaranteed to succeed here...while others will fail their CAS ops...and spin back to try again later.
-                    isMutated = replaceIfEqualEhcacheStreamMaster(internalKey, initialStreamMasterFromCache, mutatedStreamMaster);
                 }
 
+                // loop control if not mutated
                 if (!isMutated) {
                     waitStrategy.doWait(attempts); //wait time
                     attempts++;
