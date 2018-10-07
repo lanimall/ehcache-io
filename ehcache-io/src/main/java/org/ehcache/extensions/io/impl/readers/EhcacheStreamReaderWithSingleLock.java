@@ -121,7 +121,7 @@ import org.slf4j.LoggerFactory;
 
         int byteCopied = 0;
 
-        // If the cache entry was not there, activeStreamMaster can be null here only in the case of explicit locks
+        // If the cache entry was not there, activeStreamMaster can be null here
         if(null == activeStreamMaster) {
             return byteCopied;
         }
