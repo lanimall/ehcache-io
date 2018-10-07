@@ -64,6 +64,8 @@ import java.util.Arrays;
                             openTimeoutMillis
                     );
 
+                    // activeStreamMaster cannot be null here since the open should have created it even if it was not there
+                    // and since nothing else can write to it while it's open
                     isOpenMasterMutated = true;
                 }  catch (EhcacheStreamTimeoutException te){
                     throw new EhcacheStreamTimeoutException("Could not open the stream within timeout",te);
