@@ -64,8 +64,15 @@ import java.util.Arrays;
                             openTimeoutMillis
                     );
 
+                    if(isDebug)
+                        logger.debug("Opened writer for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
+
                     // activeStreamMaster cannot be null here since the open should have created it even if it was not there
                     // and since nothing else can write to it while it's open
+                    if(activeStreamMaster == null || activeStreamMaster.getWriters() == 0)
+                        throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should not have 0 writer at this point");
+
+                    //mark as mutated if we reach here
                     isOpenMasterMutated = true;
                 }  catch (EhcacheStreamTimeoutException te){
                     throw new EhcacheStreamTimeoutException("Could not open the stream within timeout",te);

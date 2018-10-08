@@ -50,17 +50,22 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
-            if(isDebug)
-                logger.debug("Trying to open a reader for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
-
             try {
                 activeStreamMaster = getEhcacheStreamUtils().openReadOnMaster(
                         getPublicCacheKey(),
                         openTimeoutMillis
                 );
 
-                if(null != activeStreamMaster && activeStreamMaster.getReaders() > 0)
+                if(isDebug)
+                    logger.debug("Opened reader for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
+
+                //EhcacheStreamReader could be null if the entry was not found in cache
+                if(null != activeStreamMaster) {
+                    if(activeStreamMaster.getReaders() == 0)
+                        throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should not have 0 reader at this point");
+
                     isOpenMasterMutated = true;
+                }
             } catch (EhcacheStreamTimeoutException te){
                 throw new EhcacheStreamTimeoutException("Could not open the reader within timeout",te);
             }
@@ -93,9 +98,9 @@ import org.slf4j.LoggerFactory;
 
     private void closeInternal() throws EhcacheStreamException {
         try {
+            // finalize the EhcacheStreamMaster value by saving it in cache with reader count decremented --
+            // this op must happen otherwise this entry will remain un-writeable forever until manual cleanup
             if (isOpenMasterMutated) {
-                // finalize the EhcacheStreamMaster value by saving it in cache with reader count decremented --
-                // this op must happen otherwise this entry will remain un-writeable forever until manual cleanup
                 getEhcacheStreamUtils().closeReadOnMaster(
                         getPublicCacheKey(),
                         openTimeoutMillis
