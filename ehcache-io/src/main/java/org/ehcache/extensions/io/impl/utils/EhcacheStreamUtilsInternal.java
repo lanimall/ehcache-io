@@ -304,7 +304,10 @@ public class EhcacheStreamUtilsInternal {
                 //get the master index from cache, unless override is set
                 EhcacheStreamMaster initialStreamMasterFromCache = getStreamMasterFromCache(internalKey);
 
+                //if cache entry is null and we're allowed to exit, let's exit
                 if(exitOnNullCacheEntry && null == initialStreamMasterFromCache){
+                    //make sure to nullify mutatedStreamMaster (otherwise we could return an old mutatedStreamMaster object)
+                    mutatedStreamMaster = null;
                     isMutated = true;
                 } else {
                     if (comparatorType.check(initialStreamMasterFromCache)) {
