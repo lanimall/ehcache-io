@@ -391,40 +391,34 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         EhcacheStreamMaster testObjectCheckAfter = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
         logger.debug("AFTER - EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheckAfter));
 
-        if(PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS) {
-            Assert.assertNotNull(testObjectCheckAfter);
-
+        if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_CASLOCKS){
             if(addCachePayloadBeforeReads) {
                 Assert.assertEquals(initialCacheSize, finalCacheSize);
                 Assert.assertNotNull(testObjectCheckAfter);
-                Assert.assertNotEquals(testObjectCheckBefore,testObjectCheckAfter); //objects should not be equal due to date updates
-                Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
-            } else {
-                Assert.assertEquals(1, finalCacheSize); //that's the main difference compared to READ_COMMITTED_WITHLOCKS: the CAS impl adds a stream entry no matter what
-                Assert.assertTrue(new EhcacheStreamMaster().equalsNoNanoTimes(testObjectCheckAfter));
-            }
-        }
-        else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS){
-            if(addCachePayloadBeforeReads) {
-                Assert.assertEquals(initialCacheSize, finalCacheSize);
-                Assert.assertNotNull(testObjectCheckAfter);
-                Assert.assertEquals(testObjectCheckBefore, testObjectCheckAfter); //objects should not be equal due to date updates
-                Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
+                Assert.assertNotEquals(testObjectCheckBefore, testObjectCheckAfter); //objects should not be equal due to date updates
+                Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter)); //object should be equal apart from the timestamps
             } else {
                 Assert.assertEquals(0, finalCacheSize);
                 Assert.assertNull(testObjectCheckAfter);
             }
-
+        } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.READ_COMMITTED_WITHLOCKS) {
+            if(addCachePayloadBeforeReads) {
+                Assert.assertEquals(initialCacheSize, finalCacheSize);
+                Assert.assertNotNull(testObjectCheckAfter);
+                Assert.assertEquals(testObjectCheckBefore, testObjectCheckAfter); //objects should be completely equal (due to the fact that the read do not update the timestamps when using explicit locks
+            } else {
+                Assert.assertEquals(0, finalCacheSize);
+                Assert.assertNull(testObjectCheckAfter);
+            }
         }
         else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY){
             if(addCachePayloadBeforeReads) {
                 Assert.assertEquals(initialCacheSize, finalCacheSize);
                 Assert.assertNotNull(testObjectCheckAfter);
-                Assert.assertEquals(testObjectCheckBefore, testObjectCheckAfter); //in priority writes, the read op is silent...hence the before and after objects in this tests should be equal
-                Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
+                Assert.assertEquals(testObjectCheckBefore, testObjectCheckAfter); //in priority writes, the read op is silent...hence the before and after objects in this tests should be completely equal
             } else {
-                Assert.assertEquals(1, finalCacheSize);
-                Assert.assertTrue(new EhcacheStreamMaster().equalsNoNanoTimes(testObjectCheckAfter));
+                Assert.assertEquals(0, finalCacheSize);
+                Assert.assertNull(testObjectCheckAfter);
             }
 
         }
