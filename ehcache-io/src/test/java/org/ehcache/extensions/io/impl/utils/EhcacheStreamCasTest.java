@@ -1,5 +1,6 @@
 package org.ehcache.extensions.io.impl.utils;
 
+import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.junit.*;
@@ -46,9 +47,43 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
         cacheCleanUp();
     }
 
+    private void openAndCloseWriter(final EhcacheStreamUtilsInternal streamUtilsInternal) throws EhcacheStreamTimeoutException {
+        EhcacheStreamMaster ehcacheStreamMaster = null;
+        try {
+            ehcacheStreamMaster = streamUtilsInternal.openWriteOnMaster(
+                    getCacheKey(),
+                    openTimeoutMillis
+            );
+        } finally {
+            if(null != ehcacheStreamMaster) {
+                streamUtilsInternal.closeWriteOnMaster(
+                        getCacheKey(),
+                        openTimeoutMillis
+                );
+            }
+        }
+    }
+
+    private void openAndCloseReader(final EhcacheStreamUtilsInternal streamUtilsInternal) throws EhcacheStreamTimeoutException {
+        EhcacheStreamMaster ehcacheStreamMaster = null;
+        try {
+            ehcacheStreamMaster = streamUtilsInternal.openReadOnMaster(
+                    getCacheKey(),
+                    openTimeoutMillis
+            );
+        } finally {
+            if(null != ehcacheStreamMaster) {
+                streamUtilsInternal.closeReadOnMaster(
+                        getCacheKey(),
+                        openTimeoutMillis
+                );
+            }
+        }
+    }
+
     @Test
-    public void testOpenReadersInThreads() throws Exception {
-        logger.info("============ Starting testOpenReadersInThreads ====================");
+    public void testOpenReadersNoClose() throws Exception {
+        logger.info("============ Starting testOpenReadersNoClose ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -106,8 +141,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testOpenAndCloseReadersInDifferentThreads() throws Exception {
-        logger.info("============ Starting testOpenAndCloseReadersInDifferentThreads ====================");
+    public void testOpenAndCloseReadersNonNullEntry() throws Exception {
+        logger.info("============ Starting testOpenAndCloseReadersNonNullEntry ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -121,25 +156,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
 
         final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
 
-        for(int i = 0; i < threadCount; i++) {
-            final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
-
-            callableResults.add(result);
-            exceptions.add(exception);
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.openReadOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
-                    }
-                    return null;
-                }
-            });
-        }
+        //add and close a writer so there's a cached entry first
+        openAndCloseWriter(streamUtilsInternal);
 
         for(int i = 0; i < threadCount; i++) {
             final AtomicReference<Long> result = new AtomicReference<Long>();
@@ -151,10 +169,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.closeReadOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
+                        openAndCloseReader(streamUtilsInternal);
                     }
                     return null;
                 }
@@ -170,12 +185,14 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
         // check the final counter
         EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
         logger.debug("Final EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheck));
+        Assert.assertNotNull(testObjectCheck);
         Assert.assertEquals(0,testObjectCheck.getReaders());
     }
 
+
     @Test
-    public void testOpenAndCloseReadersInSameThreads() throws Exception {
-        logger.info("============ Starting testOpenAndCloseReadersInSameThreads ====================");
+    public void testOpenAndCloseReadersNullEntry() throws Exception {
+        logger.info("============ Starting testOpenAndCloseReadersNullEntry ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -199,17 +216,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        try {
-                            streamUtilsInternal.openReadOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        } finally {
-                            streamUtilsInternal.closeReadOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        }
+                        openAndCloseReader(streamUtilsInternal);
                     }
                     return null;
                 }
@@ -225,12 +232,12 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
         // check the final counter
         EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
         logger.debug("Final EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheck));
-        Assert.assertEquals(0,testObjectCheck.getReaders());
+        Assert.assertNull(testObjectCheck);
     }
 
     @Test
-    public void testOpenAndCloseWritersInDifferentThreads() throws Exception {
-        logger.info("============ Starting testOpenAndCloseWritersInDifferentThreads ====================");
+    public void testOpenAndCloseWriters() throws Exception {
+        logger.info("============ Starting testOpenAndCloseWriters ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -254,30 +261,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.openWriteOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
-                    }
-                    return null;
-                }
-            });
-        }
-
-        for(int i = 0; i < threadCount; i++) {
-            final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
-
-            callableResults.add(result);
-            exceptions.add(exception);
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.closeWriteOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
+                        openAndCloseWriter(streamUtilsInternal);
                     }
                     return null;
                 }
@@ -298,64 +282,8 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
     }
 
     @Test
-    public void testOpenAndCloseWritersInSameThreads() throws Exception {
-        logger.info("============ Starting testOpenAndCloseWritersInSameThreads ====================");
-
-        List<Callable<Long>> callables;
-        List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Throwable>> exceptions;
-
-        callables = new ArrayList<Callable<Long>>();
-        callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Throwable>>();
-
-        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
-
-        final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
-
-        for(int i = 0; i < threadCount; i++) {
-            final AtomicReference<Long> result = new AtomicReference<Long>();
-            final AtomicReference<Throwable> exception = new AtomicReference<Throwable>();
-
-            callableResults.add(result);
-            exceptions.add(exception);
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for(int i=0;i<iterations;i++) {
-                        try {
-                            streamUtilsInternal.openWriteOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        } finally {
-                            streamUtilsInternal.closeWriteOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        }
-                    }
-                    return null;
-                }
-            });
-        }
-
-        runInThreads(callables, callableResults, exceptions);
-
-        for(int i = 0; i < threadCount; i++) {
-            Assert.assertNull(exceptions.get(i).get()); // should have 0 exception
-        }
-
-        // check the final counter
-        EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
-        logger.debug("Final EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheck));
-        Assert.assertEquals(0,testObjectCheck.getWriters());
-        Assert.assertTrue(testObjectCheck.getLastWrittenNanos() > 0);
-    }
-
-    @Test
-    public void testOpenAndCloseReadersWritersInDifferentThreads() throws Exception {
-        logger.info("============ Starting testOpenAndCloseReadersWritersInDifferentThreads ====================");
+    public void testOpenAndCloseReadersWriters() throws Exception {
+        logger.info("============ Starting testOpenAndCloseReadersWriters ====================");
 
         List<Callable<Long>> callables;
         List<AtomicReference<Long>> callableResults;
@@ -376,10 +304,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.openWriteOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
+                        openAndCloseWriter(streamUtilsInternal);
                     }
                     return null;
                 }
@@ -391,122 +316,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
                 @Override
                 public Long call() throws Exception {
                     for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.closeWriteOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
-                    }
-                    return null;
-                }
-            });
-
-            callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Throwable>());
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.openReadOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
-                    }
-                    return null;
-                }
-            });
-
-            callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Throwable>());
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for(int i=0;i<iterations;i++) {
-                        streamUtilsInternal.closeReadOnMaster(
-                                getCacheKey(),
-                                openTimeoutMillis
-                        );
-                    }
-                    return null;
-                }
-            });
-
-
-        }
-
-        runInThreads(callables, callableResults, exceptions);
-
-        for(int i = 0; i < threadCount; i++) {
-            Assert.assertNull(exceptions.get(i*4).get()); // should have 0 exception
-            Assert.assertNull(exceptions.get(i*4+1).get()); // should have 0 exception
-            Assert.assertNull(exceptions.get(i*4+2).get()); // should have 0 exception
-            Assert.assertNull(exceptions.get(i*4+3).get()); // should have 0 exception
-        }
-
-        // check the final counter
-        EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
-        logger.debug("Final EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheck));
-        Assert.assertEquals(0,testObjectCheck.getWriters());
-        Assert.assertEquals(0,testObjectCheck.getReaders());
-        Assert.assertTrue(testObjectCheck.getLastWrittenNanos() > 0);
-        Assert.assertTrue(testObjectCheck.getLastReadNanos() > 0);
-    }
-
-    @Test
-    public void testCasLoopReplaceIncrementAndDecrementReadersWritersInSameThreads() throws Exception {
-        logger.info("============ Starting testCasLoopReplaceIncrementAndDecrementReadersWritersInSameThreads ====================");
-
-        List<Callable<Long>> callables;
-        List<AtomicReference<Long>> callableResults;
-        List<AtomicReference<Throwable>> exceptions;
-
-        callables = new ArrayList<Callable<Long>>();
-        callableResults = new ArrayList<AtomicReference<Long>>();
-        exceptions = new ArrayList<AtomicReference<Throwable>>();
-
-        Assert.assertEquals(0, getCache().getSize()); // should be 0 now
-
-        final EhcacheStreamUtilsInternal streamUtilsInternal = new EhcacheStreamUtilsInternal(getCache());
-
-        for(int i = 0; i < threadCount; i++) {
-            callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Throwable>());
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for(int i=0;i<iterations;i++) {
-                        try {
-                            streamUtilsInternal.openWriteOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        } finally {
-                            streamUtilsInternal.closeWriteOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        }
-                    }
-                    return null;
-                }
-            });
-
-            callableResults.add(new AtomicReference<Long>());
-            exceptions.add(new AtomicReference<Throwable>());
-            callables.add(new Callable<Long>() {
-                @Override
-                public Long call() throws Exception {
-                    for(int i=0;i<iterations;i++) {
-                        try {
-                            streamUtilsInternal.openReadOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        } finally {
-                            streamUtilsInternal.closeReadOnMaster(
-                                    getCacheKey(),
-                                    openTimeoutMillis
-                            );
-                        }
+                        openAndCloseReader(streamUtilsInternal);
                     }
                     return null;
                 }
