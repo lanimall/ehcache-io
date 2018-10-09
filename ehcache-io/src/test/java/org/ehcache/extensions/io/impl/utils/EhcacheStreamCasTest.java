@@ -278,7 +278,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
         EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
         logger.debug("Final EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheck));
         Assert.assertEquals(0,testObjectCheck.getWriters());
-        Assert.assertTrue(testObjectCheck.getLastWrittenNanos() > 0);
+        Assert.assertTrue(testObjectCheck.getLastWrittenTime() > 0);
     }
 
     @Test
@@ -335,7 +335,7 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
         logger.debug("Final EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheck));
         Assert.assertEquals(0,testObjectCheck.getWriters());
         Assert.assertEquals(0,testObjectCheck.getReaders());
-        Assert.assertTrue(testObjectCheck.getLastWrittenNanos() > 0);
-        Assert.assertTrue(testObjectCheck.getLastReadNanos() > 0);
+        Assert.assertTrue(testObjectCheck.getLastWrittenTime() > 0);
+        Assert.assertTrue(testObjectCheck.getLastReadTime() > 0);
     }
 }

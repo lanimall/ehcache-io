@@ -401,7 +401,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 Assert.assertEquals(initialCacheSize, finalCacheSize);
                 Assert.assertNotNull(testObjectCheckAfter);
                 Assert.assertNotEquals(testObjectCheckBefore, testObjectCheckAfter); //objects should not be equal due to date updates
-                Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter)); //object should be equal apart from the timestamps
+                Assert.assertTrue(testObjectCheckBefore.equalsNoReadWriteTimes(testObjectCheckAfter)); //object should be equal apart from the timestamps
             } else {
                 Assert.assertEquals(0, finalCacheSize);
                 Assert.assertNull(testObjectCheckAfter);
@@ -500,7 +500,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         // check the final stream master from cache at the end
         EhcacheStreamMaster testObjectCheckAfter = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
         logger.debug("AFTER - EhcacheStreamMaster check from cache: {}", EhcacheStreamUtilsInternal.toStringSafe(testObjectCheckAfter));
-        Assert.assertTrue(testObjectCheckBefore.equalsNoNanoTimes(testObjectCheckAfter));
+        Assert.assertTrue(testObjectCheckBefore.equalsNoReadWriteTimes(testObjectCheckAfter));
     }
 
     @Test
