@@ -29,22 +29,27 @@ public class ExponentialWait implements WaitStrategy {
     }
 
     public void doWait(final long attempt) {
+        final long waitTime = getWait(attempt);
+        if(isTrace) logger.trace("Attempt #{}: will wait {} ms", attempt, waitTime);
+
         try {
-            final long waitTime = jitter ? getWaitTimeWithJitter(cap, base, attempt) : getWaitTime(cap, base, attempt);
-            if(isTrace) logger.trace("Attempt #{}: will wait {} ms", attempt, waitTime);
             Thread.sleep(waitTime);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
-    protected static long getWaitTime(final long cap, final long base, final long n) {
+    protected long getWait(final long attempt) {
+        return jitter ? getWaitTimeWithJitter(cap, base, attempt) : getWaitTimeNoJitter(cap, base, attempt);
+    }
+
+    protected static long getWaitTimeNoJitter(final long cap, final long base, final long n) {
         // Simple check for overflows
         final long expWait = ((long) Math.pow(2, n)) * base;
         return expWait <= 0 ? cap : Math.min(cap, expWait);
     }
 
     protected static long getWaitTimeWithJitter(final long cap, final long base, final long n) {
-        return ThreadLocalRandom.current().nextLong(0, getWaitTime(cap, base, n));
+        return ThreadLocalRandom.current().nextLong(0, getWaitTimeNoJitter(cap, base, n));
     }
 }
