@@ -3,6 +3,7 @@ package org.ehcache.extensions.io.impl.utils.extractors;
 import net.sf.ehcache.Element;
 import net.sf.ehcache.search.attribute.AttributeExtractor;
 import net.sf.ehcache.search.attribute.AttributeExtractorException;
+import org.ehcache.extensions.io.impl.model.EhcacheStreamChunk;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 
 import java.util.Properties;
@@ -18,7 +19,9 @@ public class EhcacheStreamValueExtractor implements AttributeExtractor {
     public static final String FIELDNAME_MASTER_READERS = "readers";
     public static final String FIELDNAME_MASTER_LASTREADTIME = "lastRead";
     public static final String FIELDNAME_MASTER_LASTWRITTENTIME = "lastWritten";
+    public static final String FIELDNAME_CHUNK_SIZE = "chunkSize";
 
+    public static final Integer FIELDNAME_CHUNK_SIZE_DEFAULT_NULL = new Integer(-1);
     public static final Integer FIELDNAME_MASTER_CHUNKCOUNT_DEFAULT_NULL = new Integer(-1);
     public static final Integer FIELDNAME_MASTER_WRITERS_DEFAULT_NULL = new Integer(-1);
     public static final Integer FIELDNAME_MASTER_READERS_DEFAULT_NULL = new Integer(-1);
@@ -65,16 +68,25 @@ public class EhcacheStreamValueExtractor implements AttributeExtractor {
                 if(cacheValue instanceof EhcacheStreamMaster)
                     extracted = new Long(((EhcacheStreamMaster)cacheValue).getLastWrittenTime());
             }
+        } else if(FIELDNAME_CHUNK_SIZE.equals(attributeName)){
+            extracted = FIELDNAME_CHUNK_SIZE_DEFAULT_NULL;
+            if(null != cacheValue){
+                if(cacheValue instanceof EhcacheStreamChunk) {
+                    byte[] chunk = ((EhcacheStreamChunk) cacheValue).getChunk();
+                    extracted = (null != chunk)?new Integer(chunk.length):new Integer(0);
+                }
+            }
         } else {
             throw new IllegalStateException(
                     String.format(
-                            "Attribute name [%s] not supported by this extractor. Supported names are: [%s,%s,%s,%s,%s]",
+                            "Attribute name [%s] not supported by this extractor. Supported names are: [%s,%s,%s,%s,%s,%s]",
                             attributeName,
                             FIELDNAME_MASTER_CHUNKCOUNT,
                             FIELDNAME_MASTER_WRITERS,
                             FIELDNAME_MASTER_READERS,
                             FIELDNAME_MASTER_LASTREADTIME,
-                            FIELDNAME_MASTER_LASTWRITTENTIME)
+                            FIELDNAME_MASTER_LASTWRITTENTIME,
+                            FIELDNAME_CHUNK_SIZE)
             );
         }
 

@@ -32,6 +32,7 @@
             <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="chunkSize" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="lastRead" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
@@ -61,6 +62,7 @@
             <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
             <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="chunkSize" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="lastRead" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
