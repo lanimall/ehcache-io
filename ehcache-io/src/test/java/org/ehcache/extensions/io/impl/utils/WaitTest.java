@@ -13,6 +13,11 @@ public class WaitTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamCasTest.class);
     private static final boolean isDebug = logger.isDebugEnabled();
 
+    private void debug(String message, Object... values){
+        if(isDebug)
+            logger.debug(message, values);
+    }
+
     @Test
     public void testConstantWaitStrategy() throws Exception {
         long waitTime = 200;
@@ -21,45 +26,42 @@ public class WaitTest extends EhcacheStreamingTestsBase {
             long actualWait = waitStrategy.getWait(i);
             Assert.assertEquals(waitTime, actualWait);
 
-            if(isDebug)
-                logger.debug("actualWait = {}", actualWait);
+            debug("actualWait = {}", actualWait);
         }
     }
 
     @Test
     public void testExponentialWaitStrategyNoJitter() throws Exception {
         final long base = 1;
-        final long cap = 200;
+        final long cap = 100;
         final boolean jitter = false;
 
         ExponentialWait waitStrategy = new ExponentialWait(base, cap, jitter);
-        for(int i = 0; i < 500; i++){
+        for(int i = 0; i < 200; i++){
             long actualWait = waitStrategy.getWait(i);
 
             Assert.assertEquals(ExponentialWait.getWaitTimeNoJitter(cap, base, i), actualWait);
             Assert.assertTrue(actualWait > 0);
             Assert.assertTrue(actualWait <= cap);
 
-            if(isDebug)
-                logger.debug("actualWait = {}", actualWait);
+            debug("Attempt = {} - actualWait = {}", i, actualWait);
         }
     }
 
     @Test
     public void testExponentialWaitStrategyWithJitter() throws Exception {
         final long base = 1;
-        final long cap = 200;
+        final long cap = 100;
         final boolean jitter = true;
 
         ExponentialWait waitStrategy = new ExponentialWait(base, cap, jitter);
-        for(int i = 0; i < 500; i++){
+        for(int i = 0; i < 200; i++){
             long actualWait = waitStrategy.getWait(i);
 
             Assert.assertTrue(actualWait >= 0);
             Assert.assertTrue(actualWait <= cap);
 
-            if(isDebug)
-                logger.debug("actualWait = {}", actualWait);
+            debug("Attempt = {} - actualWait = {}", i, actualWait);
         }
     }
 }
