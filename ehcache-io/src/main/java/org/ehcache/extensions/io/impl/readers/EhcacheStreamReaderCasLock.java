@@ -67,7 +67,7 @@ import org.slf4j.LoggerFactory;
                     isOpenMasterMutated = true;
                 }
             } catch (EhcacheStreamTimeoutException te){
-                throw new EhcacheStreamTimeoutException("Could not open the reader within timeout",te);
+                throw new EhcacheStreamTimeoutException("Could not open the stream reader within timeout",te);
             }
 
             isOpen = true;
@@ -126,7 +126,11 @@ import org.slf4j.LoggerFactory;
             return byteCopied;
         }
 
-        // copy the cache chunks into the buffer based on the internal index tracker
-        return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
+        try {
+            // copy the cache chunks into the buffer based on the internal index tracker
+            return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
+        } catch (EhcacheStreamIllegalStateException exc){
+            throw new EhcacheStreamIllegalStateException(String.format("Could not read the cache chunk. Current StreamMaster[=%s]", EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster)), exc);
+        }
     }
 }

@@ -112,7 +112,11 @@ import org.slf4j.LoggerFactory;
         if(!isWeaklyConsistent)
             throw new EhcacheStreamIllegalStateException("Concurrent modification exception: EhcacheStreamMaster has changed since opening: a concurrent write must have happened. Consider retrying in a bit.");
 
-        // copy the cache chunks into the buffer based on the internal index tracker
-        return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
+        try {
+            // copy the cache chunks into the buffer based on the internal index tracker
+            return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
+        } catch (EhcacheStreamIllegalStateException exc){
+            throw new EhcacheStreamIllegalStateException(String.format("Could not read the cache chunk. Current StreamMaster[=%s]", EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster)), exc);
+        }
     }
 }
