@@ -75,7 +75,7 @@ import java.util.Arrays;
                     //mark as mutated if we reach here
                     isOpenMasterMutated = true;
                 }  catch (EhcacheStreamTimeoutException te){
-                    throw new EhcacheStreamTimeoutException("Could not open the stream within timeout",te);
+                    throw new EhcacheStreamTimeoutException("Could not open the stream writer within timeout",te);
                 }
 
                 //then once exclusive write, deal with override flag
