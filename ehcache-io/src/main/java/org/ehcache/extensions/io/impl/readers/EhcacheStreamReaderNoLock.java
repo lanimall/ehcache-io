@@ -107,7 +107,7 @@ import org.slf4j.LoggerFactory;
         boolean isWeaklyConsistent =
                 currentStreamMaster != null &&
                         currentStreamMaster.getChunkCount() == activeStreamMaster.getChunkCount() &&
-                        currentStreamMaster.getLastWrittenNanos() == activeStreamMaster.getLastWrittenNanos();
+                        currentStreamMaster.getLastWrittenTime() == activeStreamMaster.getLastWrittenTime();
 
         if(!isWeaklyConsistent)
             throw new EhcacheStreamIllegalStateException("Concurrent modification exception: EhcacheStreamMaster has changed since opening: a concurrent write must have happened. Consider retrying in a bit.");

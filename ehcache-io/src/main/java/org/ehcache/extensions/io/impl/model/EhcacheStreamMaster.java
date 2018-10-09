@@ -12,8 +12,8 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
     private int chunkCount = 0;
     private int writers = 0;
     private int readers = 0;
-    private long lastReadNanos = 0;
-    private long lastWrittenNanos = 0;
+    private long lastReadTime = 0;
+    private long lastWrittenTime = 0;
 
     public enum MutationType {
         INCREMENT, DECREMENT, INCREMENT_MARK_NOW, DECREMENT_MARK_NOW, NONE;
@@ -115,12 +115,12 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         this.readers = readers;
     }
 
-    private EhcacheStreamMaster(int chunkCount, int writers, int readers, long lastReadNanos, long lastWrittenNanos) {
+    private EhcacheStreamMaster(int chunkCount, int writers, int readers, long lastReadNanos, long lastWrittenTime) {
         this.chunkCount = chunkCount;
         this.writers = writers;
         this.readers = readers;
-        this.lastReadNanos = lastReadNanos;
-        this.lastWrittenNanos = lastWrittenNanos;
+        this.lastReadTime = lastReadNanos;
+        this.lastWrittenTime = lastWrittenTime;
     }
 
     public int getAndIncrementChunkCount() {
@@ -159,20 +159,20 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         return readers;
     }
 
-    public long getLastWrittenNanos() {
-        return lastWrittenNanos;
+    public long getLastWrittenTime() {
+        return lastWrittenTime;
     }
 
     private void setWrittenNow(){
-        lastWrittenNanos = System.nanoTime();
+        lastWrittenTime = System.currentTimeMillis();
     }
 
-    public long getLastReadNanos() {
-        return lastReadNanos;
+    public long getLastReadTime() {
+        return lastReadTime;
     }
 
     private void setReadNow(){
-        lastReadNanos = System.nanoTime();
+        lastReadTime = System.currentTimeMillis();
     }
 
     @Override
@@ -181,8 +181,8 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
                 this.chunkCount,
                 this.writers,
                 this.readers,
-                this.lastReadNanos,
-                this.lastWrittenNanos);
+                this.lastReadTime,
+                this.lastWrittenTime);
     }
 
     public static EhcacheStreamMaster deepCopy(final EhcacheStreamMaster obj){
@@ -199,11 +199,11 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         return thisObject.equals(thatObject);
     }
 
-    public boolean equalsNoNanoTimes(Object o) {
+    public boolean equalsNoReadWriteTimes(Object o) {
         return equals(o, true, true);
     }
 
-    public boolean equals(Object o, boolean noCompareReadNanos, boolean noCompareWriteNanos) {
+    public boolean equals(Object o, boolean noCompareReadTime, boolean noCompareWriteTime) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
@@ -212,8 +212,8 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         if (chunkCount != that.chunkCount) return false;
         if (readers != that.readers) return false;
         if (writers != that.writers) return false;
-        if (!noCompareReadNanos && lastReadNanos != that.lastReadNanos) return false;
-        if (!noCompareWriteNanos && lastWrittenNanos != that.lastWrittenNanos) return false;
+        if (!noCompareReadTime && lastReadTime != that.lastReadTime) return false;
+        if (!noCompareWriteTime && lastWrittenTime != that.lastWrittenTime) return false;
 
         return true;
     }
@@ -226,8 +226,8 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         EhcacheStreamMaster that = (EhcacheStreamMaster) o;
 
         if (chunkCount != that.chunkCount) return false;
-        if (lastReadNanos != that.lastReadNanos) return false;
-        if (lastWrittenNanos != that.lastWrittenNanos) return false;
+        if (lastReadTime != that.lastReadTime) return false;
+        if (lastWrittenTime != that.lastWrittenTime) return false;
         if (readers != that.readers) return false;
         if (writers != that.writers) return false;
 
@@ -239,8 +239,8 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         int result = chunkCount;
         result = 31 * result + writers;
         result = 31 * result + readers;
-        result = 31 * result + (int) (lastReadNanos ^ (lastReadNanos >>> 32));
-        result = 31 * result + (int) (lastWrittenNanos ^ (lastWrittenNanos >>> 32));
+        result = 31 * result + (int) (lastReadTime ^ (lastReadTime >>> 32));
+        result = 31 * result + (int) (lastWrittenTime ^ (lastWrittenTime >>> 32));
         return result;
     }
 
@@ -250,8 +250,8 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
                 "chunkCount=" + chunkCount +
                 ", writers=" + writers +
                 ", readers=" + readers +
-                ", lastReadNanos=" + lastReadNanos +
-                ", lastWrittenNanos=" + lastWrittenNanos +
+                ", lastReadTime=" + lastReadTime +
+                ", lastWrittenTime=" + lastWrittenTime +
                 '}' +
                 ", hashcode=" + hashCode();
     }

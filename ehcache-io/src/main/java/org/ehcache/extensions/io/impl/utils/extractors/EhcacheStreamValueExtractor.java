@@ -16,14 +16,14 @@ public class EhcacheStreamValueExtractor implements AttributeExtractor {
     public static final String FIELDNAME_MASTER_CHUNKCOUNT = "chunkCount";
     public static final String FIELDNAME_MASTER_WRITERS = "writers";
     public static final String FIELDNAME_MASTER_READERS = "readers";
-    public static final String FIELDNAME_MASTER_LASTREADNANOS = "lastReadNanos";
-    public static final String FIELDNAME_MASTER_LASTWRITENANOS = "lastWrittenNanos";
+    public static final String FIELDNAME_MASTER_LASTREADTIME = "lastRead";
+    public static final String FIELDNAME_MASTER_LASTWRITTENTIME = "lastWritten";
 
     public static final Integer FIELDNAME_MASTER_CHUNKCOUNT_DEFAULT_NULL = new Integer(-1);
     public static final Integer FIELDNAME_MASTER_WRITERS_DEFAULT_NULL = new Integer(-1);
     public static final Integer FIELDNAME_MASTER_READERS_DEFAULT_NULL = new Integer(-1);
-    public static final Long FIELDNAME_MASTER_LASTREADNANOS_DEFAULT_NULL = new Long(-1L);
-    public static final Long FIELDNAME_MASTER_LASTWRITENANOS_DEFAULT_NULL = new Long(-1L);
+    public static final Long FIELDNAME_MASTER_LASTREADTIME_DEFAULT_NULL = new Long(-1L);
+    public static final Long FIELDNAME_MASTER_LASTWRITETIME_DEFAULT_NULL = new Long(-1L);
 
     public EhcacheStreamValueExtractor(){}
 
@@ -53,17 +53,17 @@ public class EhcacheStreamValueExtractor implements AttributeExtractor {
                 if(cacheValue instanceof EhcacheStreamMaster)
                     extracted = new Integer(((EhcacheStreamMaster)cacheValue).getReaders());
             }
-        } else if(FIELDNAME_MASTER_LASTREADNANOS.equals(attributeName)){
-            extracted = FIELDNAME_MASTER_LASTREADNANOS_DEFAULT_NULL;
+        } else if(FIELDNAME_MASTER_LASTREADTIME.equals(attributeName)){
+            extracted = FIELDNAME_MASTER_LASTREADTIME_DEFAULT_NULL;
             if(null != cacheValue){
                 if(cacheValue instanceof EhcacheStreamMaster)
-                    extracted = new Long(((EhcacheStreamMaster)cacheValue).getLastReadNanos());
+                    extracted = new Long(((EhcacheStreamMaster)cacheValue).getLastReadTime());
             }
-        } else if(FIELDNAME_MASTER_LASTWRITENANOS.equals(attributeName)){
-            extracted = FIELDNAME_MASTER_LASTWRITENANOS_DEFAULT_NULL;
+        } else if(FIELDNAME_MASTER_LASTWRITTENTIME.equals(attributeName)){
+            extracted = FIELDNAME_MASTER_LASTWRITETIME_DEFAULT_NULL;
             if(null != cacheValue){
                 if(cacheValue instanceof EhcacheStreamMaster)
-                    extracted = new Long(((EhcacheStreamMaster)cacheValue).getLastWrittenNanos());
+                    extracted = new Long(((EhcacheStreamMaster)cacheValue).getLastWrittenTime());
             }
         } else {
             throw new IllegalStateException(
@@ -73,8 +73,8 @@ public class EhcacheStreamValueExtractor implements AttributeExtractor {
                             FIELDNAME_MASTER_CHUNKCOUNT,
                             FIELDNAME_MASTER_WRITERS,
                             FIELDNAME_MASTER_READERS,
-                            FIELDNAME_MASTER_LASTREADNANOS,
-                            FIELDNAME_MASTER_LASTWRITENANOS)
+                            FIELDNAME_MASTER_LASTREADTIME,
+                            FIELDNAME_MASTER_LASTWRITTENTIME)
             );
         }
 
