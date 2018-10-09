@@ -360,18 +360,25 @@ public class EhcacheStreamUtilsInternal {
                     waitStrategy
             );
 
-            //CAS remove stream master from cache (this op is the most important for consistency)
+            //now we're locked, clear related chunks
+            clearChunksFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
+
+            //and make sure it happened right
+            EhcacheStreamChunkKey[] chunkKeys = getStreamChunkKeysFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
+            if(chunkKeys.length > 0){
+                throw new EhcacheStreamIllegalStateException(String.format(
+                        "Could not remove all the chunks for key [%s] / value [%s]", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
+            }
+
+            if (isDebug)
+                logger.debug(String.format(
+                        "Successfully removed all the chunks related to key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
+
+            //Finally, if all the chunks were removed fine, remove the stream master from cache (this op is the most important for consistency...and will automatically unlock any other thread!!)
             isRemoved = removeIfPresentEhcacheStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
             if (isRemoved) {
                 if (isDebug)
                     logger.debug("Successful Atomic Remove operation for key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster));
-
-                //clear related chunks
-                clearChunksFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
-
-                if (isDebug)
-                    logger.debug(String.format(
-                            "Successfully removed all the chunks related to key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
             } else {
                 //if it's not mutated at the end of all the tries and timeout, throw timeout exception
                 throw new EhcacheStreamIllegalStateException(String.format(
@@ -546,6 +553,24 @@ public class EhcacheStreamUtilsInternal {
                 chunkValues = Collections.emptyList();
 
             return (EhcacheStreamChunk[]) chunkValues.toArray(new EhcacheStreamChunk[chunkValues.size()]);
+        }
+
+        EhcacheStreamChunkKey[] getStreamChunkKeysFromStreamMaster(final EhcacheStreamMasterKey internalKey, final EhcacheStreamMaster ehcacheStreamMaster) {
+            List chunkKeys = null;
+            if (null != ehcacheStreamMaster) {
+                chunkKeys = new ArrayList(ehcacheStreamMaster.getChunkCount());
+                for (int i = 0; i < ehcacheStreamMaster.getChunkCount(); i++) {
+                    EhcacheStreamChunkKey chunkKey = new EhcacheStreamChunkKey(internalKey.getCacheKey(), i);
+                    if(cache.isKeyInCache(chunkKey)){
+                        chunkKeys.add(chunkKey);
+                    }
+                }
+            }
+
+            if (null == chunkKeys)
+                chunkKeys = Collections.emptyList();
+
+            return (EhcacheStreamChunkKey[]) chunkKeys.toArray(new EhcacheStreamChunkKey[chunkKeys.size()]);
         }
 
         void clearChunksFromStreamMasterKey(final EhcacheStreamMasterKey internalKey) {
