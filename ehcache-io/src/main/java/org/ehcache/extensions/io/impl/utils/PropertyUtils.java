@@ -27,10 +27,11 @@ public class PropertyUtils {
     public static final long DEFAULT_INPUTSTREAM_OPEN_TIMEOUT = 2000L;
     public static final boolean DEFAULT_INPUTSTREAM_ALLOW_NULLSTREAM = false;
 
-    public static final long DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = 2;
-    public static final long DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = 50;
+    //cap of 100ms achieved by attempt 7 (but jitters will mean that it'll be a value between 0 and 100)
+    public static final long DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = 1;
+    public static final long DEFAULT_OUTPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = 100;
     public static final long DEFAULT_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = 1;
-    public static final long DEFAULT_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = 20;
+    public static final long DEFAULT_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = 100;
 
     //creating an exponential wait object to be use for busy wait cas loops
     public static final WaitStrategy defaultWritesCasBackoffWaitStrategy = new ExponentialWait(
