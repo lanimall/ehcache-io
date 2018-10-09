@@ -36,7 +36,7 @@ public abstract class BaseEhcacheStreamReader extends BaseEhcacheStream implemen
         int totalByteCopied = 0;
         int cacheChunkAvailableSize = 0;
 
-        //repeat until current buffer is full or we reach the max chunk index
+        //repeat until currentixing exception buffer is full or we reach the max chunk index
         int currentByteCopied = 0;
         int currentBufferAvailableSize = 0;
         int currentBufferBytePos = 0;
@@ -83,11 +83,11 @@ public abstract class BaseEhcacheStreamReader extends BaseEhcacheStream implemen
                 cacheChunkAvailableSize = 0;
 
                 //this should not happen within the cacheValueTotalChunks boundaries...hence exception
-                throw new EhcacheStreamIllegalStateException("Cache chunk [" + (cacheChunkIndexPos) + "] is null and should not be " +
-                        "since we're within the cache total chunks [=" + chunksTotalCount + "] boundaries." +
+                throw new EhcacheStreamIllegalStateException(String.format("Cache chunk [=%s] is null and should not be " +
+                        "since we're within the cache total chunks [=%s] boundaries." +
                         "Make sure the cache chunk values are not evicted (eg. pinning is not enabled?). " +
                         "Also, if cache is eventual, the entries may not all be synced yet..." +
-                        "Consider changing your cache consistency to [strong]");
+                        "Consider changing your cache consistency to [strong]", cacheChunkIndexPos, chunksTotalCount));
             }
         }
 
