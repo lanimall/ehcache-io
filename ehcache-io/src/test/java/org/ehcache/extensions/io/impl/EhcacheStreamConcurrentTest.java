@@ -26,6 +26,11 @@ import java.util.zip.CheckedOutputStream;
 /**
  * Created by fabien.sanglier on 9/12/18.
  */
+
+//TODO: need to add some remove tests into the mix of tests here!!!
+//TODO:  for example, let;'s test read / write / delete at the same time and make sure no exception
+//TODO:  or delete during read --> make sure ok
+
 @RunWith(Parameterized.class)
 public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamConcurrentTest.class);
