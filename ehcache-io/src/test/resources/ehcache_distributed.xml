@@ -34,8 +34,8 @@
             <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
-            <searchAttribute name="lastReadNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
-            <searchAttribute name="lastWrittenNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastRead" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWritten" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
         </searchable>
     </cache>
 
@@ -63,8 +63,8 @@
             <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
             <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
-            <searchAttribute name="lastReadNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
-            <searchAttribute name="lastWrittenNanos" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastRead" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWritten" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
         </searchable>
     </cache>
 </ehcache>
