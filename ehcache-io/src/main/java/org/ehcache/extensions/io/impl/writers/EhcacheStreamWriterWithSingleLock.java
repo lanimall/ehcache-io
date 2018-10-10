@@ -47,22 +47,19 @@ import java.util.Arrays;
                 logger.debug("Trying to open a writer for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
             try {
-                try {
-                    //always try to acquire the lock first
-                    getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getPublicCacheKey(), openTimeoutMillis);
+                //always try to acquire the lock first
+                getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getPublicCacheKey(), openTimeoutMillis);
 
-                    isOpenLockAcquired = true;
+                isOpenLockAcquired = true;
 
-                    //Let's mark as write
-                    activeStreamMaster = getEhcacheStreamUtils().openWriteOnMaster(
-                            getPublicCacheKey(),
-                            openTimeoutMillis
-                    );
+                //Let's mark as write
+                activeStreamMaster = getEhcacheStreamUtils().openWriteOnMaster(
+                        getPublicCacheKey(),
+                        openTimeoutMillis
+                );
 
-                    isOpenMasterMutated  = true;
-                }  catch (EhcacheStreamTimeoutException te){
-                    throw new EhcacheStreamTimeoutException("Could not open the stream within timeout",te);
-                }
+                //mark as mutated if we reach here
+                isOpenMasterMutated  = true;
 
                 //then once exclusive write, deal with override flag
                 //if override set, let's clear the chunks for the master to keep things clean, and reset the chunk count on the local master instance
@@ -76,6 +73,7 @@ import java.util.Arrays;
                     activeStreamMaster.resetChunkCount();
                 }
 
+                //mark as successfully open if we reach here
                 isOpen = true;
             } catch (Exception exc){
                 closeInternal();
@@ -108,14 +106,10 @@ import java.util.Arrays;
         try {
             // finally, reset the write state atomically so this entry can be written/read by others
             if (isOpenMasterMutated) {
-                try {
-                    getEhcacheStreamUtils().closeWriteOnMaster(
-                            getPublicCacheKey(),
-                            openTimeoutMillis
-                    );
-                } catch (EhcacheStreamTimeoutException te) {
-                    throw new EhcacheStreamTimeoutException("Could not close the stream within timeout", te);
-                }
+                getEhcacheStreamUtils().closeWriteOnMaster(
+                        getPublicCacheKey(),
+                        openTimeoutMillis
+                );
             }
         } finally {
             try {

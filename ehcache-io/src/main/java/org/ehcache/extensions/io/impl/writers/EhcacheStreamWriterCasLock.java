@@ -57,26 +57,22 @@ import java.util.Arrays;
                 logger.debug("Trying to open a writer for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
             try {
-                try {
-                    //first, let's mark as write
-                    activeStreamMaster = getEhcacheStreamUtils().openWriteOnMaster(
-                            getPublicCacheKey(),
-                            openTimeoutMillis
-                    );
+                //first, let's mark as write
+                activeStreamMaster = getEhcacheStreamUtils().openWriteOnMaster(
+                        getPublicCacheKey(),
+                        openTimeoutMillis
+                );
 
-                    if(isDebug)
-                        logger.debug("Opened writer for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
+                if(isDebug)
+                    logger.debug("Opened writer for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
 
-                    // activeStreamMaster cannot be null here since the open should have created it even if it was not there
-                    // and since nothing else can write to it while it's open
-                    if(activeStreamMaster == null || activeStreamMaster.getWriters() == 0)
-                        throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should not have 0 writer at this point");
+                // activeStreamMaster cannot be null here since the open should have created it even if it was not there
+                // and since nothing else can write to it while it's open
+                if(activeStreamMaster == null || activeStreamMaster.getWriters() == 0)
+                    throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should not have 0 writer at this point");
 
-                    //mark as mutated if we reach here
-                    isOpenMasterMutated = true;
-                }  catch (EhcacheStreamTimeoutException te){
-                    throw new EhcacheStreamTimeoutException("Could not open the stream writer within timeout",te);
-                }
+                //mark as mutated if we reach here
+                isOpenMasterMutated = true;
 
                 //then once exclusive write, deal with override flag
                 //if override set, let's clear the chunks for the master to keep things clean, and reset the chunk count on the local master instance
@@ -90,6 +86,7 @@ import java.util.Arrays;
                     activeStreamMaster.resetChunkCount();
                 }
 
+                //mark as successfully open if we reach here
                 isOpen = true;
             } catch (Exception exc){
                 closeInternal();
@@ -127,14 +124,10 @@ import java.util.Arrays;
         try {
             // reset the write state atomically so this entry can be written/read by others
             if (isOpenMasterMutated) {
-                try {
-                    getEhcacheStreamUtils().closeWriteOnMaster(
-                            getPublicCacheKey(),
-                            openTimeoutMillis
-                    );
-                } catch (EhcacheStreamTimeoutException te) {
-                    throw new EhcacheStreamTimeoutException("Could not close the stream within timeout", te);
-                }
+                getEhcacheStreamUtils().closeWriteOnMaster(
+                        getPublicCacheKey(),
+                        openTimeoutMillis
+                );
             }
         } finally {
             //clean the internal vars
