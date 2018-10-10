@@ -65,50 +65,74 @@ public class EhcacheStreamUtilsInternal {
     }
 
     public EhcacheStreamMaster openWriteOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.openWriteOnMaster(
-                buildStreamMasterKey(publicCacheKey),
-                timeoutMillis,
-                PropertyUtils.defaultWritesCasBackoffWaitStrategy
-        );
+        try {
+            return ehcacheStreamUtilsInternalImpl.openWriteOnMaster(
+                    buildStreamMasterKey(publicCacheKey),
+                    timeoutMillis,
+                    PropertyUtils.defaultWritesCasBackoffWaitStrategy
+            );
+        } catch (EhcacheStreamTimeoutException te){
+            throw new EhcacheStreamTimeoutException("Could not open a write on master entry within timeout",te);
+        }
     }
 
     public EhcacheStreamMaster closeWriteOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.closeWriteOnMaster(
-                buildStreamMasterKey(publicCacheKey),
-                timeoutMillis,
-                PropertyUtils.defaultWritesCasBackoffWaitStrategy
-        );
+        try {
+            return ehcacheStreamUtilsInternalImpl.closeWriteOnMaster(
+                    buildStreamMasterKey(publicCacheKey),
+                    timeoutMillis,
+                    PropertyUtils.defaultWritesCasBackoffWaitStrategy
+            );
+        } catch (EhcacheStreamTimeoutException te){
+            throw new EhcacheStreamTimeoutException("Could not close a write on master entry within timeout",te);
+        }
     }
 
     public EhcacheStreamMaster openReadOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.openReadOnMaster(
-                buildStreamMasterKey(publicCacheKey),
-                timeoutMillis,
-                PropertyUtils.defaultReadsCasBackoffWaitStrategy
-        );
+        try {
+            return ehcacheStreamUtilsInternalImpl.openReadOnMaster(
+                    buildStreamMasterKey(publicCacheKey),
+                    timeoutMillis,
+                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
+            );
+        } catch (EhcacheStreamTimeoutException te){
+            throw new EhcacheStreamTimeoutException("Could not open a read on master entry within timeout",te);
+        }
     }
 
     public EhcacheStreamMaster openSilentReadOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.openSilentReadOnMaster(
-                buildStreamMasterKey(publicCacheKey),
-                timeoutMillis,
-                PropertyUtils.defaultReadsCasBackoffWaitStrategy
-        );
+        try {
+            return ehcacheStreamUtilsInternalImpl.openSilentReadOnMaster(
+                    buildStreamMasterKey(publicCacheKey),
+                    timeoutMillis,
+                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
+            );
+        } catch (EhcacheStreamTimeoutException te){
+            throw new EhcacheStreamTimeoutException("Could not open a silent read on master entry within timeout",te);
+        }
     }
 
     public EhcacheStreamMaster closeReadOnMaster(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.closeReadOnMaster(
-                buildStreamMasterKey(publicCacheKey),
-                timeoutMillis,
-                PropertyUtils.defaultReadsCasBackoffWaitStrategy
-        );
+        try {
+            return ehcacheStreamUtilsInternalImpl.closeReadOnMaster(
+                    buildStreamMasterKey(publicCacheKey),
+                    timeoutMillis,
+                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
+            );
+        } catch (EhcacheStreamTimeoutException te){
+            throw new EhcacheStreamTimeoutException("Could not close a read on master entry within timeout",te);
+        }
     }
 
     public boolean removeEhcacheStream(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
-        return ehcacheStreamUtilsInternalImpl.atomicRemoveEhcacheStreamMasterInCache(
-                buildStreamMasterKey(publicCacheKey),
-                timeoutMillis,
-                PropertyUtils.defaultWritesCasBackoffWaitStrategy);
+        try {
+            return ehcacheStreamUtilsInternalImpl.atomicRemoveEhcacheStreamMasterInCache(
+                    buildStreamMasterKey(publicCacheKey),
+                    timeoutMillis,
+                    PropertyUtils.defaultWritesCasBackoffWaitStrategy);
+        } catch (EhcacheStreamTimeoutException te){
+            throw new EhcacheStreamTimeoutException("Could not remove a master entry within timeout",te);
+        }
     }
 
     public boolean removeEhcacheStreamExplicitLocks(final Object publicCacheKey, long timeout) throws EhcacheStreamException {
@@ -232,11 +256,12 @@ public class EhcacheStreamUtilsInternal {
             return publicKeys;
         }
 
+        // will never return null...if write cannot be acquired, it will be an exception
         EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
                     timeoutMillis,
-                    false,
+                    false, //
                     EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
                     EhcacheStreamMaster.MutationField.WRITERS,
                     EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
@@ -244,6 +269,7 @@ public class EhcacheStreamUtilsInternal {
             );
         }
 
+        // will never return null...if write cannot be released, it will be an exception
         EhcacheStreamMaster closeWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
@@ -256,6 +282,20 @@ public class EhcacheStreamUtilsInternal {
             );
         }
 
+        //can return null...(eg. if a key is not there, or another delete happened before)
+        EhcacheStreamMaster openDeleteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+            return atomicMutateEhcacheStreamMasterInCache(
+                    internalKey,
+                    timeoutMillis,
+                    true,
+                    EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
+                    EhcacheStreamMaster.MutationField.WRITERS,
+                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
+                    waitStrategy
+            );
+        }
+
+        //can return null...(eg. if a key is not there, or another delete happened before)
         EhcacheStreamMaster openReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
@@ -268,6 +308,7 @@ public class EhcacheStreamUtilsInternal {
             );
         }
 
+        //can return null...(eg. if a key is not there, or another delete happened before)
         EhcacheStreamMaster openSilentReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
@@ -280,6 +321,7 @@ public class EhcacheStreamUtilsInternal {
             );
         }
 
+        //can return null...(eg. if a key is not there, or another delete happened before)
         EhcacheStreamMaster closeReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
@@ -354,35 +396,43 @@ public class EhcacheStreamUtilsInternal {
             boolean isRemoved;
 
             //first, mutate to WRITE mode to protect against concurrent Writes or READs
-            EhcacheStreamMaster activeStreamMaster = openWriteOnMaster(
+            EhcacheStreamMaster activeStreamMaster = openDeleteOnMaster(
                     ehcacheStreamMasterKey,
                     timeoutMillis,
                     waitStrategy
             );
 
-            //now we're locked, clear related chunks
-            clearChunksFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
-
-            //and make sure it happened right
-            EhcacheStreamChunkKey[] chunkKeys = getStreamChunkKeysFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
-            if(chunkKeys.length > 0){
-                throw new EhcacheStreamIllegalStateException(String.format(
-                        "Could not remove all the chunks for key [%s] / value [%s]", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
-            }
-
-            if (isDebug)
-                logger.debug(String.format(
-                        "Successfully removed all the chunks related to key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
-
-            //Finally, if all the chunks were removed fine, remove the stream master from cache (this op is the most important for consistency...and will automatically unlock any other thread!!)
-            isRemoved = removeIfPresentEhcacheStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
-            if (isRemoved) {
+            //if returned master is null, it means the entry is not there anymore...that's fine we don't need to delete it then
+            if(null == activeStreamMaster) {
+                isRemoved = true;
                 if (isDebug)
-                    logger.debug("Successful Atomic Remove operation for key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster));
+                    logger.debug("No value to remove for key {}", toStringSafe(ehcacheStreamMasterKey));
             } else {
-                //if it's not mutated at the end of all the tries and timeout, throw timeout exception
-                throw new EhcacheStreamIllegalStateException(String.format(
-                        "Could not perform Atomic Remove operation on key [%s]", toStringSafe(ehcacheStreamMasterKey)));
+                //now we're locked, clear related chunks
+                clearChunksFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
+
+                //and make sure it happened right
+                EhcacheStreamChunkKey[] chunkKeys = getStreamChunkKeysFromStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
+                if (chunkKeys.length > 0) {
+                    throw new EhcacheStreamIllegalStateException(String.format(
+                            "Could not remove all the chunks for key [%s] / value [%s]", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
+                }
+
+                if (isDebug)
+                    logger.debug(String.format(
+                            "Successfully removed all the chunks related to key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster)));
+
+                //Finally, if all the chunks were removed fine, remove the stream master from cache (this op is the most important for consistency...and will automatically unlock any other thread!!)
+                isRemoved = removeIfPresentEhcacheStreamMaster(ehcacheStreamMasterKey, activeStreamMaster);
+
+                if (isRemoved) {
+                    if (isDebug)
+                        logger.debug("Successful Atomic Remove operation for key {} / value {}", toStringSafe(ehcacheStreamMasterKey), toStringSafe(activeStreamMaster));
+                } else {
+                    //if it's not mutated at the end of all the tries and timeout, throw timeout exception
+                    throw new EhcacheStreamIllegalStateException(String.format(
+                            "Could not perform Atomic Remove operation on key [%s]", toStringSafe(ehcacheStreamMasterKey)));
+                }
             }
 
             return isRemoved;
