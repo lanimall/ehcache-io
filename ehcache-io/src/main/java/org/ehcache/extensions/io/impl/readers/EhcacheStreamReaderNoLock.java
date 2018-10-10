@@ -64,17 +64,13 @@ import org.slf4j.LoggerFactory;
             if(isDebug)
                 logger.debug("Trying to open a reader for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
-            try {
-                activeStreamMaster = getEhcacheStreamUtils().openSilentReadOnMaster(
-                        getPublicCacheKey(),
-                        openTimeoutMillis
-                );
+            activeStreamMaster = getEhcacheStreamUtils().openSilentReadOnMaster(
+                    getPublicCacheKey(),
+                    openTimeoutMillis
+            );
 
-                isOpen = true;
-            } catch (Exception exc){
-                isOpen = false;
-                throw exc;
-            }
+            //mark as successfully open if we reach here
+            isOpen = true;
         }
 
         if (!isOpen)

@@ -50,26 +50,23 @@ import org.slf4j.LoggerFactory;
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
         if (!isOpen) {
-            try {
-                activeStreamMaster = getEhcacheStreamUtils().openReadOnMaster(
-                        getPublicCacheKey(),
-                        openTimeoutMillis
-                );
+            activeStreamMaster = getEhcacheStreamUtils().openReadOnMaster(
+                    getPublicCacheKey(),
+                    openTimeoutMillis
+            );
 
-                if(isDebug)
-                    logger.debug("Opened reader for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
+            if(isDebug)
+                logger.debug("Opened reader for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
 
-                //EhcacheStreamReader could be null if the entry was not found in cache
-                if(null != activeStreamMaster) {
-                    if(activeStreamMaster.getReaders() == 0)
-                        throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should not have 0 reader at this point");
+            //EhcacheStreamReader could be null if the entry was not found in cache
+            if(null != activeStreamMaster) {
+                if(activeStreamMaster.getReaders() == 0)
+                    throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should not have 0 reader at this point");
 
-                    isOpenMasterMutated = true;
-                }
-            } catch (EhcacheStreamTimeoutException te){
-                throw new EhcacheStreamTimeoutException("Could not open the stream reader within timeout",te);
+                isOpenMasterMutated = true;
             }
 
+            //mark as successfully open if we reach here
             isOpen = true;
         }
 

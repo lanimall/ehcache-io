@@ -58,18 +58,15 @@ import org.slf4j.LoggerFactory;
                 logger.debug("Trying to open a reader for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
             try {
-                try {
-                    getEhcacheStreamUtils().acquireReadOnMaster(getPublicCacheKey(), openTimeoutMillis);
+                getEhcacheStreamUtils().acquireReadOnMaster(getPublicCacheKey(), openTimeoutMillis);
 
-                    isOpenLockAcquired = true;
-                }  catch (EhcacheStreamTimeoutException te){
-                    throw new EhcacheStreamTimeoutException("Could not open the reader within timeout",te);
-                }
+                isOpenLockAcquired = true;
 
                 activeStreamMaster = EhcacheStreamMaster.deepCopy(
                         getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey())
                 );
 
+                //mark as successfully open if we reach here
                 isOpen = true;
             } catch (Exception exc){
                 closeInternal();
