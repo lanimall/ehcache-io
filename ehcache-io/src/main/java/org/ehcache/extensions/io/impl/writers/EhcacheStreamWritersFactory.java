@@ -2,6 +2,7 @@ package org.ehcache.extensions.io.impl.writers;
 
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
@@ -35,7 +36,7 @@ public class EhcacheStreamWritersFactory {
                 ehcacheStreamWriter = new EhcacheStreamWriterWithSingleLock(cache, cacheKey, override, openTimeoutMillis);
                 break;
             default:
-                throw new IllegalStateException("Not implemented");
+                throw new EhcacheStreamIllegalStateException("Not implemented");
         }
 
         return ehcacheStreamWriter;
@@ -46,7 +47,7 @@ public class EhcacheStreamWritersFactory {
      *
      * @return    a valid OutputStream object
      */
-    public static OutputStream getStream(Ehcache cache, Object cacheKey, int streamBufferSize, boolean override, long openTimeoutMillis) throws EhcacheStreamException {
+    public static OutputStream getStream(Ehcache cache, Object cacheKey, int streamBufferSize, boolean override, long openTimeoutMillis) {
         return new EhcacheOutputStream(streamBufferSize, getWriter(cache, cacheKey, override, openTimeoutMillis));
     }
 }
