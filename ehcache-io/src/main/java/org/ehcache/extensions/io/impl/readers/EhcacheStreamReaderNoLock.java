@@ -79,9 +79,9 @@ import org.slf4j.LoggerFactory;
 
     @Override
     public void close() throws EhcacheStreamException {
+        super.close();
         this.isOpen = false;
         this.activeStreamMaster = null;
-        super.close();
     }
 
     @Override
