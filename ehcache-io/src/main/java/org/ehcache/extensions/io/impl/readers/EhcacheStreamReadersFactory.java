@@ -48,7 +48,7 @@ public class EhcacheStreamReadersFactory {
      *
      * @return    a valid InputStream object
      */
-    public static InputStream getStream(Ehcache cache, Object cacheKey, int streamBufferSize, long openTimeoutMillis) throws EhcacheStreamException {
+    public static InputStream getStream(Ehcache cache, Object cacheKey, int streamBufferSize, long openTimeoutMillis) {
         return new EhcacheInputStream(streamBufferSize, getReader(cache, cacheKey, openTimeoutMillis));
     }
 }
