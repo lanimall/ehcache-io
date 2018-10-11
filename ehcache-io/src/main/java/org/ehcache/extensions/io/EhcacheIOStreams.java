@@ -25,7 +25,7 @@ public class EhcacheIOStreams {
      * @return     true if Stream entry is in cache
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
-    public static boolean containStreamEntry(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
+    public static boolean containStreamEntry(Ehcache cache, Object cacheKey) {
         checkValid(cache, cacheKey);
 
         return EhcacheStreamUtilsFactory.getUtils(cache).containsStreamEntry(cacheKey);
@@ -39,7 +39,7 @@ public class EhcacheIOStreams {
      * @return     List of stream entry keys in cache
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
-    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys) throws EhcacheStreamException {
+    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys) {
         checkValid(cache);
 
         return EhcacheStreamUtilsFactory.getUtils(cache).getAllStreamEntryKeys(excludeExpiredKeys);
@@ -57,7 +57,7 @@ public class EhcacheIOStreams {
      * @return     List of stream entry keys in cache that satisfy the filters
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
-    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys, boolean includeNoReads, boolean includeNoWrites, boolean includeReadsOnly, boolean includeWritesOnly) throws EhcacheStreamException {
+    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys, boolean includeNoReads, boolean includeNoWrites, boolean includeReadsOnly, boolean includeWritesOnly) {
         checkValid(cache);
 
         return EhcacheStreamUtilsFactory.getUtils(cache).getAllStreamEntryKeys(excludeExpiredKeys, includeNoReads, includeNoWrites, includeReadsOnly, includeWritesOnly);
@@ -92,15 +92,15 @@ public class EhcacheIOStreams {
 
     //////////////////////////// InputStream
 
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey) {
         return getInputStream(cache, cacheKey, PropertyUtils.getInputStreamAllowNulls());
     }
 
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream) throws EhcacheStreamException {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream) {
         return getInputStream(cache, cacheKey, allowNullStream, PropertyUtils.getInputStreamBufferSize());
     }
 
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize) throws EhcacheStreamException {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize) {
         return getInputStream(cache, cacheKey, allowNullStream, bufferSize, PropertyUtils.getInputStreamOpenTimeout());
     }
 
@@ -115,7 +115,7 @@ public class EhcacheIOStreams {
      * @return      a valid InputStream object
      * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the EhcacheInputStream creation was not successful
      */
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize, long openTimeout) throws EhcacheStreamException {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize, long openTimeout) {
         checkValid(cache, cacheKey);
 
         if(!allowNullStream || allowNullStream && containStreamEntry(cache, cacheKey)){
@@ -131,15 +131,15 @@ public class EhcacheIOStreams {
 
     //////////////////////////// OutputStream
 
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey) {
         return getOutputStream(cache, cacheKey, PropertyUtils.getOutputStreamDefaultOverride());
     }
 
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override) throws EhcacheStreamException {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override) {
         return getOutputStream(cache, cacheKey, override, PropertyUtils.getOutputStreamBufferSize());
     }
 
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize) throws EhcacheStreamException {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize) {
         return getOutputStream(cache, cacheKey, override, bufferSize, PropertyUtils.getOutputStreamOpenTimeout());
     }
 
@@ -154,7 +154,7 @@ public class EhcacheIOStreams {
      * @return      a Valid OutputStream object
      * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the EhcacheOutputStream creation was not successful
      */
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize, long openTimeout) throws EhcacheStreamException {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize, long openTimeout) {
         checkValid(cache, cacheKey);
 
         return EhcacheStreamWritersFactory.getStream(
@@ -168,19 +168,19 @@ public class EhcacheIOStreams {
 
     //////////////////////////// Internal Validators
 
-    private static void checkValid(Ehcache cache) throws EhcacheStreamException {
+    private static void checkValid(Ehcache cache) {
         if(cache == null)
-            throw new EhcacheStreamIllegalStateException("Cache may not be null");
+            throw new EhcacheStreamIllegalArgumentException("Cache may not be null");
 
         if(cache.isDisabled())
-            throw new EhcacheStreamIllegalStateException("Cache is disabled");
+            throw new EhcacheStreamIllegalArgumentException("Cache is disabled");
 
     }
 
-    private static void checkValid(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
+    private static void checkValid(Ehcache cache, Object cacheKey) {
         checkValid(cache);
 
         if(cacheKey == null)
-            throw new EhcacheStreamIllegalStateException("cacheKey may not be null");
+            throw new EhcacheStreamIllegalArgumentException("cacheKey may not be null");
     }
 }
