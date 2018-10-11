@@ -31,7 +31,7 @@ public abstract class BaseEhcacheStreamReader extends BaseEhcacheStream implemen
         this.cacheChunkBytePos = 0;
     }
 
-    protected int copyCacheChunksIntoBuffer(final byte[] outBuf, final int initialBufferBytePos, final int chunksTotalCount) throws EhcacheStreamException {
+    protected int copyCacheChunksIntoBuffer(final byte[] outBuf, final int initialBufferBytePos, final int chunksTotalCount) {
         final int initialBufferAvailableSize = outBuf.length - initialBufferBytePos;
         int totalByteCopied = 0;
         int cacheChunkAvailableSize = 0;
