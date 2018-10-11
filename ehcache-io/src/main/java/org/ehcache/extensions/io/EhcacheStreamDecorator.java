@@ -266,30 +266,17 @@ public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
 
     @Override
     public List getKeysNoDuplicateCheck() throws IllegalStateException {
-        try {
-            return EhcacheIOStreams.getStreamEntryKeys(underlyingCache, false);
-        } catch (EhcacheStreamException e) {
-            throw new CacheException(e);
-        }
+        return EhcacheIOStreams.getStreamEntryKeys(underlyingCache, false);
     }
 
     @Override
     public List getKeysWithExpiryCheck() throws IllegalStateException, CacheException {
-        try {
-            return EhcacheIOStreams.getStreamEntryKeys(underlyingCache, true);
-        } catch (EhcacheStreamException e) {
-            throw new CacheException(e);
-        }
+        return EhcacheIOStreams.getStreamEntryKeys(underlyingCache, true);
     }
 
     @Override
     public boolean isKeyInCache(Object key) {
-        try {
-            return EhcacheIOStreams.containStreamEntry(underlyingCache, key);
-        } catch (EhcacheStreamException e) {
-            new IllegalStateException(e);
-        }
-        return false;
+        return EhcacheIOStreams.containStreamEntry(underlyingCache, key);
     }
 
     @Override
