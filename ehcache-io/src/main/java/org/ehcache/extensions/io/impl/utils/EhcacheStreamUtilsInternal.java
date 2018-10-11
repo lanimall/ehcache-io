@@ -256,38 +256,64 @@ public class EhcacheStreamUtilsInternal {
             return publicKeys;
         }
 
-        // will never return null...if write cannot be acquired, it will be an exception
-        // in this method, I think we should do it in 2
+        // Passing exitOnNullFromCache = true --> can return null...(eg. if a key is not there i nthe first place, or another delete happens while waiting to acquire the write lock)
+        EhcacheStreamMaster openDeleteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
+            return openWriteOnMaster(internalKey, timeoutMillis, waitStrategy, true);
+        }
 
+        // Passing exitOnNullFromCache = false --> will never return null...if write cannot be acquired, it will be an exception
         EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return openWriteOnMaster(internalKey, timeoutMillis, waitStrategy, false);
         }
 
-        EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, final WaitStrategy waitStrategy, final boolean exitOnNullFromCache) throws EhcacheStreamTimeoutException {
+        //perform a 2-phase open:
+        // 1st: increment the write to stop other reads from acquiring
+        // 2nd: wait for all reads to finish by trying to timestamp the the entry
+        // If exitOnNullFromCache = true and the cache entry was to become null (eg. a delete happening) the atomic loops will exit, returning a null activeStreamMaster
+        private EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, final WaitStrategy waitStrategy, final boolean exitOnNullFromCache) throws EhcacheStreamTimeoutException {
             EhcacheStreamMaster activeStreamMaster = null;
+            boolean isOpenMasterMutated = false;
 
-            //acquire a soft write lock to stop any new read from acquiring
-            activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
-                    internalKey,
-                    timeoutMillis,
-                    exitOnNullFromCache,
-                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
-                    EhcacheStreamMaster.MutationField.WRITERS,
-                    EhcacheStreamMaster.MutationType.INCREMENT,
-                    waitStrategy
-            );
-
-            //Then, allow the current read to drain by waiting until no read left before starting the actual write
-            if(null != activeStreamMaster) {
+            try {
+                //acquire a soft write lock to stop any new read from acquiring
                 activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
                         internalKey,
                         timeoutMillis,
-                        exitOnNullFromCache, //
-                        EhcacheStreamMaster.ComparatorType.NO_READER_SINGLE_WRITER,
+                        exitOnNullFromCache,
+                        EhcacheStreamMaster.ComparatorType.NO_WRITER,
                         EhcacheStreamMaster.MutationField.WRITERS,
-                        EhcacheStreamMaster.MutationType.MARK_NOW,
+                        EhcacheStreamMaster.MutationType.INCREMENT,
                         waitStrategy
                 );
+
+                //mark as mutated
+                if(null != activeStreamMaster && activeStreamMaster.getWriters() > 0)
+                    isOpenMasterMutated = true;
+
+                //Then, allow the current read to drain by waiting until no read left before starting the actual write
+                if (isOpenMasterMutated) {
+                    activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
+                            internalKey,
+                            timeoutMillis,
+                            exitOnNullFromCache,
+                            EhcacheStreamMaster.ComparatorType.NO_READER_SINGLE_WRITER,
+                            EhcacheStreamMaster.MutationField.WRITERS,
+                            EhcacheStreamMaster.MutationType.MARK_NOW,
+                            waitStrategy
+                    );
+                }
+            } catch (Exception exc1){
+                if(isOpenMasterMutated) {
+                    //silent close
+                    try {
+                        closeWriteOnMaster(internalKey, timeoutMillis, waitStrategy);
+                    } catch (Exception exc2){
+                        logger.warn("An exception occurred while trying to rollback the mutation", exc2);
+                    }
+                }
+
+                //make sure to throw the initial exception
+                throw exc1;
             }
 
             return activeStreamMaster;
@@ -306,12 +332,7 @@ public class EhcacheStreamUtilsInternal {
             );
         }
 
-        //can return null...(eg. if a key is not there, or another delete happened before)
-        EhcacheStreamMaster openDeleteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
-            return openWriteOnMaster(internalKey, timeoutMillis, waitStrategy, true);
-        }
-
-        //can return null...(eg. if a key is not there, or another delete happened before)
+         //can return null...(eg. if a key is not there, or another delete happened before)
         EhcacheStreamMaster openReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
