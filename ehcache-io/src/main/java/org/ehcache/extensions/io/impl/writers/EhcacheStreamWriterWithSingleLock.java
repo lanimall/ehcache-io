@@ -3,7 +3,6 @@ package org.ehcache.extensions.io.impl.writers;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
-import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.BaseEhcacheStream;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
@@ -46,56 +45,59 @@ import java.util.Arrays;
             if(isDebug)
                 logger.debug("Trying to open a writer for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
-            try {
-                //always try to acquire the lock first
-                getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getPublicCacheKey(), openTimeoutMillis);
+            //always try to acquire the lock first
+            getEhcacheStreamUtils().acquireExclusiveWriteOnMaster(getPublicCacheKey(), openTimeoutMillis);
 
-                isOpenLockAcquired = true;
+            isOpenLockAcquired = true;
 
-                //Let's mark as write
-                activeStreamMaster = getEhcacheStreamUtils().openWriteOnMaster(
-                        getPublicCacheKey(),
-                        openTimeoutMillis
-                );
+            //Let's mark as write
+            activeStreamMaster = getEhcacheStreamUtils().openWriteOnMaster(
+                    getPublicCacheKey(),
+                    openTimeoutMillis
+            );
 
-                //mark as mutated if we reach here
-                isOpenMasterMutated  = true;
+            if(isDebug)
+                logger.debug("Opened writer for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
 
-                //then once exclusive write, deal with override flag
-                //if override set, let's clear the chunks for the master to keep things clean, and reset the chunk count on the local master instance
-                if (override && activeStreamMaster.getChunkCount() > 0) {
-                    if(isDebug)
-                        logger.debug("Override requested: Clearing previous chunks...");
+            // activeStreamMaster cannot be null here since the open should have created it even if it was not there
+            // and since nothing else can write to it while it's open
+            if(activeStreamMaster == null || activeStreamMaster.getWriters() == 0)
+                throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should not be null or have 0 writer at this point");
 
-                    getEhcacheStreamUtils().clearChunksFromStreamMaster(getPublicCacheKey(), activeStreamMaster);
+            // mark stream master as mutated -- important for the close operation...see comment in that section
+            isOpenMasterMutated = true;
 
-                    //reset chunk count
-                    activeStreamMaster.resetChunkCount();
-                }
+            //then once exclusive write, deal with override flag
+            //if override set, let's clear the chunks for the master to keep things clean, and reset the chunk count on the local master instance
+            if (override && activeStreamMaster.getChunkCount() > 0) {
+                if(isDebug)
+                    logger.debug("Override requested: Clearing previous chunks...");
 
-                //mark as successfully open if we reach here
-                isOpen = true;
-            } catch (Exception exc){
-                closeInternal();
-                throw exc;
+                getEhcacheStreamUtils().clearChunksFromStreamMaster(getPublicCacheKey(), activeStreamMaster);
+
+                //reset chunk count
+                activeStreamMaster.resetChunkCount();
             }
+
+            //mark as successfully open if we reach here
+            isOpen = true;
         }
 
         if (!isOpen)
-            throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should be opened at this point: something unexpected happened.");
+            throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should be opened at this point or an exception should have been thrown...something unexpected happened.");
     }
 
     @Override
     public void close() throws EhcacheStreamException {
-        if(isOpen) {
-            if(null != activeStreamMaster) {
+        try {
+            if (isOpen && null != activeStreamMaster) {
                 // finalize the EhcacheStreamMaster value with new chunk count by saving it in cache
                 boolean replaced = getEhcacheStreamUtils().replaceIfPresentEhcacheStreamMaster(getPublicCacheKey(), activeStreamMaster);
                 if (!replaced)
                     throw new EhcacheStreamIllegalStateException("Could not save the final ehcache stream index properly in cache...aborting");
-
-                closeInternal();
             }
+        } finally {
+            closeInternal();
         }
 
         if (isOpen)
@@ -104,8 +106,10 @@ import java.util.Arrays;
 
     private void closeInternal() throws EhcacheStreamException {
         try {
-            // finally, reset the write state atomically so this entry can be written/read by others
-            if (isOpenMasterMutated) {
+            // reset the write state atomically so this entry can be written/read by others
+            // it's important to check for this isOpenMasterMutated for the closing, as we only want to close if this current writer is the one that acquired the write
+            // if we were closing the writer in every case (without checking if we're the one that modified it in the first place), then there would be a risk of closing the stream writer of another thread
+            if(isOpenMasterMutated) {
                 getEhcacheStreamUtils().closeWriteOnMaster(
                         getPublicCacheKey(),
                         openTimeoutMillis
@@ -144,34 +148,8 @@ import java.util.Arrays;
         //only 1 thread at a time should be able to reach this method...
         // because all other threads should be waiting in the tryOpen method still
         if(count > 0) {
-            int chunkCount = activeStreamMaster.getChunkCount();
-
             // let's add the chunk (overwrite anything in cache)
-            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), chunkCount, Arrays.copyOf(buf, count));
-
-            activeStreamMaster.getAndIncrementChunkCount();
-//
-//            try {
-//                try {
-//                    getEhcacheStreamUtils().tryLockInternal(
-//                            getEhcacheStreamUtils().buildChunkKey(getPublicCacheKey(), chunkCount),
-//                            EhcacheStreamUtilsInternal.LockType.WRITE,
-//                            openTimeoutMillis
-//                    );
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-//
-//                // let's add the chunk (overwrite anything in cache)
-//                getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), chunkCount, Arrays.copyOf(buf, count));
-//            } finally {
-//                getEhcacheStreamUtils().releaseLockInternal(
-//                        getEhcacheStreamUtils().buildChunkKey(getPublicCacheKey(), chunkCount),
-//                        EhcacheStreamUtilsInternal.LockType.WRITE
-//                );
-//            }
-//
-//            activeStreamMaster.getAndIncrementChunkCount();
+            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), Arrays.copyOf(buf, count));
         }
     }
 }
