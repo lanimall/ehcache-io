@@ -1,7 +1,7 @@
 package org.ehcache.extensions.io.impl.readers;
 
 import org.ehcache.extensions.io.EhcacheStreamException;
-import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalArgumentException;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -52,20 +52,30 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * @param   ehcacheStreamReader     the stream reader implementation
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(int bufferSize, EhcacheStreamReader ehcacheStreamReader) throws EhcacheStreamException {
+    public EhcacheInputStream(int bufferSize, EhcacheStreamReader ehcacheStreamReader) {
         if (bufferSize <= 0) {
-            throw new EhcacheStreamIllegalStateException("Buffer size <= 0");
+            throw new EhcacheStreamIllegalArgumentException("Buffer size <= 0");
         }
 
         if (null == ehcacheStreamReader) {
-            throw new EhcacheStreamIllegalStateException("An internal stream reader must be provided");
+            throw new EhcacheStreamIllegalArgumentException("An internal stream reader must be provided");
         }
 
         this.buf = new byte[bufferSize];
         this.ehcacheStreamReader = ehcacheStreamReader;
+    }
 
-        //let's open it now!
-        this.ehcacheStreamReader.tryOpen();
+    //try open the reader on fill (if reader already opened, will not re-open again
+    //important: don't put this in the constructor to make sure the object gets always constructed
+    private void tryOpenEhcacheStreamReader() throws EhcacheStreamException {
+        //open the underlying reader
+        if(null != ehcacheStreamReader)
+            ehcacheStreamReader.tryOpen();
+    }
+
+    private void tryCloseEhcacheStreamReader() throws EhcacheStreamException {
+        if(null != ehcacheStreamReader)
+            ehcacheStreamReader.close();
     }
 
     @Override
@@ -91,6 +101,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * hence pos > count.
      */
     private void fill() throws IOException {
+        tryOpenEhcacheStreamReader();
+
         byte[] buffer = getBufIfOpen();
 
         /* if we're here, that means we need to refill the buffer and as such it's ok to throw away the content of the buffer */
@@ -209,14 +221,16 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * @exception  IOException  if an I/O error occurs.
      */
     public void close() throws IOException {
-        ehcacheStreamReader.close();
-
-        byte[] buffer;
-        while ((buffer = buf) != null) {
-            if (bufUpdater.compareAndSet(this, buffer, null)) {
-                return;
+        try {
+            byte[] buffer;
+            while ((buffer = buf) != null) {
+                if (bufUpdater.compareAndSet(this, buffer, null)) {
+                    return;
+                }
+                // Else retry in case a new buf was CASed in fill()
             }
-            // Else retry in case a new buf was CASed in fill()
+        } finally {
+            tryCloseEhcacheStreamReader();
         }
     }
 }
