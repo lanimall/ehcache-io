@@ -33,7 +33,7 @@ public abstract class EhcacheStreamingTestsBase {
     public static final String ENV_CACHEKEY_TYPE = "ehcache.tests.cachekeytype";
 
     public static final CacheKeyType DEFAULT_CACHEKEY_TYPE = CacheKeyType.COMPLEX_OBJECT;
-    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.LOCAL_HEAP;
+    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.CLUSTERED_STRONG;
 
     protected static final int IN_FILE_SIZE = 10 * 1024 * 1024;
     protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
@@ -690,6 +690,9 @@ public abstract class EhcacheStreamingTestsBase {
             workerList.add(new ThreadWorker(callables.get(i), stopLatch, callableResults.get(i), exceptions.get(i)));
         }
 
+        //shuffle list
+        Collections.shuffle(workerList, new Random());
+
         //start the workers
         start = System.nanoTime();
         for (ThreadWorker worker : workerList) {
@@ -722,9 +725,9 @@ public abstract class EhcacheStreamingTestsBase {
             try {
                 callableResult.set(callable.call());
             } catch (Exception e) {
+                logger.debug(e.getMessage(),e);
                 if(null != exception)
                     exception.set(e);
-                logger.debug(e.getMessage(),e);
             } finally{
                 doneLatch.countDown();
             }
