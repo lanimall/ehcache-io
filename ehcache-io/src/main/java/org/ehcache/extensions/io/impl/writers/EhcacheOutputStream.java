@@ -1,7 +1,7 @@
 package org.ehcache.extensions.io.impl.writers;
 
 import org.ehcache.extensions.io.EhcacheStreamException;
-import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
+import org.ehcache.extensions.io.EhcacheStreamIllegalArgumentException;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -38,15 +38,26 @@ import java.io.OutputStream;
      *
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheOutputStream(int bufferSize, EhcacheStreamWriter ehcacheStreamWriter) throws EhcacheStreamException {
+    public EhcacheOutputStream(int bufferSize, EhcacheStreamWriter ehcacheStreamWriter) {
         if (bufferSize <= 0) {
-            throw new EhcacheStreamIllegalStateException("Buffer size <= 0");
+            throw new EhcacheStreamIllegalArgumentException("Buffer size <= 0");
         }
+
         this.buf = new byte[bufferSize];
         this.ehcacheStreamWriter = ehcacheStreamWriter;
+    }
 
-        //open now
-        this.ehcacheStreamWriter.tryOpen();
+    //try open the writer (if writer already opened, will not re-open again
+    //Important: don't put this in the constructor to make sure the object gets always constructed
+    private void tryOpenEhcacheStreamWriter() throws EhcacheStreamException {
+        //open the underlying writer
+        if(null != ehcacheStreamWriter)
+            ehcacheStreamWriter.tryOpen();
+    }
+
+    private void tryCloseEhcacheStreamWriter() throws EhcacheStreamException {
+        if(null != ehcacheStreamWriter)
+            ehcacheStreamWriter.close();
     }
 
     /**
@@ -56,7 +67,6 @@ import java.io.OutputStream;
     private void flushBuffer() throws IOException {
         if (count > 0) { // we're going to write here
             ehcacheStreamWriter.writeData(buf, count);
-
             count = 0; //reset buffer count
         }
     }
@@ -68,43 +78,23 @@ import java.io.OutputStream;
      */
     @Override
     public void write(int b) throws IOException {
+        tryOpenEhcacheStreamWriter();
         if (count >= buf.length) {
             flushBuffer();
         }
         buf[count++] = (byte)b;
     }
 
-    /**
-     *
-     * @param b
-     * @throws IOException
-     */
     @Override
     public void write(byte[] b) throws IOException {
-        write(b, 0, b.length);
+        tryOpenEhcacheStreamWriter();
+        super.write(b);
     }
 
-    /**
-     *
-     * @param b
-     * @param off
-     * @param len
-     * @throws IOException
-     */
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        if (len >= buf.length) {
-            //simple implementation...but works
-            for(int i=0; i<len;i++){
-                write(b[off+i]);
-            }
-            return;
-        }
-        if (len > buf.length - count) {
-            flushBuffer();
-        }
-        System.arraycopy(b, off, buf, count, len);
-        count += len;
+        tryOpenEhcacheStreamWriter();
+        super.write(b, off, len);
     }
 
     /**
@@ -123,7 +113,10 @@ import java.io.OutputStream;
      */
     @Override
     public void close() throws IOException {
-        flush();
-        ehcacheStreamWriter.close();
+        try{
+            flush();
+        } finally {
+            tryCloseEhcacheStreamWriter();
+        }
     }
 }
