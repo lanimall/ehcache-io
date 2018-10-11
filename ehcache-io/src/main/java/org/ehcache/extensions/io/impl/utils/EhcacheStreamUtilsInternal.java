@@ -124,7 +124,7 @@ public class EhcacheStreamUtilsInternal {
         }
     }
 
-    public boolean removeEhcacheStream(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
+    public boolean removeEhcacheStream(final Object publicCacheKey, final long timeoutMillis) throws EhcacheStreamTimeoutException {
         try {
             return ehcacheStreamUtilsInternalImpl.atomicRemoveEhcacheStreamMasterInCache(
                     buildStreamMasterKey(publicCacheKey),
@@ -155,7 +155,7 @@ public class EhcacheStreamUtilsInternal {
         return ehcacheStreamUtilsInternalImpl.getChunkValue(buildStreamChunkKey(publicCacheKey, chunkIndex));
     }
 
-    public void acquireExclusiveWriteOnMaster(final Object publicCacheKey, long timeout) throws EhcacheStreamTimeoutException, EhcacheStreamIllegalStateException {
+    public void acquireExclusiveWriteOnMaster(final Object publicCacheKey, long timeout) throws EhcacheStreamTimeoutException {
         ehcacheStreamUtilsInternalImpl.acquireExclusiveWriteOnMaster(buildStreamMasterKey(publicCacheKey), timeout);
     }
 
@@ -163,7 +163,7 @@ public class EhcacheStreamUtilsInternal {
         ehcacheStreamUtilsInternalImpl.releaseExclusiveWriteOnMaster(buildStreamMasterKey(publicCacheKey));
     }
 
-    public void acquireReadOnMaster(final Object publicCacheKey, long timeout) throws EhcacheStreamTimeoutException, EhcacheStreamIllegalStateException {
+    public void acquireReadOnMaster(final Object publicCacheKey, long timeout) throws EhcacheStreamTimeoutException {
         ehcacheStreamUtilsInternalImpl.acquireReadOnMaster(buildStreamMasterKey(publicCacheKey), timeout);
     }
 
@@ -257,42 +257,58 @@ public class EhcacheStreamUtilsInternal {
         }
 
         // will never return null...if write cannot be acquired, it will be an exception
+        // in this method, I think we should do it in 2
+
         EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
-            return atomicMutateEhcacheStreamMasterInCache(
-                    internalKey,
-                    timeoutMillis,
-                    false, //
-                    EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                    EhcacheStreamMaster.MutationField.WRITERS,
-                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                    waitStrategy
-            );
+            return openWriteOnMaster(internalKey, timeoutMillis, waitStrategy, false);
         }
 
-        // will never return null...if write cannot be released, it will be an exception
+        EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, final WaitStrategy waitStrategy, final boolean exitOnNullFromCache) throws EhcacheStreamTimeoutException {
+            EhcacheStreamMaster activeStreamMaster = null;
+
+            //acquire a soft write lock to stop any new read from acquiring
+            activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
+                    internalKey,
+                    timeoutMillis,
+                    exitOnNullFromCache,
+                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                    EhcacheStreamMaster.MutationField.WRITERS,
+                    EhcacheStreamMaster.MutationType.INCREMENT,
+                    waitStrategy
+            );
+
+            //Then, allow the current read to drain by waiting until no read left before starting the actual write
+            if(null != activeStreamMaster) {
+                activeStreamMaster = atomicMutateEhcacheStreamMasterInCache(
+                        internalKey,
+                        timeoutMillis,
+                        exitOnNullFromCache, //
+                        EhcacheStreamMaster.ComparatorType.NO_READER_SINGLE_WRITER,
+                        EhcacheStreamMaster.MutationField.WRITERS,
+                        EhcacheStreamMaster.MutationType.MARK_NOW,
+                        waitStrategy
+                );
+            }
+
+            return activeStreamMaster;
+        }
+
+        // could return null if the cache entry is null...which shoudl be fine
         EhcacheStreamMaster closeWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
                     timeoutMillis,
-                    false,
+                    true,
                     EhcacheStreamMaster.ComparatorType.SINGLE_WRITER,
                     EhcacheStreamMaster.MutationField.WRITERS,
-                    EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                    EhcacheStreamMaster.MutationType.DECREMENT,
                     waitStrategy
             );
         }
 
         //can return null...(eg. if a key is not there, or another delete happened before)
         EhcacheStreamMaster openDeleteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
-            return atomicMutateEhcacheStreamMasterInCache(
-                    internalKey,
-                    timeoutMillis,
-                    true,
-                    EhcacheStreamMaster.ComparatorType.NO_READER_NO_WRITER,
-                    EhcacheStreamMaster.MutationField.WRITERS,
-                    EhcacheStreamMaster.MutationType.INCREMENT_MARK_NOW,
-                    waitStrategy
-            );
+            return openWriteOnMaster(internalKey, timeoutMillis, waitStrategy, true);
         }
 
         //can return null...(eg. if a key is not there, or another delete happened before)
@@ -316,7 +332,7 @@ public class EhcacheStreamUtilsInternal {
                     true,
                     EhcacheStreamMaster.ComparatorType.NO_WRITER,
                     EhcacheStreamMaster.MutationField.READERS,
-                    EhcacheStreamMaster.MutationType.NONE,   //here, on purpose, we don't want to increment anything...kind of a silent read so if there's a write, it will acquire its write
+                    EhcacheStreamMaster.MutationType.MARK_NOW,   //here, on purpose, we don't want to increment anything...kind of a silent read so if there's a write, it will acquire its write
                     waitStrategy
             );
         }
@@ -327,9 +343,9 @@ public class EhcacheStreamUtilsInternal {
                     internalKey,
                     timeoutMillis,
                     true,
-                    EhcacheStreamMaster.ComparatorType.NO_WRITER,
+                    EhcacheStreamMaster.ComparatorType.AT_LEAST_ONE_READER,
                     EhcacheStreamMaster.MutationField.READERS,
-                    EhcacheStreamMaster.MutationType.DECREMENT_MARK_NOW,
+                    EhcacheStreamMaster.MutationType.DECREMENT,
                     waitStrategy
             );
         }
@@ -379,7 +395,7 @@ public class EhcacheStreamUtilsInternal {
             //if it's not mutated at the end of all the tries and timeout, throw timeout exception
             if (!isMutated) {
                 throw new EhcacheStreamTimeoutException(String.format(
-                        "Could not perform Atomic mutate operation [%s,%s,%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms]) - Key [%s]", toStringSafe(mutationField), toStringSafe(mutationType), toStringSafe(comparatorType), attempts, t2 - t1, timeoutMillis, toStringSafe(internalKey)));
+                        "Could not perform Atomic mutate operation [%s,%s,%s] within [%d internal retries] totalling [%d ms] (timeout triggers at [%d ms]) - Key [%s] / Current Non-Mutated Object at time of timeout: [%s]", toStringSafe(mutationField), toStringSafe(mutationType), toStringSafe(comparatorType), attempts, t2 - t1, timeoutMillis, toStringSafe(internalKey), toStringSafe(mutatedStreamMaster)));
             } else {
                 if (isDebug) {
                     logger.debug(String.format(
@@ -392,7 +408,7 @@ public class EhcacheStreamUtilsInternal {
 
         //An atomic removal of a master stream entry + its related chunk entries.
         //Return TRUE for success state... otherwise throws an exception.
-        boolean atomicRemoveEhcacheStreamMasterInCache(final EhcacheStreamMasterKey ehcacheStreamMasterKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamIllegalStateException, EhcacheStreamTimeoutException {
+        boolean atomicRemoveEhcacheStreamMasterInCache(final EhcacheStreamMasterKey ehcacheStreamMasterKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             boolean isRemoved;
 
             //first, mutate to WRITE mode to protect against concurrent Writes or READs
@@ -474,7 +490,7 @@ public class EhcacheStreamUtilsInternal {
             return removed;
         }
 
-        void acquireReadOnMaster(final EhcacheStreamMasterKey ehcacheStreamMasterKey, long timeout) throws EhcacheStreamTimeoutException, EhcacheStreamIllegalStateException {
+        void acquireReadOnMaster(final EhcacheStreamMasterKey ehcacheStreamMasterKey, long timeout) throws EhcacheStreamTimeoutException {
             try {
                 boolean locked = tryLockInternal(ehcacheStreamMasterKey, LockType.READ, timeout);
                 if (!locked) {
@@ -492,7 +508,7 @@ public class EhcacheStreamUtilsInternal {
             releaseLockInternal(ehcacheStreamMasterKey, LockType.READ);
         }
 
-        void acquireExclusiveWriteOnMaster(final EhcacheStreamMasterKey ehcacheStreamMasterKey, long timeout) throws EhcacheStreamTimeoutException, EhcacheStreamIllegalStateException {
+        void acquireExclusiveWriteOnMaster(final EhcacheStreamMasterKey ehcacheStreamMasterKey, long timeout) throws EhcacheStreamTimeoutException {
             try {
                 boolean locked = tryLockInternal(ehcacheStreamMasterKey, LockType.WRITE, timeout);
                 if (!locked) {
