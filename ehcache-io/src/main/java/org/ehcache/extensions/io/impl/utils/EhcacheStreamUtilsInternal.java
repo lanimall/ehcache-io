@@ -270,6 +270,7 @@ public class EhcacheStreamUtilsInternal {
         // 1st: increment the write to stop other reads from acquiring
         // 2nd: wait for all reads to finish by trying to timestamp the the entry
         // If exitOnNullFromCache = true and the cache entry was to become null (eg. a delete happening) the atomic loops will exit, returning a null activeStreamMaster
+        // TODO: Using transaction may be better here (to be investigated), but the current should suffice at first.
         private EhcacheStreamMaster openWriteOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, final WaitStrategy waitStrategy, final boolean exitOnNullFromCache) throws EhcacheStreamTimeoutException {
             EhcacheStreamMaster activeStreamMaster = null;
             boolean isOpenMasterMutated = false;
