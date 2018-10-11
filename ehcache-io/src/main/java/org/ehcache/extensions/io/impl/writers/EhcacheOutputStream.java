@@ -85,16 +85,39 @@ import java.io.OutputStream;
         buf[count++] = (byte)b;
     }
 
+    /**
+     *
+     * @param b
+     * @throws IOException
+     */
     @Override
     public void write(byte[] b) throws IOException {
         tryOpenEhcacheStreamWriter();
-        super.write(b);
+        write(b, 0, b.length);
     }
 
+    /**
+     *
+     * @param b
+     * @param off
+     * @param len
+     * @throws IOException
+     */
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
         tryOpenEhcacheStreamWriter();
-        super.write(b, off, len);
+        if (len >= buf.length) {
+            //simple implementation...but works
+            for(int i=0; i<len;i++){
+                write(b[off+i]);
+            }
+            return;
+        }
+        if (len > buf.length - count) {
+            flushBuffer();
+        }
+        System.arraycopy(b, off, buf, count, len);
+        count += len;
     }
 
     /**
