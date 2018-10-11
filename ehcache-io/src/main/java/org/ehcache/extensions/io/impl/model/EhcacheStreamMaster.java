@@ -16,7 +16,7 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
     private long lastWrittenTime = 0;
 
     public enum MutationType {
-        INCREMENT, DECREMENT, INCREMENT_MARK_NOW, DECREMENT_MARK_NOW, NONE;
+        INCREMENT, DECREMENT, MARK_NOW, INCREMENT_MARK_NOW, DECREMENT_MARK_NOW, NONE;
     }
 
     public enum ComparatorType {
@@ -25,22 +25,37 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
             public boolean check(EhcacheStreamMaster streamMaster) {
                 return null != streamMaster && streamMaster.getWriters() == 1;
             }
+        },NO_READER_SINGLE_WRITER {
+            @Override
+            public boolean check(EhcacheStreamMaster streamMaster) {
+                return null != streamMaster && streamMaster.getReaders() == 0 && streamMaster.getWriters() == 1;
+            }
         },NO_WRITER {
             @Override
             public boolean check(EhcacheStreamMaster streamMaster) {
                 return (null == streamMaster || null != streamMaster && streamMaster.getWriters() == 0);
+            }
+        },AT_LEAST_ONE_WRITER {
+            @Override
+            public boolean check(EhcacheStreamMaster streamMaster) {
+                return null != streamMaster && streamMaster.getWriters() > 0;
             }
         },NO_READER {
             @Override
             public boolean check(EhcacheStreamMaster streamMaster) {
                 return (null == streamMaster || null != streamMaster && streamMaster.getReaders() == 0);
             }
+        },AT_LEAST_ONE_READER {
+            @Override
+            public boolean check(EhcacheStreamMaster streamMaster) {
+                return null != streamMaster && streamMaster.getReaders() > 0;
+            }
         },NO_READER_NO_WRITER {
             @Override
             public boolean check(EhcacheStreamMaster streamMaster) {
                 return (null == streamMaster || null != streamMaster && streamMaster.getReaders() == 0 && streamMaster.getWriters() == 0);
             }
-        },NONE {
+        },ANY {
             @Override
             public boolean check(EhcacheStreamMaster streamMaster) {
                 return true;
@@ -54,47 +69,64 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         CHUNKS {
             @Override
             public void mutate(EhcacheStreamMaster streamMaster, MutationType mutationType) {
-                if(mutationType == MutationType.INCREMENT) streamMaster.getAndIncrementChunkCount();
-                else if (mutationType == MutationType.INCREMENT_MARK_NOW){
+                if(mutationType == MutationType.INCREMENT){
+                    streamMaster.getAndIncrementChunkCount();
+                } else if (mutationType == MutationType.MARK_NOW){
+                    streamMaster.setWrittenNow();
+                } else if (mutationType == MutationType.INCREMENT_MARK_NOW){
                     streamMaster.getAndIncrementChunkCount();
                     streamMaster.setWrittenNow();
+                } else if (mutationType == MutationType.DECREMENT_MARK_NOW){
+                    throw new IllegalStateException("Not supported");
+                } else if (mutationType == MutationType.DECREMENT){
+                    throw new IllegalStateException("Not supported");
+                } else if (mutationType == MutationType.NONE){
+                    ;;
+                } else {
+                    throw new IllegalStateException("Not supported");
                 }
-                else if (mutationType == MutationType.DECREMENT_MARK_NOW) throw new IllegalStateException("Not supported");
-                else if (mutationType == MutationType.DECREMENT) throw new IllegalStateException("Not supported");
-                else if (mutationType == MutationType.NONE);
-                else throw new IllegalStateException("Not supported");
             }
         }, WRITERS {
             @Override
             public void mutate(EhcacheStreamMaster streamMaster, MutationType mutationType) {
-                if(mutationType == MutationType.INCREMENT) streamMaster.addWriter();
-                else if (mutationType == MutationType.INCREMENT_MARK_NOW){
+                if(mutationType == MutationType.INCREMENT){
+                    streamMaster.addWriter();
+                } else if (mutationType == MutationType.MARK_NOW){
+                    streamMaster.setWrittenNow();
+                } else if (mutationType == MutationType.INCREMENT_MARK_NOW){
                     streamMaster.addWriter();
                     streamMaster.setWrittenNow();
-                }
-                else if (mutationType == MutationType.DECREMENT) streamMaster.removeWriter();
-                else if (mutationType == MutationType.DECREMENT_MARK_NOW){
+                } else if (mutationType == MutationType.DECREMENT){
+                    streamMaster.removeWriter();
+                } else if (mutationType == MutationType.DECREMENT_MARK_NOW){
                     streamMaster.removeWriter();
                     streamMaster.setWrittenNow();
+                } else if (mutationType == MutationType.NONE){
+                    ;;
+                } else {
+                    throw new IllegalStateException("Not supported");
                 }
-                else if (mutationType == MutationType.NONE);
-                else throw new IllegalStateException("Not supported");
             }
         }, READERS {
             @Override
             public void mutate(EhcacheStreamMaster streamMaster, MutationType mutationType) {
-                if(mutationType == MutationType.INCREMENT) streamMaster.addReader();
-                else if (mutationType == MutationType.INCREMENT_MARK_NOW){
+                if(mutationType == MutationType.INCREMENT){
+                    streamMaster.addReader();
+                } else if (mutationType == MutationType.MARK_NOW){
+                    streamMaster.setReadNow();
+                } else if (mutationType == MutationType.INCREMENT_MARK_NOW){
                     streamMaster.addReader();
                     streamMaster.setReadNow();
-                }
-                else if (mutationType == MutationType.DECREMENT) streamMaster.removeReader();
-                else if (mutationType == MutationType.DECREMENT_MARK_NOW){
+                } else if (mutationType == MutationType.DECREMENT){
+                    streamMaster.removeReader();
+                } else if (mutationType == MutationType.DECREMENT_MARK_NOW){
                     streamMaster.removeReader();
                     streamMaster.setReadNow();
+                } else if (mutationType == MutationType.NONE){
+                    ;;
+                } else {
+                    throw new IllegalStateException("Not supported");
                 }
-                else if (mutationType == MutationType.NONE);
-                else throw new IllegalStateException("Not supported");
             }
         };
 
