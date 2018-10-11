@@ -3,7 +3,6 @@ package org.ehcache.extensions.io.impl.readers;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
-import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
 import org.slf4j.Logger;
@@ -66,6 +65,9 @@ import org.slf4j.LoggerFactory;
                         getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey())
                 );
 
+                if(isDebug)
+                    logger.debug("Opened reader for key={} is {}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()), EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster));
+
                 //mark as successfully open if we reach here
                 isOpen = true;
             } catch (Exception exc){
@@ -88,10 +90,8 @@ import org.slf4j.LoggerFactory;
      */
     @Override
     public void close() throws EhcacheStreamException {
-        if (isOpen) {
-            closeInternal();
-            super.close();
-        }
+        super.close();
+        closeInternal();
 
         if (isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should be closed at this point: something unexpected happened.");
