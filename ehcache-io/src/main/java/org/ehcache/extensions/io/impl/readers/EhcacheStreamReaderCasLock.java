@@ -3,7 +3,6 @@ package org.ehcache.extensions.io.impl.readers;
 import net.sf.ehcache.Ehcache;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
-import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.utils.EhcacheStreamUtilsInternal;
 import org.slf4j.Logger;
@@ -63,6 +62,8 @@ import org.slf4j.LoggerFactory;
                 if(activeStreamMaster.getReaders() == 0)
                     throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should not have 0 reader at this point");
 
+                //we want to make sure that we only close the master if it was mutated properly here (otherwise, the read counts would not be accurate)
+                //so let's mark here that we're mutated properly...and use that flag in the close
                 isOpenMasterMutated = true;
             }
 
@@ -84,10 +85,8 @@ import org.slf4j.LoggerFactory;
      */
     @Override
     public void close() throws EhcacheStreamException {
-        if(isOpen) {
-            closeInternal();
-            super.close();
-        }
+        super.close();
+        closeInternal();
 
         if (isOpen)
             throw new EhcacheStreamIllegalStateException("EhcacheStreamWriter should be closed at this point: something unexpected happened.");
