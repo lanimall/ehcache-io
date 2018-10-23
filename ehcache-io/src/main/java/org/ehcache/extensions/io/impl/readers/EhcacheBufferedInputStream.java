@@ -2,6 +2,8 @@ package org.ehcache.extensions.io.impl.readers;
 
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalArgumentException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -10,7 +12,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * Created by Fabien Sanglier on 5/4/15.
  */
-/*package protected*/ class EhcacheInputStream extends InputStream {
+/*package protected*/ class EhcacheBufferedInputStream extends InputStream {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheBufferedInputStream.class);
+
     /**
      * The internal buffer array where the data is stored.
      */
@@ -23,9 +27,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * "in" field is also nulled out on close.)
      */
     private static final
-    AtomicReferenceFieldUpdater<EhcacheInputStream, byte[]> bufUpdater =
+    AtomicReferenceFieldUpdater<EhcacheBufferedInputStream, byte[]> bufUpdater =
             AtomicReferenceFieldUpdater.newUpdater
-                    (EhcacheInputStream.class,  byte[].class, "buf");
+                    (EhcacheBufferedInputStream.class,  byte[].class, "buf");
 
     /**
      * The index one greater than the index of the last valid byte in
@@ -52,7 +56,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * @param   ehcacheStreamReader     the stream reader implementation
      * @exception IllegalArgumentException if size &lt;= 0.
      */
-    public EhcacheInputStream(int bufferSize, EhcacheStreamReader ehcacheStreamReader) {
+    public EhcacheBufferedInputStream(int bufferSize, EhcacheStreamReader ehcacheStreamReader) throws EhcacheStreamException {
         if (bufferSize <= 0) {
             throw new EhcacheStreamIllegalArgumentException("Buffer size <= 0");
         }
@@ -63,24 +67,25 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
         this.buf = new byte[bufferSize];
         this.ehcacheStreamReader = ehcacheStreamReader;
-    }
 
-    //try open the reader on fill (if reader already opened, will not re-open again
-    //important: don't put this in the constructor to make sure the object gets always constructed
-    private void tryOpenEhcacheStreamReader() throws EhcacheStreamException {
-        //open the underlying reader
-        if(null != ehcacheStreamReader)
-            ehcacheStreamReader.tryOpen();
-    }
+        try {
+            this.ehcacheStreamReader.open();
+        } catch (EhcacheStreamException e) {
+            //silent close just to make sure we cleanup a possible half open
+            try {
+                this.ehcacheStreamReader.close();
+            } catch (Exception e1) {
+                logger.error("Error during internal stream reader close", e1);
+            }
 
-    private void tryCloseEhcacheStreamReader() throws EhcacheStreamException {
-        if(null != ehcacheStreamReader)
-            ehcacheStreamReader.close();
+            //bubble up the exception
+            throw e;
+        }
     }
 
     @Override
     public int available() throws IOException {
-        return ehcacheStreamReader.getSize();
+        return ehcacheStreamReader.available();
     }
 
     /**
@@ -101,15 +106,13 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * hence pos > count.
      */
     private void fill() throws IOException {
-        tryOpenEhcacheStreamReader();
-
         byte[] buffer = getBufIfOpen();
 
         /* if we're here, that means we need to refill the buffer and as such it's ok to throw away the content of the buffer */
         pos = 0;
         count = pos;
 
-        int byteCopied = ehcacheStreamReader.read(buffer, pos);
+        int byteCopied = ehcacheStreamReader.read(buffer, pos, buffer.length - pos);
 
         if (byteCopied > 0)
             count = pos + byteCopied;
@@ -230,7 +233,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
                 // Else retry in case a new buf was CASed in fill()
             }
         } finally {
-            tryCloseEhcacheStreamReader();
+            ehcacheStreamReader.close();
         }
     }
 }
