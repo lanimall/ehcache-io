@@ -29,26 +29,8 @@
     </logger>
 
     <!--
-    <logger name="org.ehcache.extensions.io.impl">
-    <level value="debug"/>
-    </logger>
-    -->
-
-    <!--
-    <logger name="org.ehcache.extensions.io.impl.writers">
-    <level value="debug"/>
-    </logger>
-    -->
-
-    <!--
-    <logger name="org.ehcache.extensions.io.impl.readers">
-    <level value="debug"/>
-    </logger>
-    -->
-
-    <!--
-    <logger name="org.ehcache.extensions.io.impl.utils">
-    <level value="debug"/>
+    <logger name="org.ehcache.extensions.io">
+    <level value="trace"/>
     </logger>
     -->
 
