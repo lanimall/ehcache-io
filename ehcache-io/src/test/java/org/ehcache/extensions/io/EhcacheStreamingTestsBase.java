@@ -465,14 +465,13 @@ public abstract class EhcacheStreamingTestsBase {
     }
 
     public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride) throws IOException {
-        return copyFileToCache(publicCacheKey, cacheWriteOverride, PropertyUtils.getOutputStreamBufferSize());
+        return copyFileToCache(publicCacheKey, cacheWriteOverride, PropertyUtils.getOutputStreamBufferSize(), PropertyUtils.getOutputStreamBufferSize());
     }
 
-    public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride, final int cacheWriteBufferSize) throws IOException {
+    public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride, final int cacheWriteBufferSize, int copyBufferSize) throws IOException {
         int fileReadBufferSize = 32 * 1024;
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
-        int copyBufferSize = 32*1024;
 
         logger.debug("============ copyFileToCache ====================");
         logger.debug("Before Cache Size = " + cache.getSize());
