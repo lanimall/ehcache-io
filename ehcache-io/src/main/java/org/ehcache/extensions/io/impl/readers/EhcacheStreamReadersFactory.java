@@ -7,6 +7,7 @@ import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.BufferedInputStream;
 import java.io.InputStream;
 
 /**
@@ -48,7 +49,21 @@ public class EhcacheStreamReadersFactory {
      *
      * @return    a valid InputStream object
      */
-    public static InputStream getStream(Ehcache cache, Object cacheKey, int streamBufferSize, long openTimeoutMillis) {
-        return new EhcacheInputStream(streamBufferSize, getReader(cache, cacheKey, openTimeoutMillis));
+    public static InputStream getStream(Ehcache cache, Object cacheKey, long openTimeoutMillis, int streamBufferSize) throws EhcacheStreamException {
+        InputStream is = null;
+
+        //get a reader and try opening now
+        EhcacheStreamReader ehcacheStreamReader = getReader(cache, cacheKey, openTimeoutMillis);
+
+        if(PropertyUtils.DEFAULT_INPUTSTREAM_INTERNAL_BUFFERED)
+            is = new EhcacheBufferedInputStream(streamBufferSize, ehcacheStreamReader);
+        else {
+            if(streamBufferSize > 0)
+                is = new BufferedInputStream(new EhcacheRawInputStream(ehcacheStreamReader), streamBufferSize);
+            else
+                is = new EhcacheRawInputStream(ehcacheStreamReader);
+        }
+
+        return is;
     }
 }

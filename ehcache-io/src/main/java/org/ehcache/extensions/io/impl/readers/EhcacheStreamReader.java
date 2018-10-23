@@ -8,11 +8,15 @@ import java.io.Closeable;
  * Created by fabien.sanglier on 9/14/18.
  */
 public interface EhcacheStreamReader extends Closeable {
-    int getSize();
+    boolean isOpen();
 
-    void tryOpen() throws EhcacheStreamException;
+    int available() throws EhcacheStreamException;
 
-    int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException;
+    int read() throws EhcacheStreamException;
 
-    void close() throws EhcacheStreamException;
+    int read(byte[] b, int off, int len) throws EhcacheStreamException;
+
+    void open() throws EhcacheStreamException;
+
+    public void close() throws EhcacheStreamException;
 }

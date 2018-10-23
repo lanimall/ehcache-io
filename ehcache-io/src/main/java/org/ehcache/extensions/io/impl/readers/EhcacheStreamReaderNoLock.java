@@ -23,77 +23,46 @@ import org.slf4j.LoggerFactory;
 
 /*package protected*/ class EhcacheStreamReaderNoLock extends BaseEhcacheStreamReader implements EhcacheStreamReader {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamReaderNoLock.class);
-    private static final boolean isTrace = logger.isTraceEnabled();
     private static final boolean isDebug = logger.isDebugEnabled();
 
-    /*
-     * The current position in the ehcache value chunk list.
-     */
-    protected int cacheChunkIndexPos = 0;
-
-    /*
-     * The current offset in the ehcache value chunk
-     */
-    protected int cacheChunkBytePos = 0;
-
-    //This is the copy of the master cache entry at time of open
-    //we will use it to compare what we get during the successive gets
-    private EhcacheStreamMaster activeStreamMaster;
-
-    private volatile boolean isOpen = false;
     private final long openTimeoutMillis;
 
     public EhcacheStreamReaderNoLock(Ehcache cache, Object cacheKey, long openTimeoutMillis) {
         super(cache, cacheKey);
-        this.openTimeoutMillis = openTimeoutMillis;
-    }
 
-    //this is meant to be a general estimate without guarantees
-    @Override
-    public int getSize() {
-        EhcacheStreamMaster temp = getEhcacheStreamUtils().getStreamMasterFromCache(getPublicCacheKey());
-        return (null == temp)? 0: 1;
-    }
-
-    @Override
-    public void tryOpen() throws EhcacheStreamException {
         if(openTimeoutMillis <= 0)
             throw new EhcacheStreamIllegalStateException(String.format("Open timeout [%d] may not be lower than 0", openTimeoutMillis));
 
-        if (!isOpen) {
-            if(isDebug)
-                logger.debug("Trying to open a reader for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
+        this.openTimeoutMillis = openTimeoutMillis;
+    }
 
-            activeStreamMaster = getEhcacheStreamUtils().openSilentReadOnMaster(
-                    getPublicCacheKey(),
-                    openTimeoutMillis
-            );
+    public void oneTimeInit() throws EhcacheStreamException {
+        if(isDebug)
+            logger.debug("In oneTimeInit for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
 
-            //mark as successfully open if we reach here
-            isOpen = true;
-        }
-
-        if (!isOpen)
-            throw new EhcacheStreamIllegalStateException("EhcacheStreamReader should be open at this point: something unexpected happened.");
+        activeStreamMaster = getEhcacheStreamUtils().openSilentReadOnMaster(
+                getPublicCacheKey(),
+                openTimeoutMillis
+        );
     }
 
     @Override
-    public void close() throws EhcacheStreamException {
-        super.close();
-        this.isOpen = false;
-        this.activeStreamMaster = null;
+    void oneTimeCleanup() throws EhcacheStreamException {
+        if(isDebug)
+            logger.debug("In oneTimeCleanup for key={}", EhcacheStreamUtilsInternal.toStringSafe(getPublicCacheKey()));
+
+        ;;
     }
 
+    //TODO: seems like this becomes less performant that the read lock due to all the cache reads...or at least similiar i'm thinking
+    //TODO: Probably not worth it overall and likely to delete this implementation...but to be tested before.
     @Override
-    public int read(byte[] outBuf, int bufferBytePos) throws EhcacheStreamException {
-        if(!isOpen)
-            throw new EhcacheStreamIllegalStateException("EhcacheStreamReader is not open...call open() first.");
-
-        int byteCopied = 0;
+    public int read(byte[] outBuf, int bufferBytePos, int len) throws EhcacheStreamException {
+        checkIfOpen();
 
         // activeStreamMaster could be null here if there was no entry in cache in the first place...
         if(null == activeStreamMaster) {
-            return byteCopied;
+            return -1;
         }
 
         //because we didn't increment the reader count, we need to check the cache to see if anything has changed since being open
@@ -110,7 +79,7 @@ import org.slf4j.LoggerFactory;
 
         try {
             // copy the cache chunks into the buffer based on the internal index tracker
-            return copyCacheChunksIntoBuffer(outBuf, bufferBytePos, activeStreamMaster.getChunkCount());
+            return read1(outBuf, bufferBytePos, len);
         } catch (EhcacheStreamIllegalStateException exc){
             throw new EhcacheStreamIllegalStateException(String.format("Could not read the cache chunk. Current StreamMaster[=%s]", EhcacheStreamUtilsInternal.toStringSafe(activeStreamMaster)), exc);
         }
