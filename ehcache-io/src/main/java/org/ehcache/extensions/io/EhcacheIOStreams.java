@@ -92,15 +92,15 @@ public class EhcacheIOStreams {
 
     //////////////////////////// InputStream
 
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey) {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
         return getInputStream(cache, cacheKey, PropertyUtils.getInputStreamAllowNulls());
     }
 
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream) {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream) throws EhcacheStreamException {
         return getInputStream(cache, cacheKey, allowNullStream, PropertyUtils.getInputStreamBufferSize());
     }
 
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize) {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize) throws EhcacheStreamException {
         return getInputStream(cache, cacheKey, allowNullStream, bufferSize, PropertyUtils.getInputStreamOpenTimeout());
     }
 
@@ -115,15 +115,16 @@ public class EhcacheIOStreams {
      * @return      a valid InputStream object
      * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the EhcacheInputStream creation was not successful
      */
-    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize, long openTimeout) {
+    public static InputStream getInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, int bufferSize, long openTimeout) throws EhcacheStreamException {
         checkValid(cache, cacheKey);
 
         if(!allowNullStream || allowNullStream && containStreamEntry(cache, cacheKey)){
             return EhcacheStreamReadersFactory.getStream(
                     cache,
                     cacheKey,
-                    bufferSize,
-                    openTimeout);
+                    openTimeout,
+                    bufferSize
+                    );
         } else {
             return null;
         }
@@ -131,15 +132,15 @@ public class EhcacheIOStreams {
 
     //////////////////////////// OutputStream
 
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey) {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
         return getOutputStream(cache, cacheKey, PropertyUtils.getOutputStreamDefaultOverride());
     }
 
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override) {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override) throws EhcacheStreamException {
         return getOutputStream(cache, cacheKey, override, PropertyUtils.getOutputStreamBufferSize());
     }
 
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize) {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize) throws EhcacheStreamException {
         return getOutputStream(cache, cacheKey, override, bufferSize, PropertyUtils.getOutputStreamOpenTimeout());
     }
 
@@ -154,7 +155,7 @@ public class EhcacheIOStreams {
      * @return      a Valid OutputStream object
      * @exception   EhcacheStreamException if cache is null, disabled, or cacheKey is null, OR if the EhcacheOutputStream creation was not successful
      */
-    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize, long openTimeout) {
+    public static OutputStream getOutputStream(Ehcache cache, Object cacheKey, boolean override, int bufferSize, long openTimeout) throws EhcacheStreamException {
         checkValid(cache, cacheKey);
 
         return EhcacheStreamWritersFactory.getStream(
