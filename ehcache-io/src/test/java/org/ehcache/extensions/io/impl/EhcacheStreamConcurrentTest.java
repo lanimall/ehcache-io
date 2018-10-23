@@ -171,7 +171,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                     returnChecksum = is.getChecksum().getValue();
                 }
 
-                logger.debug("Completely finished writing to ehcache (stream closed)");
+                logger.debug("Completely finished reading from ehcache (stream closed)");
                 logger.debug("Finished callable operation");
 
                 return returnChecksum;
