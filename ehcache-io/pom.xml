@@ -155,7 +155,7 @@
                                 <include>**/EhcacheStreamTestSuiteLocalHeap.class</include>
                                 <include>**/EhcacheStreamTestSuiteLocalOffheap.class</include>
                                 <include>**/EhcacheStreamTestSuiteDistributed.class</include>
-                                <include>**/EhcacheStreamTestSuiteDistributedEventual.class</include>
+                                <!--<include>**/EhcacheStreamTestSuiteDistributedEventual.class</include>-->
                             </includes>
                         </configuration>
                     </plugin>
