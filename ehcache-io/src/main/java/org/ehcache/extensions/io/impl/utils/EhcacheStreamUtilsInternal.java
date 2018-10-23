@@ -24,6 +24,7 @@ import java.util.List;
 public class EhcacheStreamUtilsInternal {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamUtilsInternal.class);
     private static final boolean isDebug = logger.isDebugEnabled();
+    private static final boolean isTrace = logger.isTraceEnabled();
 
     private EhcacheStreamUtilsInternalImpl ehcacheStreamUtilsInternalImpl;
 
@@ -412,6 +413,9 @@ public class EhcacheStreamUtilsInternal {
                     attempts++;
                 }
                 t2 = System.currentTimeMillis();
+
+                if (isTrace)
+                    logger.trace(String.format("Current CAS loop status: Atomic mutate operation [%s,%s,%s] / Total retries [%d ] / Total time spent [%d ms] (timeout triggers at [%d ms]) / Cache Key [%s]", toStringSafe(mutationField), toStringSafe(mutationType), toStringSafe(comparatorType), attempts, t2 - t1, timeoutMillis, toStringSafe(internalKey)));
             }
 
             //if it's not mutated at the end of all the tries and timeout, throw timeout exception
