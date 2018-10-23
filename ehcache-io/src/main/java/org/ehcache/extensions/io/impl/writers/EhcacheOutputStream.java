@@ -2,6 +2,8 @@ package org.ehcache.extensions.io.impl.writers;
 
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.EhcacheStreamIllegalArgumentException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -10,6 +12,7 @@ import java.io.OutputStream;
  * Created by Fabien Sanglier on 5/4/15.
  */
 /*package protected*/ class EhcacheOutputStream extends OutputStream {
+    private static final Logger logger = LoggerFactory.getLogger(EhcacheOutputStream.class);
 
     /**
      * The internal buffer where data is stored.
@@ -36,28 +39,34 @@ import java.io.OutputStream;
      * @param   bufferSize            the stream buffer size.
      * @param   ehcacheStreamWriter   the stream writer implementation
      *
-     * @exception IllegalArgumentException if size &lt;= 0.
+     * @exception EhcacheStreamIllegalArgumentException if size &lt;= 0 or if ehcacheStreamWriter is null
+     * @exception EhcacheStreamException if ehcacheStreamWriter could not be opened
      */
-    public EhcacheOutputStream(int bufferSize, EhcacheStreamWriter ehcacheStreamWriter) {
+    public EhcacheOutputStream(int bufferSize, EhcacheStreamWriter ehcacheStreamWriter) throws EhcacheStreamException {
         if (bufferSize <= 0) {
             throw new EhcacheStreamIllegalArgumentException("Buffer size <= 0");
         }
 
+        if (null == ehcacheStreamWriter) {
+            throw new EhcacheStreamIllegalArgumentException("An internal stream writer must be provided");
+        }
+
         this.buf = new byte[bufferSize];
         this.ehcacheStreamWriter = ehcacheStreamWriter;
-    }
 
-    //try open the writer (if writer already opened, will not re-open again
-    //Important: don't put this in the constructor to make sure the object gets always constructed
-    private void tryOpenEhcacheStreamWriter() throws EhcacheStreamException {
-        //open the underlying writer
-        if(null != ehcacheStreamWriter)
-            ehcacheStreamWriter.tryOpen();
-    }
+        try {
+            this.ehcacheStreamWriter.tryOpen();
+        } catch (EhcacheStreamException e) {
+            //silent close just to make sure we cleanup a possible half open
+            try {
+                this.ehcacheStreamWriter.close();
+            } catch (Exception e1) {
+                logger.error("Error during internal stream reader close", e1);
+            }
 
-    private void tryCloseEhcacheStreamWriter() throws EhcacheStreamException {
-        if(null != ehcacheStreamWriter)
-            ehcacheStreamWriter.close();
+            //bubble up the exception
+            throw e;
+        }
     }
 
     /**
@@ -78,7 +87,6 @@ import java.io.OutputStream;
      */
     @Override
     public void write(int b) throws IOException {
-        tryOpenEhcacheStreamWriter();
         if (count >= buf.length) {
             flushBuffer();
         }
@@ -92,7 +100,6 @@ import java.io.OutputStream;
      */
     @Override
     public void write(byte[] b) throws IOException {
-        tryOpenEhcacheStreamWriter();
         write(b, 0, b.length);
     }
 
@@ -105,7 +112,6 @@ import java.io.OutputStream;
      */
     @Override
     public void write(byte[] b, int off, int len) throws IOException {
-        tryOpenEhcacheStreamWriter();
         if (len >= buf.length) {
             //simple implementation...but works
             for(int i=0; i<len;i++){
@@ -139,7 +145,7 @@ import java.io.OutputStream;
         try{
             flush();
         } finally {
-            tryCloseEhcacheStreamWriter();
+            ehcacheStreamWriter.close();
         }
     }
 }
