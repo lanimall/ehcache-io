@@ -155,7 +155,9 @@ import java.util.Arrays;
         // because all other threads should be waiting in the tryOpen method still
         if(count > 0) {
             // let's add the chunk (overwrite anything in cache)
-            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), Arrays.copyOf(buf, count));
+            byte[] chunk = Arrays.copyOf(buf, count);
+            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), chunk);
+            activeStreamMaster.addChunkSize(chunk.length);
         }
     }
 }
