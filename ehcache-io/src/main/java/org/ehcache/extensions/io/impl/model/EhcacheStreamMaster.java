@@ -1,6 +1,8 @@
 package org.ehcache.extensions.io.impl.model;
 
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by Fabien Sanglier on 5/6/15.
@@ -9,11 +11,195 @@ import java.io.Serializable;
 public class EhcacheStreamMaster implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
 
+//    private final List<ChunkDescriptor> chunkDescriptorList;
     private int chunkCount = 0;
     private int writers = 0;
     private int readers = 0;
     private long lastReadTime = 0;
     private long lastWrittenTime = 0;
+    private long size = 0;
+
+    public EhcacheStreamMaster() {
+        this(0, 0);
+    }
+
+    private EhcacheStreamMaster(int chunkCount, long size) {
+        this(chunkCount, size, 0, 0);
+    }
+
+    private EhcacheStreamMaster(int chunkCount, long size, int writers, int readers) {
+        this(chunkCount, size, writers, readers, 0L, 0L);
+    }
+
+    private EhcacheStreamMaster(int chunkCount, long size, int writers, int readers, long lastReadNanos, long lastWrittenTime) {
+//        this.chunkDescriptorList = new ArrayList<ChunkDescriptor>();
+        this.chunkCount = chunkCount;
+        this.size = size;
+        this.writers = writers;
+        this.readers = readers;
+        this.lastReadTime = lastReadNanos;
+        this.lastWrittenTime = lastWrittenTime;
+    }
+
+    public int getAndIncrementChunkCount() {
+        return chunkCount++;
+    }
+
+    public void resetChunkCount() {
+        chunkCount = 0;
+    }
+
+    public int getChunkCount() {
+        return chunkCount;
+    }
+
+    public void addWriter() {
+        writers++;
+    }
+
+    public void removeWriter() {
+        writers--;
+    }
+
+    public int getWriters() {
+        return writers;
+    }
+
+    public void addReader() {
+        readers++;
+    }
+
+    public void removeReader() {
+        readers--;
+    }
+
+    public int getReaders() {
+        return readers;
+    }
+
+    public long getLastWrittenTime() {
+        return lastWrittenTime;
+    }
+
+    private void setWrittenNow(){
+        lastWrittenTime = System.currentTimeMillis();
+    }
+
+    public long getLastReadTime() {
+        return lastReadTime;
+    }
+
+    private void setReadNow(){
+        lastReadTime = System.currentTimeMillis();
+    }
+
+    public void addChunkSize(long chunkSize) {
+        size += chunkSize;
+    }
+
+    public long getSize() {
+        return size;
+    }
+
+    @Override
+    public EhcacheStreamMaster clone() {
+        return new EhcacheStreamMaster(
+                this.chunkCount,
+                this.size,
+                this.writers,
+                this.readers,
+                this.lastReadTime,
+                this.lastWrittenTime);
+    }
+
+    public static EhcacheStreamMaster deepCopy(final EhcacheStreamMaster obj){
+        return (null != obj)?obj.clone():null;
+    }
+
+    public static boolean compare(EhcacheStreamMaster thisObject, EhcacheStreamMaster thatObject){
+        if(thisObject == null && thatObject == null)
+            return true;
+
+        if(thisObject != null && thatObject == null || thisObject == null && thatObject != null)
+            return false;
+
+        return thisObject.equals(thatObject);
+    }
+
+    public boolean equalsNoReadWriteTimes(Object o) {
+        return equals(o, true, true);
+    }
+
+    public boolean equals(Object o, boolean noCompareReadTime, boolean noCompareWriteTime) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        EhcacheStreamMaster that = (EhcacheStreamMaster) o;
+
+        if (chunkCount != that.chunkCount) return false;
+        if (size != that.size) return false;
+        if (readers != that.readers) return false;
+        if (writers != that.writers) return false;
+        if (!noCompareReadTime && lastReadTime != that.lastReadTime) return false;
+        if (!noCompareWriteTime && lastWrittenTime != that.lastWrittenTime) return false;
+
+        return true;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        EhcacheStreamMaster that = (EhcacheStreamMaster) o;
+
+        if (chunkCount != that.chunkCount) return false;
+        if (size != that.size) return false;
+        if (lastReadTime != that.lastReadTime) return false;
+        if (lastWrittenTime != that.lastWrittenTime) return false;
+        if (readers != that.readers) return false;
+        if (writers != that.writers) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = chunkCount;
+        result = 31 * result + writers;
+        result = 31 * result + readers;
+        result = 31 * result + (int) (size ^ (size >>> 32));
+        result = 31 * result + (int) (lastReadTime ^ (lastReadTime >>> 32));
+        result = 31 * result + (int) (lastWrittenTime ^ (lastWrittenTime >>> 32));
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "EhcacheStreamMaster{" +
+                "chunkCount=" + chunkCount +
+                ", size=" + size +
+                ", writers=" + writers +
+                ", readers=" + readers +
+                ", lastReadTime=" + lastReadTime +
+                ", lastWrittenTime=" + lastWrittenTime +
+                '}' +
+                ", hashcode=" + hashCode();
+    }
+
+    class ChunkDescriptor implements Serializable {
+        private static final long serialVersionUID = 1L;
+
+        private final int chunkIndex;
+        private final long size;
+        private final long checksum;
+
+        ChunkDescriptor(int chunkIndex, long size, long checksum) {
+            this.chunkIndex = chunkIndex;
+            this.size = size;
+            this.checksum = checksum;
+        }
+    }
 
     public enum MutationType {
         INCREMENT, DECREMENT, MARK_NOW, INCREMENT_MARK_NOW, DECREMENT_MARK_NOW, NONE;
@@ -131,160 +317,5 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         };
 
         public abstract void mutate(EhcacheStreamMaster streamMaster, MutationType mutationType);
-    }
-
-    public EhcacheStreamMaster() {
-        this(0);
-    }
-
-    public EhcacheStreamMaster(int chunkCount) {
-        this(chunkCount, 0, 0);
-    }
-
-    public EhcacheStreamMaster(int chunkCount, int writers, int readers) {
-        this.chunkCount = chunkCount;
-        this.writers = writers;
-        this.readers = readers;
-    }
-
-    private EhcacheStreamMaster(int chunkCount, int writers, int readers, long lastReadNanos, long lastWrittenTime) {
-        this.chunkCount = chunkCount;
-        this.writers = writers;
-        this.readers = readers;
-        this.lastReadTime = lastReadNanos;
-        this.lastWrittenTime = lastWrittenTime;
-    }
-
-    public int getAndIncrementChunkCount() {
-        return chunkCount++;
-    }
-
-    public void resetChunkCount() {
-        chunkCount = 0;
-    }
-
-    public int getChunkCount() {
-        return chunkCount;
-    }
-
-    public void addWriter() {
-        writers++;
-    }
-
-    public void removeWriter() {
-        writers--;
-    }
-
-    public int getWriters() {
-        return writers;
-    }
-
-    public void addReader() {
-        readers++;
-    }
-
-    public void removeReader() {
-        readers--;
-    }
-
-    public int getReaders() {
-        return readers;
-    }
-
-    public long getLastWrittenTime() {
-        return lastWrittenTime;
-    }
-
-    private void setWrittenNow(){
-        lastWrittenTime = System.currentTimeMillis();
-    }
-
-    public long getLastReadTime() {
-        return lastReadTime;
-    }
-
-    private void setReadNow(){
-        lastReadTime = System.currentTimeMillis();
-    }
-
-    @Override
-    public EhcacheStreamMaster clone() {
-        return new EhcacheStreamMaster(
-                this.chunkCount,
-                this.writers,
-                this.readers,
-                this.lastReadTime,
-                this.lastWrittenTime);
-    }
-
-    public static EhcacheStreamMaster deepCopy(final EhcacheStreamMaster obj){
-        return (null != obj)?obj.clone():null;
-    }
-
-    public static boolean compare(EhcacheStreamMaster thisObject, EhcacheStreamMaster thatObject){
-        if(thisObject == null && thatObject == null)
-            return true;
-
-        if(thisObject != null && thatObject == null || thisObject == null && thatObject != null)
-            return false;
-
-        return thisObject.equals(thatObject);
-    }
-
-    public boolean equalsNoReadWriteTimes(Object o) {
-        return equals(o, true, true);
-    }
-
-    public boolean equals(Object o, boolean noCompareReadTime, boolean noCompareWriteTime) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        EhcacheStreamMaster that = (EhcacheStreamMaster) o;
-
-        if (chunkCount != that.chunkCount) return false;
-        if (readers != that.readers) return false;
-        if (writers != that.writers) return false;
-        if (!noCompareReadTime && lastReadTime != that.lastReadTime) return false;
-        if (!noCompareWriteTime && lastWrittenTime != that.lastWrittenTime) return false;
-
-        return true;
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-
-        EhcacheStreamMaster that = (EhcacheStreamMaster) o;
-
-        if (chunkCount != that.chunkCount) return false;
-        if (lastReadTime != that.lastReadTime) return false;
-        if (lastWrittenTime != that.lastWrittenTime) return false;
-        if (readers != that.readers) return false;
-        if (writers != that.writers) return false;
-
-        return true;
-    }
-
-    @Override
-    public int hashCode() {
-        int result = chunkCount;
-        result = 31 * result + writers;
-        result = 31 * result + readers;
-        result = 31 * result + (int) (lastReadTime ^ (lastReadTime >>> 32));
-        result = 31 * result + (int) (lastWrittenTime ^ (lastWrittenTime >>> 32));
-        return result;
-    }
-
-    @Override
-    public String toString() {
-        return "EhcacheStreamMaster{" +
-                "chunkCount=" + chunkCount +
-                ", writers=" + writers +
-                ", readers=" + readers +
-                ", lastReadTime=" + lastReadTime +
-                ", lastWrittenTime=" + lastWrittenTime +
-                '}' +
-                ", hashcode=" + hashCode();
     }
 }
