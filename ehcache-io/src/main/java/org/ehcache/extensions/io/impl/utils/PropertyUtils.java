@@ -20,6 +20,8 @@ public class PropertyUtils {
     public static final String PROP_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_BASE_MILLIS = "ehcache.extension.io.inputstream.concurrency.cas.backoff.exponential.base";
     public static final String PROP_INPUTSTREAM_CONCURRENCY_CAS_LOOP_BACKOFF_EXP_CAP_MILLIS = "ehcache.extension.io.inputstream.concurrency.cas.backoff.exponential.cap";
 
+    public static final boolean DEFAULT_INPUTSTREAM_INTERNAL_BUFFERED = false;
+
     public static final int DEFAULT_OUTPUTSTREAM_BUFFER_SIZE = 256 * 1024; // 256kb
     public static final boolean DEFAULT_OUTPUTSTREAM_OVERRIDE = true;
     public static final int DEFAULT_INPUTSTREAM_BUFFER_SIZE = 512 * 1024; // 512kb
