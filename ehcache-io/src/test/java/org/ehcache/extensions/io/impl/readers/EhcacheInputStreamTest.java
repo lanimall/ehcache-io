@@ -64,10 +64,12 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(cacheSize, getCache().getSize()); // should be 0 now
 
         //first, copy file to cache
-        long inputFileCheckSum = copyFileToCache(getCacheKey(), true, outBufferSize);
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true, outBufferSize, copyBufferSize);
         cacheSize = getCache().getSize();
         Assert.assertTrue(cacheSize > 0);
 
+        int beforeReadAvailable;
+        int afterFullReadAvailable;
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey(), false, inBufferSize),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
@@ -75,9 +77,15 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         {
             logger.debug("Before Cache Size = " + getCache().getSize());
 
+            //save the available value before the reads
+            beforeReadAvailable = is.available();
+
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
             end = System.nanoTime();;
+
+            //save the available value after the full read
+            afterFullReadAvailable = is.available();
 
             inputChecksum = is.getChecksum().getValue();
             outputChecksum = os.getChecksum().getValue();
@@ -88,6 +96,11 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         logger.debug("After Cache Size = " + getCache().getSize());
         logger.debug("============================================");
 
+        //TODO: to make this issue proof, I need to improve the available impl by recording the chunk sizes in the master entry - In the meantime, simple test as is.
+//        Assert.assertEquals(IN_FILE_SIZE, beforeReadAvailable);
+        Assert.assertTrue(beforeReadAvailable > 0);
+
+        Assert.assertEquals(0, afterFullReadAvailable);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
         Assert.assertEquals(inputChecksum, outputChecksum);
@@ -109,10 +122,12 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(cacheSize, getCache().getSize()); // should be 0 now
 
         //first, copy file to cache
-        long inputFileCheckSum = copyFileToCache(getCacheKey(), true, outBufferSize);
+        long inputFileCheckSum = copyFileToCache(getCacheKey(), true, outBufferSize, copyBufferSize);
         cacheSize = getCache().getSize();
         Assert.assertTrue(cacheSize > 0);
 
+        int beforeReadAvailable;
+        int afterFullReadAvailable;
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey(), false, inBufferSize),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH),outBufferSize), new CRC32())
@@ -120,9 +135,15 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         {
             logger.debug("Before Cache Size = " + getCache().getSize());
 
+            //save the available value before the reads
+            beforeReadAvailable = is.available();
+
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
             end = System.nanoTime();;
+
+            //save the available value after the full read
+            afterFullReadAvailable = is.available();
 
             inputChecksum = is.getChecksum().getValue();
             outputChecksum = os.getChecksum().getValue();
@@ -133,6 +154,11 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         logger.debug("After Cache Size = " + getCache().getSize());
         logger.debug("============================================");
 
+        //TODO: to make this issue proof, I need to improve the available impl by recording the chunk sizes in the master entry - In the meantime, simple test as is.
+//        Assert.assertEquals(IN_FILE_SIZE, beforeReadAvailable);
+        Assert.assertTrue(beforeReadAvailable > 0);
+
+        Assert.assertEquals(0, afterFullReadAvailable);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
         Assert.assertEquals(inputChecksum, outputChecksum);
@@ -155,6 +181,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         cacheSize = getCache().getSize();
         Assert.assertTrue(cacheSize > 0);
 
+        int beforeReadAvailable;
+        int afterFullReadAvailable;
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey()),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
@@ -162,9 +190,15 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         {
             logger.debug("Before Cache Size = " + getCache().getSize());
 
+            //save the available value before the reads
+            beforeReadAvailable = is.available();
+
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
             end = System.nanoTime();;
+
+            //save the available value after the full read
+            afterFullReadAvailable = is.available();
 
             inputChecksum = is.getChecksum().getValue();
             outputChecksum = os.getChecksum().getValue();
@@ -175,6 +209,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         logger.debug("After Cache Size = " + getCache().getSize());
         logger.debug("============================================");
 
+        Assert.assertEquals(IN_FILE_SIZE, beforeReadAvailable);
+        Assert.assertEquals(0, afterFullReadAvailable);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
         Assert.assertEquals(inputChecksum, outputChecksum);
@@ -196,6 +232,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         cacheSize = getCache().getSize();
         Assert.assertTrue(cacheSize > 0);
 
+        int beforeReadAvailable;
+        int afterFullReadAvailable;
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), getCacheKey()),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
@@ -203,9 +241,15 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         {
             logger.debug("Before Cache Size = " + getCache().getSize());
 
+            //save the available value before the reads
+            beforeReadAvailable = is.available();
+
             start = System.nanoTime();;
             pipeStreamsByteByByte(is, os);
             end = System.nanoTime();;
+
+            //save the available value after the full read
+            afterFullReadAvailable = is.available();
 
             inputChecksum = is.getChecksum().getValue();
             outputChecksum = os.getChecksum().getValue();
@@ -216,6 +260,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         logger.debug("After Cache Size = " + getCache().getSize());
         logger.debug("============================================");
 
+        Assert.assertEquals(IN_FILE_SIZE, beforeReadAvailable);
+        Assert.assertEquals(0, afterFullReadAvailable);
         Assert.assertEquals(inputFileCheckSum, outputChecksum);
         Assert.assertEquals(inputFileCheckSum, inputChecksum);
         Assert.assertEquals(inputChecksum, outputChecksum);
@@ -263,6 +309,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
 
         final String cacheKeyNotExist = getCacheKey() + "doesNotExist";
 
+        int beforeReadAvailable;
+        int afterFullReadAvailable;
         try (
                 CheckedInputStream is = new CheckedInputStream(EhcacheIOStreams.getInputStream(getCache(), cacheKeyNotExist, false),new CRC32());
                 CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(OUT_FILE_PATH)), new CRC32())
@@ -271,9 +319,15 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
             int beforeCacheSize = getCache().getSize();
             logger.debug("Before Cache Size = " + beforeCacheSize);
 
+            //save the available value before the reads
+            beforeReadAvailable = is.available();
+
             start = System.nanoTime();;
             pipeStreamsWithBuffer(is, os, copyBufferSize);
             end = System.nanoTime();;
+
+            //save the available value after the full read
+            afterFullReadAvailable = is.available();
 
             inputChecksum = is.getChecksum().getValue();
             outputChecksum = os.getChecksum().getValue();
@@ -284,6 +338,8 @@ public class EhcacheInputStreamTest extends EhcacheStreamingTestsBase {
         logger.debug("After Cache Size = " + getCache().getSize());
         logger.debug("============================================");
 
+        Assert.assertEquals(0, beforeReadAvailable);
+        Assert.assertEquals(0, afterFullReadAvailable);
         Assert.assertNotEquals(inputFileCheckSum, outputChecksum);
         Assert.assertNotEquals(inputFileCheckSum, inputChecksum);
         Assert.assertEquals(inputChecksum, outputChecksum);
