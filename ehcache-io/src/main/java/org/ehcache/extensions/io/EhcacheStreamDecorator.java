@@ -23,111 +23,114 @@ import java.util.zip.GZIPOutputStream;
  */
 public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamDecorator.class);
-    private static final boolean isTrace = logger.isTraceEnabled();
     private static final boolean isDebug = logger.isDebugEnabled();
     public static final NumberFormat formatD = new DecimalFormat("#.###");
 
-    private final boolean useCompression;
+    private final boolean useCompressionOnPuts;
     private final boolean useOverwriteOnPuts;
-    private final int bufferSize;
-    private final boolean returnAsStreamForGets;
-    private final OutputStream outputStreamForGets; // TODO: this behavior of returning a stream on gets won't work well without more work...
+    private final int bufferSizeOnPuts;
+
+    private final boolean useCompressionOnGets;
+    private final int bufferSizeOnGets;
+    private final boolean returnAsBytesOnGets;
     private final boolean allowNullStreamOnGets = false;
 
-    public EhcacheStreamDecorator(Ehcache underlyingCache, final int bufferSize, final boolean useCompression, final boolean useOverwriteOnPuts, final boolean returnAsStreamForGets, final OutputStream outputStreamForGets) {
+    public EhcacheStreamDecorator(Ehcache underlyingCache, boolean useCompressionOnPuts, boolean useOverwriteOnPuts, int bufferSizeOnPuts, boolean useCompressionOnGets, int bufferSizeOnGets, boolean returnAsBytesOnGets) {
         super(underlyingCache);
-        this.bufferSize = bufferSize;
-        this.useCompression = useCompression;
+        this.useCompressionOnPuts = useCompressionOnPuts;
         this.useOverwriteOnPuts = useOverwriteOnPuts;
-        this.returnAsStreamForGets = returnAsStreamForGets;
-        this.outputStreamForGets = outputStreamForGets;
+        this.bufferSizeOnPuts = bufferSizeOnPuts;
+        this.useCompressionOnGets = useCompressionOnGets;
+        this.bufferSizeOnGets = bufferSizeOnGets;
+        this.returnAsBytesOnGets = returnAsBytesOnGets;
     }
 
     public void streamToCache(Object cacheKey, Object cacheValue) throws IOException {
-        if(cacheValue instanceof InputStream) {
-            try (
-                    InputStream is = new BufferedInputStream((InputStream) cacheValue, bufferSize);
-                    OutputStream os =
-                            (useCompression) ? new GZIPOutputStream(EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSize)) :
-                                    EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSize);
-            ) {
+        if(cacheValue instanceof InputStream || cacheValue instanceof byte[]) {
+            InputStream is = null;
+            OutputStream os = null;
+            try {
+                if (cacheValue instanceof InputStream) {
+                    is = new BufferedInputStream((InputStream) cacheValue, bufferSizeOnPuts);
+                } else if (cacheValue instanceof byte[]) {
+                    is = new ByteArrayInputStream((byte[]) cacheValue);
+                }
+
+                os = (useCompressionOnPuts) ? new GZIPOutputStream(EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts)) :
+                                EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts);
+
                 if (isDebug)
-                    logger.debug("============ coping Stream to cache " + ((useCompression) ? "(with Gzip Compression)" : "") + " ====================");
+                    logger.debug("============ coping Stream to cache " + ((useCompressionOnPuts) ? "(with Gzip Compression)" : "") + " ====================");
 
                 long start = System.nanoTime();
-                pipeStreamsWithBuffer(is, os, bufferSize);
+                pipeStreamsWithBuffer(is, os, bufferSizeOnPuts);
                 long end = System.nanoTime();
 
-                if (isTrace)
-                    logger.trace("Execution Time = " + formatD.format((double) (end - start) / 1000000) + " millis");
+                if (isDebug)
+                    logger.debug("Execution Time = " + formatD.format((double) (end - start) / 1000000) + " millis");
+            } finally {
+                if(null != is)
+                    is.close();
+
+                if(null != os)
+                    os.close();
             }
-        }
-        else {
-            try (
-                    ObjectOutputStream os =
-                            new ObjectOutputStream(
-                                    (useCompression) ? new GZIPOutputStream(EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSize)) :
-                                            EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSize)
-                            );
-            ) {
+        } else {
+            ObjectOutputStream os = null;
+            try{
+                os = new ObjectOutputStream(
+                        (useCompressionOnPuts) ? new GZIPOutputStream(EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts)) :
+                                EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts)
+                );
                 os.writeObject(cacheValue);
+            } finally {
+                if(null != os)
+                    os.close();
             }
         }
     }
 
-    // TODO: this behavior of returning a stream on gets won't work well without more work...
     public Object streamFromCache(Object cacheKey) throws IOException, ClassNotFoundException {
         Object fromCache = null;
-        if(returnAsStreamForGets){
-            if(null == outputStreamForGets){
-                try (
-                        InputStream is =
-                                (useCompression) ? new GZIPInputStream(EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSize)) :
-                                        EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSize);
-                        OutputStream os = new ByteArrayOutputStream();
-                ) {
-                    if (isDebug)
-                        logger.debug("============ coping cache entry back to stream " + ((useCompression) ? "(with Gzip Compression)" : "") + " ====================");
+        if(returnAsBytesOnGets){
+            InputStream is = null;
+            OutputStream os = null;
+            try{
+                is = (useCompressionOnGets) ? new GZIPInputStream(EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets)) :
+                                EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets);
+                os = new ByteArrayOutputStream();
 
-                    long start = System.nanoTime();
-                    pipeStreamsWithBuffer(is, os, bufferSize);
-                    long end = System.nanoTime();
+                if (isDebug)
+                    logger.debug("============ coping cache entry back to stream " + ((useCompressionOnGets) ? "(with Gzip Compression)" : "") + " ====================");
 
-                    if (isTrace)
-                        logger.trace("Execution Time = " + formatD.format((double) (end - start) / 1000000) + " millis");
+                long start = System.nanoTime();
+                pipeStreamsWithBuffer(is, os, bufferSizeOnGets);
+                long end = System.nanoTime();
 
-                    os.flush();
-                    fromCache = ((ByteArrayOutputStream)os).toByteArray();
-                }
-            } else {
-                try (
-                        InputStream is =
-                                (useCompression) ? new GZIPInputStream(EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSize)) :
-                                        EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSize);
-                ) {
-                    if (isDebug)
-                        logger.debug("============ coping cache entry back to stream " + ((useCompression) ? "(with Gzip Compression)" : "") + " ====================");
+                if (isDebug)
+                    logger.debug("Execution Time = " + formatD.format((double) (end - start) / 1000000) + " millis");
 
-                    long start = System.nanoTime();
-                    ;
-                    pipeStreamsWithBuffer(is, outputStreamForGets, bufferSize);
-                    long end = System.nanoTime();
-                    ;
+                os.flush();
+                fromCache = ((ByteArrayOutputStream)os).toByteArray();
+            } finally {
+                if(null != is)
+                    is.close();
 
-                    if (isTrace)
-                        logger.trace("Execution Time = " + formatD.format((double) (end - start) / 1000000) + " millis");
-                }
-                fromCache = outputStreamForGets;
+                if(null != os)
+                    os.close();
             }
         } else {
-            try (
-                    ObjectInputStream objectInputStream =
-                            new ObjectInputStream(
-                                    (useCompression) ? new GZIPInputStream(EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSize)) :
-                                            EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSize)
-                            );
-            ) {
-                fromCache = objectInputStream.readObject();
+            ObjectInputStream ois = null;
+            try{
+                ois = new ObjectInputStream(
+                                (useCompressionOnGets) ? new GZIPInputStream(EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets)) :
+                                        EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets)
+                        );
+
+                fromCache = ois.readObject();
+            } finally {
+                if(null != ois)
+                    ois.close();
             }
         }
 
