@@ -35,13 +35,13 @@ import java.util.zip.CheckedOutputStream;
 public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheStreamConcurrentTest.class);
 
+    private static StreamCopyResultDescriptor bigInputFileDescriptor = null;
     private EhcacheStreamUtilsInternal streamUtilsInternal;
 
-    private static long NULL_CHECKSUM = -1;
     private ArrayList<Callable<Long>> callables;
     private List<AtomicReference<Long>> callableResults;
     private List<AtomicReference<Throwable>> exceptions;
-    private long inputFileCheckSum = NULL_CHECKSUM;
+    private StreamCopyResultDescriptor fileFromDisk = null;
 
     private final int copyBufferSize = 128*1024;
     private final int fileReadBufferSize = 128*1024;
@@ -54,7 +54,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         logger.debug("============ Starting EhcacheStreamConcurrentTest ====================");
         sysPropDefaultSetup();
         cacheStart();
-        generateBigInputFile();
+        bigInputFileDescriptor = generateBigInputFile();
     }
 
     @AfterClass
@@ -62,13 +62,14 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         cacheShutdown();
         cleanBigInputFile();
         sysPropDefaultCleanup();
+        bigInputFileDescriptor = null;
         logger.debug("============ Finished EhcacheStreamConcurrentTest ====================");
     }
 
     @Before
     public void setup() throws Exception {
         setupParameterizedProperties();
-        inputFileCheckSum = readFileFromDisk();
+        fileFromDisk = readFileFromDisk();
         callables = new ArrayList<Callable<Long>>();
         callableResults = new ArrayList<AtomicReference<Long>>();
         exceptions = new ArrayList<AtomicReference<Throwable>>();
@@ -82,7 +83,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         cacheCleanUp();
         callables = null;
         exceptions = null;
-        inputFileCheckSum = NULL_CHECKSUM;
+        fileFromDisk = null;
         cleanupParameterizedProperties();
         streamUtilsInternal = null;
     }
@@ -281,8 +282,8 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         Assert.assertNull(exceptions.get(WRITER_INDEX).get()); // write thread should have 0 exception
         Assert.assertNull(exceptions.get(READER_INDEX).get()); // read thread should have 0 exception
 
-        Assert.assertEquals(inputFileCheckSum, callableResults.get(WRITER_INDEX).get().longValue());
-        Assert.assertEquals(inputFileCheckSum, callableResults.get(READER_INDEX).get().longValue());
+        Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(WRITER_INDEX).get().longValue());
+        Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(READER_INDEX).get().longValue());
 
         // check the final counter
         EhcacheStreamMaster testObjectCheck = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
@@ -307,8 +308,8 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         OrderedSynchronizer orderedSynchronizer = new OrderedSynchronizer();
 
         //first, let's add something to cache so the read can start reading something
-        long checksumCacheAdded = copyFileToCache(getCacheKey());
-        Assert.assertEquals(inputFileCheckSum, checksumCacheAdded);
+        StreamCopyResultDescriptor copyFileToCacheDesc = copyFileToCache(getCacheKey());
+        Assert.assertEquals(fileFromDisk.getFromChecksum(), copyFileToCacheDesc.getToChecksum());
 
         final long ehcacheWriteOpenTimeout = 30000L;
         final int writerBeforeOpenOrderPosition = 1; //2nd position
@@ -342,13 +343,13 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
                 )
         {
             Assert.assertNull(exceptions.get(WRITER_INDEX).get()); // write thread should have 0 exception
-            Assert.assertEquals(inputFileCheckSum, callableResults.get(WRITER_INDEX).get().longValue());
+            Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(WRITER_INDEX).get().longValue());
 
             Assert.assertNull(exceptions.get(READER_INDEX).get()); // read thread should have 0 exception
-            Assert.assertEquals(inputFileCheckSum, callableResults.get(READER_INDEX).get().longValue());
+            Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(READER_INDEX).get().longValue());
         } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY){
             Assert.assertNull(exceptions.get(WRITER_INDEX).get()); // write thread should have 0 exception
-            Assert.assertEquals(inputFileCheckSum, callableResults.get(WRITER_INDEX).get().longValue());
+            Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(WRITER_INDEX).get().longValue());
 
             Assert.assertNotNull(exceptions.get(1).get()); // read thread should have EhcacheStreamConcurrentException because the write took over
             Assert.assertEquals(EhcacheStreamIllegalStateException.class, exceptions.get(1).get().getClass()); // read thread should have EhcacheStreamIllegalStateException because the write took over
@@ -377,17 +378,17 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         EhcacheStreamMaster testObjectCheckBefore = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
 
         Assert.assertEquals(0, initialCacheSize); // should be 0 now
-        Assert.assertNotEquals(NULL_CHECKSUM, inputFileCheckSum);
+        Assert.assertNotEquals(StreamCopyResultDescriptor.NULL_CHECKSUM, fileFromDisk.getFromChecksum());
         Assert.assertNull(testObjectCheckBefore);
 
         if(addCachePayloadBeforeReads) {
             //first, let's add something to cache so the read can start reading something
-            long checksumCacheAdded = copyFileToCache(getCacheKey());
+            StreamCopyResultDescriptor copyFileToCacheDesc = copyFileToCache(getCacheKey());
 
             initialCacheSize = getCache().getSize();
             Assert.assertTrue(initialCacheSize > 1); // should be at least 2 (master key + chunk key)
 
-            Assert.assertEquals(inputFileCheckSum, checksumCacheAdded);
+            Assert.assertEquals(fileFromDisk.getFromChecksum(), copyFileToCacheDesc.getToChecksum());
 
             // check the stream master from cache at the end of the initial write
             testObjectCheckBefore = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
@@ -421,7 +422,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         for(int i = 0; i < threadCount; i++) {
             Assert.assertNull(exceptions.get(i).get()); // read thread should have 0 exception
             if(addCachePayloadBeforeReads) {
-                Assert.assertEquals(inputFileCheckSum, callableResults.get(i).get().longValue());
+                Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(i).get().longValue());
             } else {
                 Assert.assertEquals(0L, callableResults.get(i).get().longValue());
             }
@@ -521,7 +522,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             Assert.assertNull(exceptions.get(i).get()); // read thread should have 0 exception
-            Assert.assertEquals(inputFileCheckSum, callableResults.get(i).get().longValue());
+            Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(i).get().longValue());
         }
 
         //check final cache size
@@ -583,7 +584,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
 
         for(int i = 0; i < threadCount; i++) {
             Assert.assertNull(exceptions.get(i).get()); // should have 0 exception
-            Assert.assertEquals(inputFileCheckSum, callableResults.get(i).get().longValue());
+            Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(i).get().longValue());
         }
         Assert.assertEquals(expectedCacheSize, getCache().getSize());
 
@@ -632,7 +633,7 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         runInThreads();
 
         Assert.assertNull(exceptions.get(WRITER_INDEX).get()); // write thread should have 0 exception
-        Assert.assertEquals(inputFileCheckSum, callableResults.get(WRITER_INDEX).get().longValue());
+        Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(WRITER_INDEX).get().longValue());
 
         Assert.assertTrue(null != exceptions.get(READER_INDEX).get() && exceptions.get(READER_INDEX).get() instanceof EhcacheStreamTimeoutException); // read thread should have 1 exception
         Assert.assertNull(callableResults.get(READER_INDEX).get());
@@ -658,11 +659,11 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
         Assert.assertEquals(0, getCache().getSize()); // should be 0 now
 
         //first, let's add something to cache so the read can start reading something
-        long checksumCacheAdded = copyFileToCache(getCacheKey());
+        StreamCopyResultDescriptor copyFileToCacheDesc = copyFileToCache(getCacheKey());
         int expectedCacheSize = getCache().getSize();
 
         Assert.assertTrue(expectedCacheSize > 1); // should be at least 2 (master key + chunk key)
-        Assert.assertEquals(inputFileCheckSum, checksumCacheAdded);
+        Assert.assertEquals(fileFromDisk.getFromChecksum(), copyFileToCacheDesc.getToChecksum());
 
         // check the state of the stream entry
         EhcacheStreamMaster testObjectCheckBefore = streamUtilsInternal.getStreamMasterFromCache(getCacheKey());
@@ -709,10 +710,10 @@ public class EhcacheStreamConcurrentTest extends EhcacheStreamingTestsBase {
             Assert.assertNull(callableResults.get(WRITER_INDEX).get());
 
             Assert.assertNull(exceptions.get(READER_INDEX).get()); // read thread should have 0 exception
-            Assert.assertEquals(inputFileCheckSum, callableResults.get(READER_INDEX).get().longValue());
+            Assert.assertEquals(fileFromDisk.getFromChecksum(), callableResults.get(READER_INDEX).get().longValue());
         } else if (PropertyUtils.getEhcacheIOStreamsConcurrencyMode() == PropertyUtils.ConcurrencyMode.WRITE_PRIORITY){
             Assert.assertNull(exceptions.get(WRITER_INDEX).get()); // write thread should have 0 exception
-            Assert.assertEquals(checksumCacheAdded, callableResults.get(WRITER_INDEX).get().longValue());
+            Assert.assertEquals(copyFileToCacheDesc.getToChecksum(), callableResults.get(WRITER_INDEX).get().longValue());
 
             Assert.assertNotNull(exceptions.get(READER_INDEX).get()); // read thread should have EhcacheStreamConcurrentException because the write took over
             Assert.assertEquals(EhcacheStreamIllegalStateException.class, exceptions.get(READER_INDEX).get().getClass());
