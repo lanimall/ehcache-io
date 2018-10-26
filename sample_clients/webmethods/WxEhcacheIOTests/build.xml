@@ -1,0 +1,103 @@
+<project name="Ehcache IO" default="build" basedir=".">
+    <description>WxEhcacheIOTests build file</description>
+
+    <property file="build.properties" />
+
+    <property environment="env" />
+
+    <!-- Initialization -->
+    <target name="init" description="Generic initialization steps for the project">
+        <mkdir dir="${wxehcacheio.target.dir}" />
+        <mkdir dir="${wxehcacheio.lib.dir}" />
+
+        <!-- Ehcache libs -->
+        <get src="http://central.maven.org/maven2/net/sf/ehcache/ehcache/2.10.5/ehcache-2.10.5.jar"
+             dest="${wxehcacheio.lib.dir}/ehcache-2.10.5.jar" usetimestamp="true" />
+
+        <copy todir="${wxehcacheio.lib.dir}">
+            <fileset dir="${wxehcacheio.runtime.is.client.libs}" includes="wm-is*.jar" casesensitive="yes" />
+        </copy>
+
+        <copy todir="${wxehcacheio.lib.dir}">
+            <fileset dir="${wxehcacheio.runtime.is.server.libs}" includes="wm-is*.jar" casesensitive="yes" />
+        </copy>
+    </target>
+
+    <!-- Clean all -->
+    <target name="clean" description="Cleaning build artifacts" depends="init">
+        <delete includeemptydirs="true" failonerror="false">
+            <fileset dir="${wxehcacheio.target.dir}" includes="*.zip" />
+        </delete>
+    </target>
+
+    <target name="prepare.compile" description="move the package to the dist folder before compiling" depends="init">
+        <copy todir="${wxehcacheio.target.dir}">
+            <fileset dir="${wxehcacheio.package}" />
+        </copy>
+
+        <property name="wxehcacheio.package.src" value="${wxehcacheio.target.dir}/${wxehcacheio.packagename}/code/source"/>
+        <property name="wxehcacheio.package.classes" value="${wxehcacheio.target.dir}/${wxehcacheio.packagename}/code/classes"/>
+        <property name="wxehcacheio.package.libs" value="${wxehcacheio.target.dir}/${wxehcacheio.packagename}/code/jars"/>
+
+        <mkdir dir="${wxehcacheio.package.classes}" />
+        <mkdir dir="${wxehcacheio.package.libs}" />
+    </target>
+
+    <target name="update.version" description="move the package to the dist folder before compiling" depends="prepare.compile">
+        <!-- <value name="version">[^<]*<\/value> -->
+        <!-- <value name="version">${wxehcacheio.version}<\/value> -->
+        <replaceregexp byline="true">
+            <regexp pattern="&lt;value name=&quot;version&quot;&gt;[^&lt;]*&lt;\/value&gt;" />
+            <substitution expression="&lt;value name=&quot;version&quot;&gt;${wxehcacheio.version}&lt;\/value&gt;"/>
+            <fileset dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}">
+                <include name="manifest.*"/>
+            </fileset>
+        </replaceregexp>
+
+        <replaceregexp byline="true">
+            <regexp pattern="&lt;value name=&quot;target_pkg_version&quot;&gt;[^&lt;]*&lt;\/value&gt;" />
+            <substitution expression="&lt;value name=&quot;target_pkg_version&quot;&gt;${wxehcacheio.version}&lt;\/value&gt;"/>
+            <fileset dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}">
+                <include name="manifest.*"/>
+            </fileset>
+        </replaceregexp>
+    </target>
+
+    <!-- Compile ISPackage -->
+    <target name="compile" description="compile java code in the package" depends="prepare.compile, update.version">
+        <path id="compile.classpath">
+            <fileset dir="${wxehcacheio.lib.dir}" includes="**/*.jar" />
+            <fileset dir="${wxehcacheio.package.libs}" includes="**/*.jar" />
+            <fileset file="${wxehcacheio.runtime.ehcacheio.libs}/target/*.jar" />
+        </path>
+
+        <mkdir dir="${wxehcacheio.package.classes}"/>
+        <echo message="Compiling package source files" level="verbose"/>
+        <javac srcdir="${wxehcacheio.package.src}"
+               destdir="${wxehcacheio.package.classes}"
+               classpathref="compile.classpath"
+               debug="on"
+               failonerror="true"/>
+    </target>
+
+    <target name="assemble.include.ehcacheio" description="move the package to the dist folder before compiling" depends="prepare.compile" if="wxehcacheio.runtime.ehcacheio.package.include">
+        <!-- copy ehcache-io jar into the package -->
+        <copy todir="${wxehcacheio.package.libs}/static">
+            <fileset file="${wxehcacheio.runtime.ehcacheio.libs}/target/*.jar" />
+        </copy>
+    </target>
+
+    <!-- Assemble ISPackage -->
+    <target name="assemble" description="Copy IS package files, place the dependent jar and zip them together to create IS package" depends="compile, assemble.include.ehcacheio">
+        <zip destfile="${wxehcacheio.target.dir}/${wxehcacheio.packagename}-${wxehcacheio.version}.zip">
+            <zipfileset dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}" />
+        </zip>
+
+        <delete dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}" />
+    </target>
+
+    <!-- Complete build [IS Package and Server jar] -->
+    <target name="build" depends="assemble">
+        <echo message="Build execution completed for SKY Profiler runtime and server. The binaries are placed at - ${wxehcacheio.target.dir}" />
+    </target>
+</project>

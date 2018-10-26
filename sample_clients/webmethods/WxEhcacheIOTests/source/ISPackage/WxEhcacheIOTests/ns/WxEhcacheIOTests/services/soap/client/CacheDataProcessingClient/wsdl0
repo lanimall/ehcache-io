@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions name="CacheDataProcessingWS" targetNamespace="http://ip-172-30-1-179.ec2.internal/WxEhcacheIOTests.services.soap:CacheDataProcessingWS" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:soapjms="http://www.w3.org/2010/soapjms/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://ip-172-30-1-179.ec2.internal/WxEhcacheIOTests.services.soap:CacheDataProcessingWS" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/">
+  <wsdl:types>
+    <xsd:schema targetNamespace="http://ip-172-30-1-179.ec2.internal/WxEhcacheIOTests.services.soap:CacheDataProcessingWS" xmlns:tns="http://ip-172-30-1-179.ec2.internal/WxEhcacheIOTests.services.soap:CacheDataProcessingWS" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+          <xsd:element name="CacheDataProcessing" type="tns:CacheDataProcessing"/>
+          <xsd:element name="CacheDataProcessingResponse" type="tns:CacheDataProcessingResponse"/>
+          <xsd:complexType name="CacheDataProcessing">
+            <xsd:sequence>
+              <xsd:element name="CacheDataProcessingRequest" nillable="true" type="tns:CacheDataRequestType"/>
+            </xsd:sequence>
+          </xsd:complexType>
+          <xsd:complexType name="CacheDataRequestType">
+            <xsd:sequence>
+              <xsd:element name="correlationID" type="xsd:string"/>
+              <xsd:element minOccurs="0" name="requestFile" nillable="true" type="xsd:base64Binary"/>
+            </xsd:sequence>
+          </xsd:complexType>
+          <xsd:complexType name="CacheDataProcessingResponse">
+            <xsd:sequence>
+              <xsd:element name="CacheDataProcessingResponse" nillable="true" type="tns:CacheDataResponseType"/>
+            </xsd:sequence>
+          </xsd:complexType>
+          <xsd:complexType name="CacheDataResponseType">
+            <xsd:sequence>
+              <xsd:element name="Status" type="xsd:string"/>
+            </xsd:sequence>
+          </xsd:complexType>
+        	</xsd:schema>
+  </wsdl:types>
+  <wsdl:message name="CacheDataProcessingWS_PortType_CacheDataProcessing">
+    <wsdl:part name="parameters" element="tns:CacheDataProcessing">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:message name="CacheDataProcessingWS_PortType_CacheDataProcessingResponse">
+    <wsdl:part name="parameters" element="tns:CacheDataProcessingResponse">
+    </wsdl:part>
+  </wsdl:message>
+  <wsdl:portType name="CacheDataProcessingWS_PortType">
+    <wsdl:operation name="CacheDataProcessing">
+      <wsdl:input message="tns:CacheDataProcessingWS_PortType_CacheDataProcessing">
+    </wsdl:input>
+      <wsdl:output message="tns:CacheDataProcessingWS_PortType_CacheDataProcessingResponse">
+    </wsdl:output>
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="WxEhcacheIOTests_services_soap_CacheDataProcessingWS_Binder" type="tns:CacheDataProcessingWS_PortType">
+    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+    <wsdl:operation name="CacheDataProcessing">
+      <soap:operation soapAction="WxEhcacheIOTests_services_soap_CacheDataProcessingWS_Binder_CacheDataProcessing" style="document"/>
+      <wsdl:input>
+        <soap:body parts="parameters" use="literal"/>
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body parts="parameters" use="literal"/>
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="WxEhcacheIOTests.services.soap.server.CacheDataProcessingWS">
+    <wsdl:port name="WxEhcacheIOTests_services_soap_CacheDataProcessingWS_Port" binding="tns:WxEhcacheIOTests_services_soap_CacheDataProcessingWS_Binder">
+      <soap:address location="http://aws_is912_dev_is1::5555/ws/WxEhcacheIOTests.services.soap.server:CacheDataProcessingWS/WxEhcacheIOTests_services_soap_CacheDataProcessingWS_Port"/>
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>

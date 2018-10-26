@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Values version="2.0">
+  <record name="record" javaclass="com.wm.util.Values">
+    <value name="node_type">record</value>
+    <value name="node_subtype">unknown</value>
+    <value name="node_nsName">WxEhcacheIOTests.services.soap.client.CacheDataProcessingClient_.docTypes:docTypeRef_tns_CacheDataProcessing</value>
+    <value name="node_pkg">WxEhcacheIOTests</value>
+    <value name="is_public">false</value>
+    <value name="field_type">record</value>
+    <value name="field_dim">0</value>
+    <value name="nillable">true</value>
+    <value name="form_qualified">false</value>
+    <value name="is_global">false</value>
+    <value name="schemaDomain">f4bff2d85fe64937166d7fe01b5</value>
+    <value name="docTypeDomain">181ae9728c284fe294d2af1b3fe7bdaa</value>
+    <value name="originURI">http://aws_is912_dev_is1:5555/ws/WxEhcacheIOTests.services.soap.server:CacheDataProcessingWS?WSDL</value>
+    <array name="rec_fields" type="record" depth="1">
+      <record javaclass="com.wm.util.Values">
+        <value name="node_type">record</value>
+        <value name="node_subtype">unknown</value>
+        <value name="is_public">false</value>
+        <value name="field_name">CacheDataProcessingRequest</value>
+        <value name="field_type">recref</value>
+        <value name="field_dim">0</value>
+        <value name="nillable">true</value>
+        <value name="form_qualified">false</value>
+        <value name="is_global">false</value>
+        <value name="rec_closed">true</value>
+        <value name="modifiable">true</value>
+        <value name="rec_ref">WxEhcacheIOTests.services.soap.client.CacheDataProcessingClient_.docTypes:docTypeRef_tns_CacheDataRequestType</value>
+      </record>
+    </array>
+    <record name="schemaType" javaclass="com.wm.util.Values">
+      <value name="xmlns">http://ip-172-30-1-179.ec2.internal/WxEhcacheIOTests.services.soap:CacheDataProcessingWS</value>
+      <value name="ncName">CacheDataProcessing</value>
+    </record>
+    <value name="schemaRegistered">true</value>
+    <value name="modifiable">false</value>
+  </record>
+</Values>
