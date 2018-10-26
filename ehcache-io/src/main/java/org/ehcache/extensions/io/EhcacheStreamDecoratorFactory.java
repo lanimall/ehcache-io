@@ -22,7 +22,7 @@ public class EhcacheStreamDecoratorFactory extends CacheDecoratorFactory {
     private static final String PROPNAME_GETS_BUFFERSIZE = "gets_buffersize";
 
     private static final String PROPNAME_PUTS_USECOMPRESSION = "puts_compression";
-    private static final String PROPNAME_GETS_USECOMPRESSION = "get_compression";
+    private static final String PROPNAME_GETS_USECOMPRESSION = "gets_compression";
 
     private static final String PROPNAME_PUTS_USE_OVERWRITES = "puts_overwrite";
     private static final String PROPNAME_GETS_AS_BYTES = "gets_asbytes";
