@@ -1,4 +1,4 @@
-package org.ehcache.extensions.io.impl.utils;
+package org.ehcache.extensions.io.impl.utils.cas;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

@@ -1,4 +1,4 @@
-package org.ehcache.extensions.io.impl.utils;
+package org.ehcache.extensions.io.impl.utils.cas;
 
 /**
  * Created by fabien.sanglier on 9/18/18.

@@ -1,4 +1,4 @@
-package org.ehcache.extensions.io.impl.utils;
+package org.ehcache.extensions.io.impl.utils.cas;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +8,8 @@ import java.util.concurrent.ThreadLocalRandom;
 /**
  * Created by fabien.sanglier on 9/18/18.
  */
+
+//TODO: I need to create a wait strategy that is aware of the cache config and auto-tune itself properly
 public class ExponentialWait implements WaitStrategy {
     private static final Logger logger = LoggerFactory.getLogger(ExponentialWait.class);
     private static final boolean isTrace = logger.isTraceEnabled();
