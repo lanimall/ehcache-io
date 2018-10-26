@@ -2,7 +2,6 @@ package org.ehcache.extensions.io.impl.model;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Created by Fabien Sanglier on 5/6/15.
@@ -11,46 +10,70 @@ import java.util.List;
 public class EhcacheStreamMaster implements Serializable, Cloneable {
     private static final long serialVersionUID = 1L;
 
-//    private final List<ChunkDescriptor> chunkDescriptorList;
-    private int chunkCount = 0;
+    private final ArrayList<ChunkDescriptor> chunkDescriptorList;
     private int writers = 0;
     private int readers = 0;
     private long lastReadTime = 0;
     private long lastWrittenTime = 0;
-    private long size = 0;
 
     public EhcacheStreamMaster() {
         this(0, 0);
     }
 
-    private EhcacheStreamMaster(int chunkCount, long size) {
-        this(chunkCount, size, 0, 0);
+    private EhcacheStreamMaster(int writers, int readers) {
+        this(writers, readers, 0L, 0L);
     }
 
-    private EhcacheStreamMaster(int chunkCount, long size, int writers, int readers) {
-        this(chunkCount, size, writers, readers, 0L, 0L);
-    }
-
-    private EhcacheStreamMaster(int chunkCount, long size, int writers, int readers, long lastReadNanos, long lastWrittenTime) {
-//        this.chunkDescriptorList = new ArrayList<ChunkDescriptor>();
-        this.chunkCount = chunkCount;
-        this.size = size;
+    private EhcacheStreamMaster(int writers, int readers, long lastReadNanos, long lastWrittenTime) {
+        this.chunkDescriptorList = new ArrayList<ChunkDescriptor>();
         this.writers = writers;
         this.readers = readers;
         this.lastReadTime = lastReadNanos;
         this.lastWrittenTime = lastWrittenTime;
     }
 
-    public int getAndIncrementChunkCount() {
-        return chunkCount++;
+    public void resetChunkCount() {
+        chunkDescriptorList.clear();
     }
 
-    public void resetChunkCount() {
-        chunkCount = 0;
+    public void addChunk(int chunkIndex, long size, long checksum){
+        chunkDescriptorList.add(new ChunkDescriptor(chunkIndex, size, checksum));
     }
 
     public int getChunkCount() {
-        return chunkCount;
+        return chunkDescriptorList.size();
+    }
+
+    public int[] getAllChunkIndices() {
+        int[] chunkIndexArray = new int[getChunkCount()];
+        for(int i = 0 ; i < chunkDescriptorList.size(); i++){
+            chunkIndexArray[i] = chunkDescriptorList.get(i).getChunkIndex();
+        }
+        return chunkIndexArray;
+    }
+
+    public long[] getAllChunkSizeInBytes() {
+        long[] chunkSizeArray = new long[getChunkCount()];
+        for(int i = 0 ; i < chunkDescriptorList.size(); i++){
+            chunkSizeArray[i] = chunkDescriptorList.get(i).getSize();
+        }
+        return chunkSizeArray;
+    }
+
+    public long getChunksTotalSizeInBytes() {
+        long totalSize = 0L;
+        for(int i = 0 ; i < chunkDescriptorList.size(); i++){
+            totalSize += chunkDescriptorList.get(i).getSize();
+        }
+        return totalSize;
+    }
+
+    public long[] getAllChunkChecksums() {
+        long[] chunkChecksumArray = new long[getChunkCount()];
+        for(int i = 0 ; i < chunkDescriptorList.size(); i++){
+            chunkChecksumArray[i] = chunkDescriptorList.get(i).getChecksum();
+        }
+        return chunkChecksumArray;
     }
 
     public void addWriter() {
@@ -93,23 +116,28 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
         lastReadTime = System.currentTimeMillis();
     }
 
-    public void addChunkSize(long chunkSize) {
-        size += chunkSize;
-    }
-
-    public long getSize() {
-        return size;
-    }
-
     @Override
     public EhcacheStreamMaster clone() {
-        return new EhcacheStreamMaster(
-                this.chunkCount,
-                this.size,
+        EhcacheStreamMaster newObj = new EhcacheStreamMaster(
                 this.writers,
                 this.readers,
                 this.lastReadTime,
                 this.lastWrittenTime);
+
+        //adding the chunks
+        for(ChunkDescriptor cd : this.chunkDescriptorList){
+            newObj.addChunk(cd.chunkIndex, cd.size, cd.checksum);
+        }
+
+        return newObj;
+    }
+
+    private ArrayList<ChunkDescriptor> makeDeepCopyChunkDescriptor(ArrayList<ChunkDescriptor> old){
+        ArrayList<ChunkDescriptor> copy = new ArrayList<ChunkDescriptor>(old.size());
+        for(ChunkDescriptor chunkDescriptor : old){
+            copy.add(chunkDescriptor.clone());
+        }
+        return copy;
     }
 
     public static EhcacheStreamMaster deepCopy(final EhcacheStreamMaster obj){
@@ -136,8 +164,6 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
 
         EhcacheStreamMaster that = (EhcacheStreamMaster) o;
 
-        if (chunkCount != that.chunkCount) return false;
-        if (size != that.size) return false;
         if (readers != that.readers) return false;
         if (writers != that.writers) return false;
         if (!noCompareReadTime && lastReadTime != that.lastReadTime) return false;
@@ -153,22 +179,20 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
 
         EhcacheStreamMaster that = (EhcacheStreamMaster) o;
 
-        if (chunkCount != that.chunkCount) return false;
-        if (size != that.size) return false;
         if (lastReadTime != that.lastReadTime) return false;
         if (lastWrittenTime != that.lastWrittenTime) return false;
         if (readers != that.readers) return false;
         if (writers != that.writers) return false;
+        if (!chunkDescriptorList.equals(that.chunkDescriptorList)) return false;
 
         return true;
     }
 
     @Override
     public int hashCode() {
-        int result = chunkCount;
+        int result = chunkDescriptorList.hashCode();
         result = 31 * result + writers;
         result = 31 * result + readers;
-        result = 31 * result + (int) (size ^ (size >>> 32));
         result = 31 * result + (int) (lastReadTime ^ (lastReadTime >>> 32));
         result = 31 * result + (int) (lastWrittenTime ^ (lastWrittenTime >>> 32));
         return result;
@@ -177,8 +201,7 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
     @Override
     public String toString() {
         return "EhcacheStreamMaster{" +
-                "chunkCount=" + chunkCount +
-                ", size=" + size +
+                "chunkDescriptorList[size]=" + chunkDescriptorList.size() +
                 ", writers=" + writers +
                 ", readers=" + readers +
                 ", lastReadTime=" + lastReadTime +
@@ -187,7 +210,7 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
                 ", hashcode=" + hashCode();
     }
 
-    class ChunkDescriptor implements Serializable {
+    class ChunkDescriptor implements Serializable, Cloneable {
         private static final long serialVersionUID = 1L;
 
         private final int chunkIndex;
@@ -198,6 +221,57 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
             this.chunkIndex = chunkIndex;
             this.size = size;
             this.checksum = checksum;
+        }
+
+        public int getChunkIndex() {
+            return chunkIndex;
+        }
+
+        public long getSize() {
+            return size;
+        }
+
+        public long getChecksum() {
+            return checksum;
+        }
+
+        @Override
+        public ChunkDescriptor clone() {
+            return new ChunkDescriptor(
+                    this.chunkIndex,
+                    this.size,
+                    this.checksum);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            ChunkDescriptor that = (ChunkDescriptor) o;
+
+            if (checksum != that.checksum) return false;
+            if (chunkIndex != that.chunkIndex) return false;
+            if (size != that.size) return false;
+
+            return true;
+        }
+
+        @Override
+        public int hashCode() {
+            int result = chunkIndex;
+            result = 31 * result + (int) (size ^ (size >>> 32));
+            result = 31 * result + (int) (checksum ^ (checksum >>> 32));
+            return result;
+        }
+
+        @Override
+        public String toString() {
+            return "ChunkDescriptor{" +
+                    "chunkIndex=" + chunkIndex +
+                    ", size=" + size +
+                    ", checksum=" + checksum +
+                    '}';
         }
     }
 
@@ -252,27 +326,7 @@ public class EhcacheStreamMaster implements Serializable, Cloneable {
     }
 
     public enum MutationField {
-        CHUNKS {
-            @Override
-            public void mutate(EhcacheStreamMaster streamMaster, MutationType mutationType) {
-                if(mutationType == MutationType.INCREMENT){
-                    streamMaster.getAndIncrementChunkCount();
-                } else if (mutationType == MutationType.MARK_NOW){
-                    streamMaster.setWrittenNow();
-                } else if (mutationType == MutationType.INCREMENT_MARK_NOW){
-                    streamMaster.getAndIncrementChunkCount();
-                    streamMaster.setWrittenNow();
-                } else if (mutationType == MutationType.DECREMENT_MARK_NOW){
-                    throw new IllegalStateException("Not supported");
-                } else if (mutationType == MutationType.DECREMENT){
-                    throw new IllegalStateException("Not supported");
-                } else if (mutationType == MutationType.NONE){
-                    ;;
-                } else {
-                    throw new IllegalStateException("Not supported");
-                }
-            }
-        }, WRITERS {
+        WRITERS {
             @Override
             public void mutate(EhcacheStreamMaster streamMaster, MutationType mutationType) {
                 if(mutationType == MutationType.INCREMENT){
