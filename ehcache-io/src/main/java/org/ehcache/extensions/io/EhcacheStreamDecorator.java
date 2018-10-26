@@ -1,5 +1,6 @@
 package org.ehcache.extensions.io;
 
+import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
@@ -43,6 +44,10 @@ public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
         this.useCompressionOnGets = useCompressionOnGets;
         this.bufferSizeOnGets = bufferSizeOnGets;
         this.returnAsBytesOnGets = returnAsBytesOnGets;
+    }
+
+    public Ehcache getUnderlyingCache(){
+        return underlyingCache;
     }
 
     public void streamToCache(Object cacheKey, Object cacheValue) throws IOException {
