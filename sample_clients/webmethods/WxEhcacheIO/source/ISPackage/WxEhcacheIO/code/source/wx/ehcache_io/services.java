@@ -8,7 +8,7 @@ import com.wm.app.b2b.server.Service;
 import com.wm.app.b2b.server.ServiceException;
 // --- <<IS-START-IMPORTS>> ---
 import java.io.*;
-import net.sf.ehcache.Cache;
+import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
 import org.ehcache.extensions.io.EhcacheIOStreams;
@@ -148,7 +148,7 @@ public final class services
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
 		//get cache handle
-		Cache cache = getCache(pipelineCursor);
+		Ehcache cache = getCache(pipelineCursor);
 		
 		Object cacheKey = null;
 		if (pipelineCursor.first("key"))
@@ -157,12 +157,7 @@ public final class services
 			cacheKey = (String) pipelineCursor.getValue();
 		}
 		
-		boolean found = false;
-		try {
-			found = EhcacheIOStreams.containStreamEntry(cache, cacheKey);
-		} catch (IOException e) {
-			throw new ServiceException(e);
-		}
+		boolean found = EhcacheIOStreams.containStreamEntry(cache, cacheKey);
 		
 		//output section
 		pipelineCursor.last();
@@ -248,11 +243,15 @@ public final class services
 		// [i] field:0:required cacheManagerName
 		// [i] field:0:required cacheName
 		// [i] field:0:optional excludeExpiredKeys {"true","false"}
+		// [i] field:0:required includeNoReads
+		// [i] field:0:required includeNoWrites
+		// [i] field:0:required includeReadsOnly
+		// [i] field:0:required includeWritesOnly
 		// [o] object:1:required keys
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
 		//get cache handle
-		Cache cache = getCache(pipelineCursor);
+		Ehcache cache = getCache(pipelineCursor);
 		
 		String excludeExpiredKeysStr = null;
 		if (pipelineCursor.first("excludeExpiredKeys"))
@@ -260,14 +259,46 @@ public final class services
 			excludeExpiredKeysStr = (String) pipelineCursor.getValue();
 		}
 		
-		boolean excludeExpiredKeys = (null != excludeExpiredKeysStr && "true".equalsIgnoreCase(excludeExpiredKeysStr));
-		
-		List keys = null;
-		try {
-			keys = EhcacheIOStreams.getStreamEntryKeys(cache, excludeExpiredKeys);
-		} catch (IOException e) {
-			throw new ServiceException(e);
+		String includeNoReadsStr = null;
+		if (pipelineCursor.first("includeNoReads"))
+		{
+			includeNoReadsStr = (String) pipelineCursor.getValue();
 		}
+		
+		String includeNoWritesStr = null;
+		if (pipelineCursor.first("includeNoWrites"))
+		{
+			includeNoWritesStr = (String) pipelineCursor.getValue();
+		}
+		
+		String includeReadsOnlyStr = null;
+		if (pipelineCursor.first("includeReadsOnly"))
+		{
+			includeReadsOnlyStr = (String) pipelineCursor.getValue();
+		}
+		
+		String includeWritesOnlyStr = null;
+		if (pipelineCursor.first("includeWritesOnly"))
+		{
+			includeWritesOnlyStr = (String) pipelineCursor.getValue();
+		}
+		
+		boolean excludeExpiredKeys = "true".equalsIgnoreCase(excludeExpiredKeysStr);
+		
+		//if attribute not specified, defaults to true (= include in results)
+		boolean includeNoReads = "true".equalsIgnoreCase(includeNoReadsStr);
+		boolean includeNoWrites = "true".equalsIgnoreCase(includeNoWritesStr);
+		boolean includeReadsOnly = "true".equalsIgnoreCase(includeReadsOnlyStr);
+		boolean includeWritesOnly = "true".equalsIgnoreCase(includeWritesOnlyStr);
+		
+		List keys = EhcacheIOStreams.getStreamEntryKeys(
+				cache, 
+				excludeExpiredKeys, 
+				includeNoReads, 
+				includeNoWrites, 
+				includeReadsOnly, 
+				includeWritesOnly
+		);
 		
 		//output section
 		pipelineCursor.last();
@@ -364,7 +395,7 @@ public final class services
 		IDataCursor pipelineCursor = pipeline.getCursor();
 		
 		//get cache handle
-		Cache cache = getCache(pipelineCursor);
+		Ehcache cache = getCache(pipelineCursor);
 		
 		Object cacheKey = null;
 		if (pipelineCursor.first("key"))
@@ -402,7 +433,7 @@ public final class services
 		String compressStr = null;
 		
 		//get cache handle
-		Cache cache = getCache(pipelineCursor);
+		Ehcache cache = getCache(pipelineCursor);
 		
 		if (pipelineCursor.first("key"))
 		{
@@ -454,7 +485,7 @@ public final class services
 		return createOutputStream(cache, cacheKey, append, compress, copyBufferSize, openTimeout);
 	}
 	
-	public static OutputStream createOutputStream(Cache cache, Object cacheKey, boolean append, boolean compress, Integer bufferSize, Long openTimeout) throws ServiceException {
+	public static OutputStream createOutputStream(Ehcache cache, Object cacheKey, boolean append, boolean compress, Integer bufferSize, Long openTimeout) throws ServiceException {
 		validateParamsCacheKey(cacheKey);
 		
 		OutputStream ehcacheOutputStream = null;
@@ -483,7 +514,7 @@ public final class services
 		Object cacheKey = null;
 		
 		//get cache handle
-		Cache cache = getCache(pipelineCursor);
+		Ehcache cache = getCache(pipelineCursor);
 		
 		if (pipelineCursor.first("key"))
 		{
@@ -532,7 +563,7 @@ public final class services
 		return createInputStream(cache, cacheKey, allowNullStream, decompress, copyBufferSize, openTimeout);
 	}
 	
-	public static InputStream createInputStream(Cache cache, Object cacheKey, boolean allowNullStream, boolean decompress, Integer bufferSize, Long openTimeout) throws ServiceException {
+	public static InputStream createInputStream(Ehcache cache, Object cacheKey, boolean allowNullStream, boolean decompress, Integer bufferSize, Long openTimeout) throws ServiceException {
 		validateParamsCacheKey(cacheKey);
 		
 		InputStream ehcacheInputStream = null;
@@ -592,10 +623,10 @@ public final class services
 		return cacheManager;
 	}
 	
-	public static Cache getCache(IDataCursor pipelineCursor) throws ServiceException {
+	public static Ehcache getCache(IDataCursor pipelineCursor) throws ServiceException {
 		String cacheManagerName = null;
 		String cacheName = null;
-		Cache cache = null;
+		Ehcache cache = null;
 		
 		if (pipelineCursor.first("cacheManagerName"))
 		{
@@ -615,12 +646,12 @@ public final class services
 		return cache;
 	}
 	
-	public static Cache getCache(String cacheManagerName, String cacheName) throws ServiceException {
-		Cache cache = null;
+	public static Ehcache getCache(String cacheManagerName, String cacheName) throws ServiceException {
+		Ehcache cache = null;
 		validateParams(cacheManagerName, cacheName);
 		if (CacheManagerConfig.cacheManagerAlive(cacheManagerName)) {
 			CacheManager cacheManager = getCacheManager(cacheManagerName);
-			cache = cacheManager.getCache(cacheName);
+			cache = cacheManager.getEhcache(cacheName);
 			if (cache == null)
 				throw new ServiceException("Cache " + cacheName + " is not found.");
 		} else {
