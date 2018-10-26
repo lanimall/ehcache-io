@@ -1,0 +1,54 @@
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>ehcache-io.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>ehcache-io.%d{yyyy-MM-dd}.log</fileNamePattern>
+            <maxHistory>30</maxHistory>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="net.sf.ehcache">
+        <level value="error"/>
+    </logger>
+
+    <logger name="com.terracottatech">
+        <level value="error"/>
+    </logger>
+
+    <logger name="com.terracotta">
+        <level value="error"/>
+    </logger>
+
+    <logger name="org.ehcache.extensions.io.impl">
+    <level value="debug"/>
+    </logger>
+
+    <!--<logger name="org.ehcache.extensions.io.impl.writers">-->
+    <!--<level value="debug"/>-->
+    <!--</logger>-->
+
+    <!--<logger name="org.ehcache.extensions.io.impl.readers">-->
+    <!--<level value="debug"/>-->
+    <!--</logger>-->
+
+    <!--<logger name="org.ehcache.extensions.io.impl.utils">-->
+    <!--<level value="debug"/>-->
+    <!--</logger>-->
+
+    <!--<logger name="org.ehcache.extensions.io.EhcacheStreamingTestsBase">-->
+        <!--<level value="debug"/>-->
+    <!--</logger>-->
+
+    <root level="info">
+        <appender-ref ref="STDOUT"/>
+    </root>
+</configuration>
