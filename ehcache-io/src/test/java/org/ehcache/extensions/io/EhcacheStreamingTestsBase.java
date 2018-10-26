@@ -183,6 +183,45 @@ public abstract class EhcacheStreamingTestsBase {
             public String getCacheName(){
                 return "FileStoreDistributedEventual";
             }
+        },
+        CLUSTERED_STRONG_DECORATED_NOLOCAL("clustered_strong_decorated_nolocal") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed_decorated.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedStrongNoLocal";
+            }
+        },
+        CLUSTERED_DECORATED_STRONG("clustered_decorated_strong") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed_decorated.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedStrong";
+            }
+        },
+        CLUSTERED_DECORATED_EVENTUAL("clustered_decorated_eventual") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed_decorated.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedEventual";
+            }
         };
 
         private final String propValue;
@@ -211,6 +250,12 @@ public abstract class EhcacheStreamingTestsBase {
                     return CLUSTERED_STRONG;
                 else if (CLUSTERED_STRONG_NOLOCAL.propValue.equalsIgnoreCase(cacheTestTypeStr))
                     return CLUSTERED_STRONG_NOLOCAL;
+                else if (CLUSTERED_STRONG_DECORATED_NOLOCAL.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_STRONG_DECORATED_NOLOCAL;
+                else if (CLUSTERED_DECORATED_STRONG.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_DECORATED_STRONG;
+                else if (CLUSTERED_DECORATED_EVENTUAL.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_DECORATED_EVENTUAL;
                 else
                     throw new IllegalArgumentException("CacheTestType [" + ((null != cacheTestTypeStr) ? cacheTestTypeStr : "null") + "] is not valid");
             } else {
@@ -405,7 +450,7 @@ public abstract class EhcacheStreamingTestsBase {
         CacheTestType cacheTestType = CacheTestType.valueOfIgnoreCase(valStr);
 
         try {
-            cache = cm.getCache(cacheTestType.getCacheName());
+            cache = cm.getEhcache(cacheTestType.getCacheName());
         } catch (IllegalStateException e) {
             e.printStackTrace();
         } catch (ClassCastException e) {
