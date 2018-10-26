@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * Created by Fabien Sanglier on 5/4/15.
  */
-/*package protected*/ class EhcacheBufferedInputStream extends InputStream {
+/*package protected*/ class EhcacheBufferedInputStream extends EhcacheInputStream {
     private static final Logger logger = LoggerFactory.getLogger(EhcacheBufferedInputStream.class);
 
     /**
@@ -43,11 +43,6 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      */
     protected int pos;
 
-    /*
-     * The Internal Ehcache streaming access layer
-     */
-    protected final EhcacheStreamReader ehcacheStreamReader;
-
     /**
      * Creates a new buffered output stream to write data to a cache
      * with the specified buffer size.
@@ -57,34 +52,16 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * @exception IllegalArgumentException if size &lt;= 0.
      */
     public EhcacheBufferedInputStream(int bufferSize, EhcacheStreamReader ehcacheStreamReader) throws EhcacheStreamException {
+        super(ehcacheStreamReader);
+
         if (bufferSize <= 0) {
             throw new EhcacheStreamIllegalArgumentException("Buffer size <= 0");
         }
-
-        if (null == ehcacheStreamReader) {
-            throw new EhcacheStreamIllegalArgumentException("An internal stream reader must be provided");
-        }
-
         this.buf = new byte[bufferSize];
-        this.ehcacheStreamReader = ehcacheStreamReader;
-
-        try {
-            this.ehcacheStreamReader.open();
-        } catch (EhcacheStreamException e) {
-            //silent close just to make sure we cleanup a possible half open
-            try {
-                this.ehcacheStreamReader.close();
-            } catch (Exception e1) {
-                logger.error("Error during internal stream reader close", e1);
-            }
-
-            //bubble up the exception
-            throw e;
-        }
     }
 
     @Override
-    public int available() throws IOException {
+    public int available() throws EhcacheStreamException {
         return ehcacheStreamReader.available();
     }
 
@@ -92,10 +69,10 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * Check to make sure that buffer has not been nulled out due to
      * close; if not return it;
      */
-    private byte[] getBufIfOpen() throws IOException {
+    private byte[] getBufIfOpen() throws EhcacheStreamException {
         byte[] buffer = buf;
         if (buffer == null)
-            throw new IOException("Stream closed");
+            throw new EhcacheStreamException("Stream closed");
         return buffer;
     }
 
@@ -105,7 +82,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * This method also assumes that all data has already been read in,
      * hence pos > count.
      */
-    private void fill() throws IOException {
+    private void fill() throws EhcacheStreamException {
         byte[] buffer = getBufIfOpen();
 
         /* if we're here, that means we need to refill the buffer and as such it's ok to throw away the content of the buffer */
@@ -130,7 +107,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      *                          or an I/O error occurs.
      * @see        java.io.FilterInputStream#in
      */
-    public synchronized int read() throws IOException {
+    public synchronized int read() throws EhcacheStreamException {
         if (pos >= count) {
             fill();
             if (pos >= count)
@@ -143,7 +120,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      * Read characters into a portion of an array, reading from the underlying
      * stream at most once if necessary.
      */
-    private int read1(byte[] b, int off, int len) throws IOException {
+    private int read1(byte[] b, int off, int len) throws EhcacheStreamException {
         //bytes available for reading in the buffer
         int avail = count - pos;
         if (avail <= 0) {
@@ -193,7 +170,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      */
     @Override
     public synchronized int read(byte b[], int off, int len)
-            throws IOException
+            throws EhcacheStreamException
     {
         getBufIfOpen(); // Check for closed stream
         if ((off | len | (off + len) | (b.length - (off + len))) < 0) {
@@ -223,7 +200,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
      *
      * @exception  IOException  if an I/O error occurs.
      */
-    public void close() throws IOException {
+    public void close() throws EhcacheStreamException {
         try {
             byte[] buffer;
             while ((buffer = buf) != null) {
