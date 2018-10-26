@@ -3,6 +3,7 @@ package org.ehcache.extensions.io.impl.utils;
 import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
+import org.ehcache.extensions.io.impl.utils.cas.ExponentialWait;
 import org.junit.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -314,6 +315,13 @@ public class EhcacheStreamCasTest extends EhcacheStreamingTestsBase {
         }
 
         runInThreads(callables, callableResults, exceptions);
+
+        if(isDebug) {
+            for(int i = 0; i < threadCount; i++) {
+                logger.debug("Exception: {}", EhcacheStreamUtilsInternal.toStringSafe(exceptions.get(i * 2).get()));
+                logger.debug("Exception: {}", EhcacheStreamUtilsInternal.toStringSafe(exceptions.get(i * 2 + 1).get()));
+            }
+        }
 
         for(int i = 0; i < threadCount; i++) {
             Assert.assertNull(exceptions.get(i*2).get()); // should have 0 exception
