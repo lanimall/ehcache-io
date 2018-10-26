@@ -156,8 +156,12 @@ import java.util.Arrays;
         if(count > 0) {
             // let's add the chunk (overwrite anything in cache)
             byte[] chunk = Arrays.copyOf(buf, count);
-            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), activeStreamMaster.getAndIncrementChunkCount(), chunk);
-            activeStreamMaster.addChunkSize(chunk.length);
+            int chunkIndex= activeStreamMaster.getChunkCount();
+
+            getEhcacheStreamUtils().putChunkValue(getPublicCacheKey(), chunkIndex, chunk);
+
+            //adding chunk descriptor to the master
+            activeStreamMaster.addChunk(chunkIndex, chunk.length, EhcacheStreamUtilsInternal.createChunkCRC32(chunk));
         }
     }
 }
