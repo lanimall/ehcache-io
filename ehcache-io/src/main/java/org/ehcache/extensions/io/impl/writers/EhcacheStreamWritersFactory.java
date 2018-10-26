@@ -47,7 +47,7 @@ public class EhcacheStreamWritersFactory {
      *
      * @return    a valid OutputStream object
      */
-    public static OutputStream getStream(Ehcache cache, Object cacheKey, int streamBufferSize, boolean override, long openTimeoutMillis) throws EhcacheStreamException {
-        return new EhcacheOutputStream(streamBufferSize, getWriter(cache, cacheKey, override, openTimeoutMillis));
+    public static EhcacheOutputStream getStream(Ehcache cache, Object cacheKey, int streamBufferSize, boolean override, long openTimeoutMillis) throws EhcacheStreamException {
+        return new EhcacheBufferedOutputStream(streamBufferSize, getWriter(cache, cacheKey, override, openTimeoutMillis));
     }
 }
