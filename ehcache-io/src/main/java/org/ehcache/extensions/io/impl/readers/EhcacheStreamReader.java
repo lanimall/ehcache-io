@@ -18,5 +18,7 @@ public interface EhcacheStreamReader extends Closeable {
 
     void open() throws EhcacheStreamException;
 
-    public void close() throws EhcacheStreamException;
+    void close() throws EhcacheStreamException;
+
+    Object getPublicCacheKey();
 }
