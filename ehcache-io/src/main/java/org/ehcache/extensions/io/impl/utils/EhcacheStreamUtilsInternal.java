@@ -10,6 +10,8 @@ import org.ehcache.extensions.io.impl.model.EhcacheStreamChunk;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamChunkKey;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMasterKey;
+import org.ehcache.extensions.io.impl.utils.cas.CasWaitStrategyFactory;
+import org.ehcache.extensions.io.impl.utils.cas.WaitStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -17,6 +19,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
+import java.util.zip.CRC32;
+import java.util.zip.Checksum;
 
 /**
  * Created by fabien.sanglier on 8/2/18.
@@ -28,8 +32,11 @@ public class EhcacheStreamUtilsInternal {
 
     private EhcacheStreamUtilsInternalImpl ehcacheStreamUtilsInternalImpl;
 
+    private final WaitStrategy casWaitStrategy;
+
     public EhcacheStreamUtilsInternal(Ehcache cache) {
         this.ehcacheStreamUtilsInternalImpl = new EhcacheStreamUtilsInternalImpl(cache);
+        this.casWaitStrategy = CasWaitStrategyFactory.getWaitStrategy(cache);
     }
 
     private enum LockType {
@@ -39,6 +46,20 @@ public class EhcacheStreamUtilsInternal {
 
     public static final String toStringSafe(Object obj){
         return (null != obj)?obj.toString():"null";
+    }
+
+    public static long createChunkCRC32(byte[] chunk) {
+        if(null == chunk)
+            throw new IllegalArgumentException("Cannot calculate checksum on null byte array");
+
+        Checksum checksum = new CRC32();
+        checksum.update(chunk, 0, chunk.length);
+        long checksumValue = checksum.getValue();
+
+        if(isDebug)
+            logger.debug("CRC32 checksum for input string is: {}", checksumValue);
+
+        return checksumValue;
     }
 
     private static EhcacheStreamMasterKey buildStreamMasterKey(final Object cacheKey) {
@@ -70,7 +91,7 @@ public class EhcacheStreamUtilsInternal {
             return ehcacheStreamUtilsInternalImpl.openWriteOnMaster(
                     buildStreamMasterKey(publicCacheKey),
                     timeoutMillis,
-                    PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                    casWaitStrategy
             );
         } catch (EhcacheStreamTimeoutException te){
             throw new EhcacheStreamTimeoutException("Could not open a write on master entry within timeout",te);
@@ -82,7 +103,7 @@ public class EhcacheStreamUtilsInternal {
             return ehcacheStreamUtilsInternalImpl.closeWriteOnMaster(
                     buildStreamMasterKey(publicCacheKey),
                     timeoutMillis,
-                    PropertyUtils.defaultWritesCasBackoffWaitStrategy
+                    casWaitStrategy
             );
         } catch (EhcacheStreamTimeoutException te){
             throw new EhcacheStreamTimeoutException("Could not close a write on master entry within timeout",te);
@@ -94,7 +115,7 @@ public class EhcacheStreamUtilsInternal {
             return ehcacheStreamUtilsInternalImpl.openReadOnMaster(
                     buildStreamMasterKey(publicCacheKey),
                     timeoutMillis,
-                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                    casWaitStrategy
             );
         } catch (EhcacheStreamTimeoutException te){
             throw new EhcacheStreamTimeoutException("Could not open a read on master entry within timeout",te);
@@ -106,7 +127,7 @@ public class EhcacheStreamUtilsInternal {
             return ehcacheStreamUtilsInternalImpl.openSilentReadOnMaster(
                     buildStreamMasterKey(publicCacheKey),
                     timeoutMillis,
-                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                    casWaitStrategy
             );
         } catch (EhcacheStreamTimeoutException te){
             throw new EhcacheStreamTimeoutException("Could not open a silent read on master entry within timeout",te);
@@ -118,7 +139,7 @@ public class EhcacheStreamUtilsInternal {
             return ehcacheStreamUtilsInternalImpl.closeReadOnMaster(
                     buildStreamMasterKey(publicCacheKey),
                     timeoutMillis,
-                    PropertyUtils.defaultReadsCasBackoffWaitStrategy
+                    casWaitStrategy
             );
         } catch (EhcacheStreamTimeoutException te){
             throw new EhcacheStreamTimeoutException("Could not close a read on master entry within timeout",te);
@@ -130,7 +151,8 @@ public class EhcacheStreamUtilsInternal {
             return ehcacheStreamUtilsInternalImpl.atomicRemoveEhcacheStreamMasterInCache(
                     buildStreamMasterKey(publicCacheKey),
                     timeoutMillis,
-                    PropertyUtils.defaultWritesCasBackoffWaitStrategy);
+                    casWaitStrategy
+            );
         } catch (EhcacheStreamTimeoutException te){
             throw new EhcacheStreamTimeoutException("Could not remove a master entry within timeout",te);
         }
@@ -334,7 +356,7 @@ public class EhcacheStreamUtilsInternal {
             );
         }
 
-         //can return null...(eg. if a key is not there, or another delete happened before)
+        //can return null...(eg. if a key is not there, or another delete happened before)
         EhcacheStreamMaster openReadOnMaster(final EhcacheStreamMasterKey internalKey, final long timeoutMillis, WaitStrategy waitStrategy) throws EhcacheStreamTimeoutException {
             return atomicMutateEhcacheStreamMasterInCache(
                     internalKey,
@@ -617,6 +639,9 @@ public class EhcacheStreamUtilsInternal {
         }
 
         void putChunk(final EhcacheStreamChunkKey internalKey, EhcacheStreamChunk internalValue) throws CacheException {
+            if(isDebug)
+                logger.debug("Adding EhcacheStreamChunk to cache - key: {} / value: {}", EhcacheStreamUtilsInternal.toStringSafe(internalKey), EhcacheStreamUtilsInternal.toStringSafe(internalValue));
+
             cache.put(buildChunkElement(internalKey, internalValue));
         }
 
