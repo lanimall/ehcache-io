@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
+import java.io.FileNotFoundException;
 import java.io.InputStream;
 
 /**
@@ -50,20 +51,40 @@ public class EhcacheStreamReadersFactory {
      * @return    a valid InputStream object
      */
     public static InputStream getStream(Ehcache cache, Object cacheKey, long openTimeoutMillis, int streamBufferSize) throws EhcacheStreamException {
-        InputStream is = null;
+        InputStream inputStream = null;
 
         //get a reader and try opening now
         EhcacheStreamReader ehcacheStreamReader = getReader(cache, cacheKey, openTimeoutMillis);
 
-        if(PropertyUtils.DEFAULT_INPUTSTREAM_INTERNAL_BUFFERED)
-            is = new EhcacheBufferedInputStream(streamBufferSize, ehcacheStreamReader);
-        else {
-            if(streamBufferSize > 0)
-                is = new BufferedInputStream(new EhcacheRawInputStream(ehcacheStreamReader), streamBufferSize);
-            else
-                is = new EhcacheRawInputStream(ehcacheStreamReader);
-        }
+        if(PropertyUtils.DEFAULT_INPUTSTREAM_INTERNAL_BUFFERED && streamBufferSize > 0) {
+            EhcacheInputStream ehcacheInputStream = new EhcacheBufferedInputStream(streamBufferSize, ehcacheStreamReader);
+            inputStream = ehcacheInputStream;
+            if(PropertyUtils.getInputStreamFileAdapterEnabled()){
+                inputStream = new EhcacheFileAdapterInputStream(
+                        ehcacheInputStream,
+                        PropertyUtils.getInputStreamFileAdapterPath(),
+                        PropertyUtils.getInputStreamFileAdapterThresholdSize()
+                );
 
-        return is;
+                if(streamBufferSize > 0) {
+                    inputStream = new BufferedInputStream(inputStream, streamBufferSize);
+                }
+            }
+
+        } else {
+            EhcacheInputStream ehcacheInputStream = new EhcacheRawInputStream(ehcacheStreamReader);
+            inputStream = ehcacheInputStream;
+            if(PropertyUtils.getInputStreamFileAdapterEnabled()){
+                inputStream = new EhcacheFileAdapterInputStream(
+                        ehcacheInputStream,
+                        PropertyUtils.getInputStreamFileAdapterPath(),
+                        PropertyUtils.getInputStreamFileAdapterThresholdSize()
+                );
+            }
+            if(streamBufferSize > 0) {
+                inputStream = new BufferedInputStream(inputStream, streamBufferSize);
+            }
+        }
+        return inputStream;
     }
 }
