@@ -3,9 +3,7 @@ package org.ehcache.extensions.io.impl.utils;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
-import org.ehcache.extensions.io.EhcacheStreamException;
-import org.ehcache.extensions.io.EhcacheStreamIllegalStateException;
-import org.ehcache.extensions.io.EhcacheStreamTimeoutException;
+import org.ehcache.extensions.io.*;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamChunk;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamChunkKey;
 import org.ehcache.extensions.io.impl.model.EhcacheStreamMaster;
@@ -210,12 +208,23 @@ public class EhcacheStreamUtilsInternal {
 
     private class EhcacheStreamUtilsInternalImpl {
         /*
-             * The Internal Ehcache cache object
-             */
+         * The Internal Ehcache cache object
+        */
         final Ehcache cache;
 
         public EhcacheStreamUtilsInternalImpl(Ehcache cache) {
-            this.cache = cache;
+            if(cache == null)
+                throw new EhcacheStreamIllegalArgumentException("Cache may not be null");
+
+                //check if the cache is already decorated with the EhcacheStreamDecorator - if so, make sure to use the core internal non-decorated cache instead
+            if (cache instanceof EhcacheStreamDecorator) {
+                if(isDebug)
+                    logger.debug("Cache is decorated with EhcacheStreamDecorator - Will use the internal cache instead with name [{}]", cache.getName());
+
+                this.cache = ((EhcacheStreamDecorator)cache).getUnderlyingCache();
+            }
+            else
+                this.cache = cache;
         }
 
         public Ehcache getCache() {
