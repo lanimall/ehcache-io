@@ -3,7 +3,9 @@ package org.ehcache.extensions.io.impl.readers;
 import org.ehcache.extensions.io.EhcacheStreamException;
 import org.ehcache.extensions.io.impl.utils.DeleteOnCloseFileInputStream;
 
-import java.io.*;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.FileSystems;
 import java.nio.file.Path;
 import java.util.UUID;

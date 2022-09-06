@@ -8,8 +8,6 @@ import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.OutputStream;
-
 /**
  * Created by fabien.sanglier on 9/14/18.
  */

@@ -77,7 +77,7 @@ public class PropertyUtils {
     }
     public static String getPropertyAsString(final Properties properties, final String key, final String defaultVal) {
         if(null == properties)
-            throw new IllegalStateException("Properties may not be null.");
+            return defaultVal;
 
         return properties.getProperty(key, defaultVal);
     }

@@ -1,7 +1,6 @@
 package org.ehcache.extensions.io.impl.readers;
 
 import org.ehcache.extensions.io.EhcacheStreamException;
-import org.ehcache.extensions.io.EhcacheStreamIllegalArgumentException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

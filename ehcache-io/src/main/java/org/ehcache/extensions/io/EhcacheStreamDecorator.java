@@ -1,6 +1,5 @@
 package org.ehcache.extensions.io;
 
-import net.sf.ehcache.Cache;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.Ehcache;
 import net.sf.ehcache.Element;
@@ -16,8 +15,6 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
-import java.util.zip.GZIPOutputStream;
 
 /**
  * Created by fabien.sanglier on 9/17/18.
@@ -27,21 +24,17 @@ public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
     private static final boolean isDebug = logger.isDebugEnabled();
     public static final NumberFormat formatD = new DecimalFormat("#.###");
 
-    private final boolean useCompressionOnPuts;
     private final boolean useOverwriteOnPuts;
     private final int bufferSizeOnPuts;
 
-    private final boolean useCompressionOnGets;
     private final int bufferSizeOnGets;
     private final boolean returnAsBytesOnGets;
     private final boolean allowNullStreamOnGets = false;
 
-    public EhcacheStreamDecorator(Ehcache underlyingCache, boolean useCompressionOnPuts, boolean useOverwriteOnPuts, int bufferSizeOnPuts, boolean useCompressionOnGets, int bufferSizeOnGets, boolean returnAsBytesOnGets) {
+    public EhcacheStreamDecorator(Ehcache underlyingCache, boolean useOverwriteOnPuts, int bufferSizeOnPuts, int bufferSizeOnGets, boolean returnAsBytesOnGets) {
         super(underlyingCache);
-        this.useCompressionOnPuts = useCompressionOnPuts;
         this.useOverwriteOnPuts = useOverwriteOnPuts;
         this.bufferSizeOnPuts = bufferSizeOnPuts;
-        this.useCompressionOnGets = useCompressionOnGets;
         this.bufferSizeOnGets = bufferSizeOnGets;
         this.returnAsBytesOnGets = returnAsBytesOnGets;
     }
@@ -61,11 +54,10 @@ public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
                     is = new ByteArrayInputStream((byte[]) cacheValue);
                 }
 
-                os = (useCompressionOnPuts) ? new GZIPOutputStream(EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts)) :
-                                EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts);
+                os = EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts);
 
                 if (isDebug)
-                    logger.debug("============ coping Stream to cache " + ((useCompressionOnPuts) ? "(with Gzip Compression)" : "") + " ====================");
+                    logger.debug("============ copying Stream to cache ====================");
 
                 long start = System.nanoTime();
                 pipeStreamsWithBuffer(is, os, bufferSizeOnPuts);
@@ -83,10 +75,7 @@ public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
         } else {
             ObjectOutputStream os = null;
             try{
-                os = new ObjectOutputStream(
-                        (useCompressionOnPuts) ? new GZIPOutputStream(EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts)) :
-                                EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts)
-                );
+                os = new ObjectOutputStream(EhcacheIOStreams.getOutputStream(underlyingCache, cacheKey, useOverwriteOnPuts, bufferSizeOnPuts));
                 os.writeObject(cacheValue);
             } finally {
                 if(null != os)
@@ -101,12 +90,11 @@ public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
             InputStream is = null;
             OutputStream os = null;
             try{
-                is = (useCompressionOnGets) ? new GZIPInputStream(EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets)) :
-                                EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets);
+                is = EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets);
                 os = new ByteArrayOutputStream();
 
                 if (isDebug)
-                    logger.debug("============ coping cache entry back to stream " + ((useCompressionOnGets) ? "(with Gzip Compression)" : "") + " ====================");
+                    logger.debug("============ coping cache entry back to stream ====================");
 
                 long start = System.nanoTime();
                 pipeStreamsWithBuffer(is, os, bufferSizeOnGets);
@@ -125,18 +113,7 @@ public class EhcacheStreamDecorator extends EhcacheDecoratorAdapter {
                     os.close();
             }
         } else {
-            ObjectInputStream ois = null;
-            try{
-                ois = new ObjectInputStream(
-                                (useCompressionOnGets) ? new GZIPInputStream(EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets)) :
-                                        EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets)
-                        );
-
-                fromCache = ois.readObject();
-            } finally {
-                if(null != ois)
-                    ois.close();
-            }
+            fromCache = EhcacheIOStreams.getInputStream(underlyingCache, cacheKey, allowNullStreamOnGets, bufferSizeOnGets);
         }
 
         return fromCache;
