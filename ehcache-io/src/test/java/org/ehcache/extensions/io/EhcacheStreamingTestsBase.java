@@ -3,6 +3,8 @@ package org.ehcache.extensions.io;
 import net.sf.ehcache.CacheException;
 import net.sf.ehcache.CacheManager;
 import net.sf.ehcache.Ehcache;
+import org.apache.commons.io.input.CountingInputStream;
+import org.apache.commons.io.output.CountingOutputStream;
 import org.ehcache.extensions.io.impl.utils.PropertyUtils;
 import org.junit.Assert;
 import org.junit.runners.Parameterized;
@@ -33,14 +35,15 @@ public abstract class EhcacheStreamingTestsBase {
     public static final String ENV_CACHEKEY_TYPE = "ehcache.tests.cachekeytype";
 
     public static final CacheKeyType DEFAULT_CACHEKEY_TYPE = CacheKeyType.COMPLEX_OBJECT;
-    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.LOCAL_HEAP;
+    public static final CacheTestType DEFAULT_CACHETEST_TYPE = CacheTestType.CLUSTERED_STRONG;
 
-    protected static final int IN_FILE_SIZE = 10 * 1024 * 1024;
-    protected static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
+    private static final int IN_FILE_SIZE = 10 * 1024 * 1024;
+    private static final Path TESTS_DIR_PATH = FileSystems.getDefault().getPath(System.getProperty("java.io.tmpdir"));
     protected static final Path IN_FILE_PATH = FileSystems.getDefault().getPath(TESTS_DIR_PATH.toString(),"sample_big_file_in.txt");
     protected static final Path OUT_FILE_PATH = FileSystems.getDefault().getPath(TESTS_DIR_PATH.toString(), "sample_big_file_out.txt");
     public static NumberFormat formatD = new DecimalFormat("#.###");
 
+    public static CacheTestType cacheTestType;
     private static CacheManager cm;
     private Ehcache cache;
 
@@ -142,6 +145,19 @@ public abstract class EhcacheStreamingTestsBase {
                 return "FileStoreOffheap";
             }
         },
+        CLUSTERED_STRONG_NOLOCAL("clustered_strong_nolocal") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedStrongNoLocal";
+            }
+        },
         CLUSTERED_STRONG("clustered_strong") {
             public String getCacheConfigPath(){
                 return "classpath:ehcache_distributed.xml";
@@ -158,6 +174,45 @@ public abstract class EhcacheStreamingTestsBase {
         CLUSTERED_EVENTUAL("clustered_eventual") {
             public String getCacheConfigPath(){
                 return "classpath:ehcache_distributed.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedEventual";
+            }
+        },
+        CLUSTERED_STRONG_DECORATED_NOLOCAL("clustered_strong_decorated_nolocal") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed_decorated.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedStrongNoLocal";
+            }
+        },
+        CLUSTERED_DECORATED_STRONG("clustered_decorated_strong") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed_decorated.xml";
+            }
+
+            public String getCacheManagerName(){
+                return "EhcacheStreamsDistributedTest";
+            }
+
+            public String getCacheName(){
+                return "FileStoreDistributedStrong";
+            }
+        },
+        CLUSTERED_DECORATED_EVENTUAL("clustered_decorated_eventual") {
+            public String getCacheConfigPath(){
+                return "classpath:ehcache_distributed_decorated.xml";
             }
 
             public String getCacheManagerName(){
@@ -193,6 +248,14 @@ public abstract class EhcacheStreamingTestsBase {
                     return CLUSTERED_EVENTUAL;
                 else if (CLUSTERED_STRONG.propValue.equalsIgnoreCase(cacheTestTypeStr))
                     return CLUSTERED_STRONG;
+                else if (CLUSTERED_STRONG_NOLOCAL.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_STRONG_NOLOCAL;
+                else if (CLUSTERED_STRONG_DECORATED_NOLOCAL.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_STRONG_DECORATED_NOLOCAL;
+                else if (CLUSTERED_DECORATED_STRONG.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_DECORATED_STRONG;
+                else if (CLUSTERED_DECORATED_EVENTUAL.propValue.equalsIgnoreCase(cacheTestTypeStr))
+                    return CLUSTERED_DECORATED_EVENTUAL;
                 else
                     throw new IllegalArgumentException("CacheTestType [" + ((null != cacheTestTypeStr) ? cacheTestTypeStr : "null") + "] is not valid");
             } else {
@@ -205,6 +268,45 @@ public abstract class EhcacheStreamingTestsBase {
             return "CacheTestType{" +
                     "propValue='" + propValue + '\'' +
                     '}';
+        }
+    }
+
+    public static class StreamCopyResultDescriptor {
+        public static long NULL_CHECKSUM = -1;
+        public static long NULL_SIZEBYTES = -1;
+
+        private long fromSizeBytes = NULL_SIZEBYTES;
+        private long fromChecksum = NULL_CHECKSUM;
+        private long toSizeBytes = NULL_SIZEBYTES;
+        private long toChecksum = NULL_CHECKSUM;
+
+        public StreamCopyResultDescriptor() {
+        }
+
+        public void setFrom(long sizeBytes, long checksum) {
+            this.fromSizeBytes = sizeBytes;
+            this.fromChecksum = checksum;
+        }
+
+        public void setTo(long sizeBytes, long checksum) {
+            this.toSizeBytes = sizeBytes;
+            this.toChecksum = checksum;
+        }
+
+        public long getFromSizeBytes() {
+            return fromSizeBytes;
+        }
+
+        public long getFromChecksum() {
+            return fromChecksum;
+        }
+
+        public long getToSizeBytes() {
+            return toSizeBytes;
+        }
+
+        public long getToChecksum() {
+            return toChecksum;
         }
     }
 
@@ -328,7 +430,8 @@ public abstract class EhcacheStreamingTestsBase {
         logger.debug("============ cacheStart ====================");
 
         String valStr = System.getProperty(ENV_CACHETEST_TYPE);
-        CacheTestType cacheTestType = CacheTestType.valueOfIgnoreCase(valStr);
+
+        cacheTestType = CacheTestType.valueOfIgnoreCase(valStr);
 
         cm = getCacheManager(cacheTestType.getCacheManagerName(), cacheTestType.getCacheConfigPath());
     }
@@ -347,7 +450,7 @@ public abstract class EhcacheStreamingTestsBase {
         CacheTestType cacheTestType = CacheTestType.valueOfIgnoreCase(valStr);
 
         try {
-            cache = cm.getCache(cacheTestType.getCacheName());
+            cache = cm.getEhcache(cacheTestType.getCacheName());
         } catch (IllegalStateException e) {
             e.printStackTrace();
         } catch (ClassCastException e) {
@@ -371,11 +474,15 @@ public abstract class EhcacheStreamingTestsBase {
         cache = null;
     }
 
-    public static long generateBigInputFile() throws IOException {
+    public static StreamCopyResultDescriptor generateBigInputFile() throws IOException {
+        long fileBytes = 0L;
         long fileChecksum = 0L;
 
         try (
-                CheckedOutputStream os = new CheckedOutputStream(new BufferedOutputStream(Files.newOutputStream(IN_FILE_PATH)), new CRC32());
+                OutputStream rawOs = new BufferedOutputStream(Files.newOutputStream(IN_FILE_PATH));
+                CheckedOutputStream ckOs = new CheckedOutputStream(rawOs, new CRC32());
+                CountingOutputStream countingOs = new CountingOutputStream(ckOs);
+                OutputStream os = countingOs;
         ) {
             logger.debug("============ Generate Initial Big File ====================");
             logger.debug("Path: " + IN_FILE_PATH);
@@ -396,14 +503,19 @@ public abstract class EhcacheStreamingTestsBase {
             }
             long end = System.nanoTime();
 
-            fileChecksum = os.getChecksum().getValue();
+            fileChecksum = ckOs.getChecksum().getValue();
+            fileBytes = countingOs.getByteCount();
 
             logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
             logger.debug("CheckSum = " + fileChecksum);
+            logger.debug("File Bytes = " + fileBytes);
             logger.debug("============================================");
         }
 
-        return fileChecksum;
+        StreamCopyResultDescriptor streamCopyResultDescriptor = new StreamCopyResultDescriptor();
+        streamCopyResultDescriptor.setTo(fileBytes, fileChecksum);
+
+        return streamCopyResultDescriptor;
     }
 
     public static void cleanBigInputFile() throws IOException {
@@ -460,19 +572,18 @@ public abstract class EhcacheStreamingTestsBase {
         logger.info("{}={}", PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, PropertyUtils.getPropertyAsString(PropertyUtils.PROP_OUTPUTSTREAM_OPEN_TIMEOUTS, "null"));
     }
 
-    public long copyFileToCache(final Object publicCacheKey) throws IOException {
+    public StreamCopyResultDescriptor copyFileToCache(final Object publicCacheKey) throws IOException {
         return copyFileToCache(publicCacheKey, PropertyUtils.getOutputStreamDefaultOverride());
     }
 
-    public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride) throws IOException {
-        return copyFileToCache(publicCacheKey, cacheWriteOverride, PropertyUtils.getOutputStreamBufferSize());
+    public StreamCopyResultDescriptor copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride) throws IOException {
+        return copyFileToCache(publicCacheKey, cacheWriteOverride, PropertyUtils.getOutputStreamBufferSize(), PropertyUtils.getOutputStreamBufferSize());
     }
 
-    public long copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride, final int cacheWriteBufferSize) throws IOException {
+    public StreamCopyResultDescriptor copyFileToCache(final Object publicCacheKey, final boolean cacheWriteOverride, final int cacheWriteBufferSize, int copyBufferSize) throws IOException {
         int fileReadBufferSize = 32 * 1024;
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
-        int copyBufferSize = 32*1024;
 
         logger.debug("============ copyFileToCache ====================");
         logger.debug("Before Cache Size = " + cache.getSize());
@@ -495,10 +606,14 @@ public abstract class EhcacheStreamingTestsBase {
         logger.debug("After Cache Size = " + cache.getSize());
         logger.debug("============================================");
 
-        return outputChecksum;
+        StreamCopyResultDescriptor streamCopyResultDescriptor = new StreamCopyResultDescriptor();
+        streamCopyResultDescriptor.setFrom(0L, inputChecksum);
+        streamCopyResultDescriptor.setTo(0L, outputChecksum);
+
+        return streamCopyResultDescriptor;
     }
 
-    public long copyFileToCacheStream(OutputStream os) throws IOException {
+    public StreamCopyResultDescriptor copyFileToCacheStream(OutputStream os) throws IOException {
         int fileReadBufferSize = 32 * 1024;
         long start = 0L, end = 0L;
         long inputChecksum = 0L;
@@ -523,10 +638,14 @@ public abstract class EhcacheStreamingTestsBase {
         logger.debug("After Cache Size = " + cache.getSize());
         logger.debug("============================================");
 
-        return inputChecksum;
+        StreamCopyResultDescriptor streamCopyResultDescriptor = new StreamCopyResultDescriptor();
+        streamCopyResultDescriptor.setFrom(0L, inputChecksum);
+        streamCopyResultDescriptor.setTo(0L, 0L);
+
+        return streamCopyResultDescriptor;
     }
 
-    public long readFileFromDisk() throws IOException {
+    public StreamCopyResultDescriptor readFileFromDisk() throws IOException {
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
         int copyBufferSize = 32*1024;
@@ -550,14 +669,18 @@ public abstract class EhcacheStreamingTestsBase {
             logger.debug("============================================");
         }
 
-        return outputChecksum;
+        StreamCopyResultDescriptor streamCopyResultDescriptor = new StreamCopyResultDescriptor();
+        streamCopyResultDescriptor.setFrom(0L, inputChecksum);
+        streamCopyResultDescriptor.setTo(0L, outputChecksum);
+
+        return streamCopyResultDescriptor;
     }
 
-    public long readFileFromCache(final Object publicCacheKey) throws IOException {
+    public StreamCopyResultDescriptor readFileFromCache(final Object publicCacheKey) throws IOException {
         return readFileFromCache(publicCacheKey, PropertyUtils.getInputStreamBufferSize());
     }
 
-    public long readFileFromCache(final Object publicCacheKey, int cacheReadBufferSize) throws IOException {
+    public StreamCopyResultDescriptor readFileFromCache(final Object publicCacheKey, int cacheReadBufferSize) throws IOException {
         int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
         long start = 0L, end = 0L;
         long inputChecksum = 0L, outputChecksum = 0L;
@@ -581,10 +704,14 @@ public abstract class EhcacheStreamingTestsBase {
         logger.debug(String.format("CheckSums Input: %d // Output = %d",inputChecksum,outputChecksum));
         Assert.assertEquals(inputChecksum, outputChecksum);
 
-        return outputChecksum;
+        StreamCopyResultDescriptor streamCopyResultDescriptor = new StreamCopyResultDescriptor();
+        streamCopyResultDescriptor.setFrom(0L, inputChecksum);
+        streamCopyResultDescriptor.setTo(0L, outputChecksum);
+
+        return streamCopyResultDescriptor;
     }
 
-    public long readFileFromCacheStream(final InputStream is) throws IOException {
+    public StreamCopyResultDescriptor readFileFromCacheStream(final InputStream is) throws IOException {
         int copyBufferSize = 64 * 1024; //copy buffer size *smaller* than ehcache input stream internal buffer to make sure it works that way
         long start = 0L, end = 0L;
         long outputChecksum = 0L;
@@ -604,7 +731,12 @@ public abstract class EhcacheStreamingTestsBase {
 
         logger.debug("Execution Time = " + formatD.format((double)(end - start) / 1000000) + " millis");
         logger.debug(String.format("CheckSums Output = %d",outputChecksum));
-        return outputChecksum;
+
+        StreamCopyResultDescriptor streamCopyResultDescriptor = new StreamCopyResultDescriptor();
+        streamCopyResultDescriptor.setFrom(0L, 0L);
+        streamCopyResultDescriptor.setTo(0L, outputChecksum);
+
+        return streamCopyResultDescriptor;
     }
 
     private static CacheManager getCacheManager(String cacheManagerName, String resourcePath) {
@@ -690,6 +822,9 @@ public abstract class EhcacheStreamingTestsBase {
             workerList.add(new ThreadWorker(callables.get(i), stopLatch, callableResults.get(i), exceptions.get(i)));
         }
 
+        //shuffle list
+        Collections.shuffle(workerList, new Random());
+
         //start the workers
         start = System.nanoTime();
         for (ThreadWorker worker : workerList) {
@@ -722,9 +857,9 @@ public abstract class EhcacheStreamingTestsBase {
             try {
                 callableResult.set(callable.call());
             } catch (Exception e) {
+                logger.debug(e.getMessage(),e);
                 if(null != exception)
                     exception.set(e);
-                logger.debug(e.getMessage(),e);
             } finally{
                 doneLatch.countDown();
             }

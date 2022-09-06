@@ -3,7 +3,7 @@ package org.ehcache.extensions.io;
 /**
  * Created by fabien.sanglier on 7/27/18.
  */
-public class EhcacheStreamIllegalStateException extends EhcacheStreamException {
+public class EhcacheStreamIllegalStateException extends IllegalStateException {
 
     public EhcacheStreamIllegalStateException() {
     }

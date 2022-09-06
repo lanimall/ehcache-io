@@ -44,14 +44,23 @@
     </target>
 
     <target name="update.version" description="move the package to the dist folder before compiling" depends="prepare.compile">
-        <replace dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}" value="${wxehcacheio.packagename}">
-            <include name="manifest*"/>
-            <replacetoken>@wxehcacheio.packagename@</replacetoken>
-        </replace>
-        <replace dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}" value="${wxehcacheio.version}">
-            <include name="manifest*"/>
-            <replacetoken>@wxehcacheio.version@</replacetoken>
-        </replace>
+        <!-- <value name="version">[^<]*<\/value> -->
+        <!-- <value name="version">${wxehcacheio.version}<\/value> -->
+        <replaceregexp byline="true">
+            <regexp pattern="&lt;value name=&quot;version&quot;&gt;[^&lt;]*&lt;\/value&gt;" />
+            <substitution expression="&lt;value name=&quot;version&quot;&gt;${wxehcacheio.version}&lt;\/value&gt;"/>
+            <fileset dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}">
+                <include name="manifest.*"/>
+            </fileset>
+        </replaceregexp>
+
+        <replaceregexp byline="true">
+            <regexp pattern="&lt;value name=&quot;target_pkg_version&quot;&gt;[^&lt;]*&lt;\/value&gt;" />
+            <substitution expression="&lt;value name=&quot;target_pkg_version&quot;&gt;${wxehcacheio.version}&lt;\/value&gt;"/>
+            <fileset dir="${wxehcacheio.target.dir}/${wxehcacheio.packagename}">
+                <include name="manifest.*"/>
+            </fileset>
+        </replaceregexp>
     </target>
 
     <!-- Compile ISPackage -->

@@ -18,15 +18,21 @@ public class EhcacheStreamDecoratorFactory extends CacheDecoratorFactory {
     private static final boolean isTrace = logger.isTraceEnabled();
     private static final boolean isDebug = logger.isDebugEnabled();
 
-    private static final String PROPNAME_BUFFERSIZE = "buffersize";
-    private static final String PROPNAME_USECOMPRESSION = "compression";
-    private static final String PROPNAME_USE_OVERWRITES_PUTS = "puts_overwrite";
-    private static final String PROPNAME_RETURNASSTREAM_GETS = "gets_returnasstream";
+    private static final String PROPNAME_PUTS_BUFFERSIZE = "puts_buffersize";
+    private static final String PROPNAME_GETS_BUFFERSIZE = "gets_buffersize";
 
-    private static final int DEFAULT_BUFFERSIZE = 512 * 1024;
-    private static final boolean DEFAULT_USECOMPRESSION = false;
-    private static final boolean DEFAULT_USE_OVERWRITES_PUTS = true;
-    private static final boolean DEFAULT_RETURNASSTREAM_GETS = true;
+    private static final String PROPNAME_PUTS_USECOMPRESSION = "puts_compression";
+    private static final String PROPNAME_GETS_USECOMPRESSION = "gets_compression";
+
+    private static final String PROPNAME_PUTS_USE_OVERWRITES = "puts_overwrite";
+    private static final String PROPNAME_GETS_AS_BYTES = "gets_asbytes";
+
+    private static final int DEFAULT_GETS_BUFFERSIZE = PropertyUtils.getInputStreamBufferSize();
+    private static final int DEFAULT_PUTS_BUFFERSIZE = PropertyUtils.getOutputStreamBufferSize();
+    private static final boolean DEFAULT_PUTS_USECOMPRESSION = false;
+    private static final boolean DEFAULT_GETS_USECOMPRESSION = false;
+    private static final boolean DEFAULT_PUTS_USE_OVERWRITES = PropertyUtils.getOutputStreamDefaultOverride();
+    private static final boolean DEFAULT_GETS_AS_BYTES = true;
 
     @Override
     public Ehcache createDecoratedEhcache(Ehcache ehcache, Properties properties) {
@@ -46,11 +52,12 @@ public class EhcacheStreamDecoratorFactory extends CacheDecoratorFactory {
 
         return new EhcacheStreamDecorator(
                 ehcache,
-                PropertyUtils.getPropertyAsInt(PROPNAME_BUFFERSIZE, DEFAULT_BUFFERSIZE),
-                PropertyUtils.getPropertyAsBoolean(PROPNAME_USECOMPRESSION, DEFAULT_USECOMPRESSION),
-                PropertyUtils.getPropertyAsBoolean(PROPNAME_USE_OVERWRITES_PUTS, DEFAULT_USE_OVERWRITES_PUTS),
-                PropertyUtils.getPropertyAsBoolean(PROPNAME_RETURNASSTREAM_GETS, DEFAULT_RETURNASSTREAM_GETS),
-                null
+                PropertyUtils.getPropertyAsBoolean(PROPNAME_PUTS_USECOMPRESSION, DEFAULT_PUTS_USECOMPRESSION),
+                PropertyUtils.getPropertyAsBoolean(PROPNAME_PUTS_USE_OVERWRITES, DEFAULT_PUTS_USE_OVERWRITES),
+                PropertyUtils.getPropertyAsInt(PROPNAME_PUTS_BUFFERSIZE, DEFAULT_PUTS_BUFFERSIZE),
+                PropertyUtils.getPropertyAsBoolean(PROPNAME_GETS_USECOMPRESSION, DEFAULT_GETS_USECOMPRESSION),
+                PropertyUtils.getPropertyAsInt(PROPNAME_GETS_BUFFERSIZE, DEFAULT_GETS_BUFFERSIZE),
+                PropertyUtils.getPropertyAsBoolean(PROPNAME_GETS_AS_BYTES, DEFAULT_GETS_AS_BYTES)
         );
     }
 

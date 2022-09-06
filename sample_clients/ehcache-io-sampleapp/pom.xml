@@ -18,7 +18,7 @@
         <dependency>
             <groupId>org.ehcache.extensions.io</groupId>
             <artifactId>ehcache-io</artifactId>
-            <version>1.2.2</version>
+            <version>1.2.3</version>
         </dependency>
 
         <!-- SLF4J -->
@@ -38,9 +38,6 @@
     <profiles>
         <profile>
             <id>ehcache</id>
-            <activation>
-                <activeByDefault>true</activeByDefault>
-            </activation>
             <properties>
                 <ehcache.version>2.10.2</ehcache.version>
                 <toolkit.version>4.3.2</toolkit.version>

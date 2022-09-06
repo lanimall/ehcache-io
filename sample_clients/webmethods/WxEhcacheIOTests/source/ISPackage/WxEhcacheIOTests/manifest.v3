@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Values version="2.0">
+  <value name="name">WxEhcacheIOTests</value>
+  <value name="version">1.0</value>
+  <value name="enabled">yes</value>
+  <value name="system_package">no</value>
+  <null name="startup_services"/>
+  <null name="shutdown_services"/>
+  <null name="replication_services"/>
+  <record name="requires" javaclass="com.wm.util.Values">
+    <value name="WxEhcacheIO">1.0</value>
+  </record>
+  <value name="listACL">Default</value>
+  <value name="webappLoad">yes</value>
+  <value name="build"></value>
+  <value name="description"></value>
+  <value name="time">2018-10-12 14:07:03 UTC</value>
+  <value name="jvm_version">1.8.0_151</value>
+  <value name="patch_nums"></value>
+</Values>

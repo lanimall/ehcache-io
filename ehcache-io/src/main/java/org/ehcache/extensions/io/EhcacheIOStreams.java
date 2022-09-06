@@ -25,7 +25,7 @@ public class EhcacheIOStreams {
      * @return     true if Stream entry is in cache
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
-    public static boolean containStreamEntry(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
+    public static boolean containStreamEntry(Ehcache cache, Object cacheKey) {
         checkValid(cache, cacheKey);
 
         return EhcacheStreamUtilsFactory.getUtils(cache).containsStreamEntry(cacheKey);
@@ -39,7 +39,7 @@ public class EhcacheIOStreams {
      * @return     List of stream entry keys in cache
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
-    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys) throws EhcacheStreamException {
+    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys) {
         checkValid(cache);
 
         return EhcacheStreamUtilsFactory.getUtils(cache).getAllStreamEntryKeys(excludeExpiredKeys);
@@ -57,7 +57,7 @@ public class EhcacheIOStreams {
      * @return     List of stream entry keys in cache that satisfy the filters
      * @exception  EhcacheStreamException if cache or cacheKey are not valid
      */
-    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys, boolean includeNoReads, boolean includeNoWrites, boolean includeReadsOnly, boolean includeWritesOnly) throws EhcacheStreamException {
+    public static List getStreamEntryKeys(Ehcache cache, boolean excludeExpiredKeys, boolean includeNoReads, boolean includeNoWrites, boolean includeReadsOnly, boolean includeWritesOnly) {
         checkValid(cache);
 
         return EhcacheStreamUtilsFactory.getUtils(cache).getAllStreamEntryKeys(excludeExpiredKeys, includeNoReads, includeNoWrites, includeReadsOnly, includeWritesOnly);
@@ -122,8 +122,9 @@ public class EhcacheIOStreams {
             return EhcacheStreamReadersFactory.getStream(
                     cache,
                     cacheKey,
-                    bufferSize,
-                    openTimeout);
+                    openTimeout,
+                    bufferSize
+                    );
         } else {
             return null;
         }
@@ -168,19 +169,19 @@ public class EhcacheIOStreams {
 
     //////////////////////////// Internal Validators
 
-    private static void checkValid(Ehcache cache) throws EhcacheStreamException {
+    private static void checkValid(Ehcache cache) {
         if(cache == null)
-            throw new EhcacheStreamIllegalStateException("Cache may not be null");
+            throw new EhcacheStreamIllegalArgumentException("Cache may not be null");
 
         if(cache.isDisabled())
-            throw new EhcacheStreamIllegalStateException("Cache is disabled");
+            throw new EhcacheStreamIllegalArgumentException("Cache is disabled");
 
     }
 
-    private static void checkValid(Ehcache cache, Object cacheKey) throws EhcacheStreamException {
+    private static void checkValid(Ehcache cache, Object cacheKey) {
         checkValid(cache);
 
         if(cacheKey == null)
-            throw new EhcacheStreamIllegalStateException("cacheKey may not be null");
+            throw new EhcacheStreamIllegalArgumentException("cacheKey may not be null");
     }
 }

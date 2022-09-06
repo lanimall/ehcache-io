@@ -13,4 +13,6 @@ public interface EhcacheStreamWriter extends Closeable {
     void close() throws EhcacheStreamException;
 
     void writeData(byte[] buf, int count) throws EhcacheStreamException;
+
+    Object getPublicCacheKey();
 }

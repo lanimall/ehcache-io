@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ehcache xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="ehcache.xsd" updateCheck="false"
+         monitoring="autodetect" dynamicConfig="true" name="EhcacheStreamsDistributedTest">
+
+    <diskStore path="java.io.tmpdir"/>
+
+    <terracottaConfig url="localhost:9510" rejoin="true" />
+
+    <defaultCache eternal="false" maxElementsInMemory="100000"
+                  timeToIdleSeconds="120" timeToLiveSeconds="120" maxElementsOnDisk="1000000"/>
+
+    <cache name="FileStoreDistributedStrongNoLocal"
+           maxEntriesLocalHeap="0"
+           overflowToOffHeap="false"
+           eternal="true">
+
+        <cacheDecoratorFactory
+                class="org.ehcache.extensions.io.EhcacheStreamDecoratorFactory"
+                properties="puts_overwrite=true,gets_asbytes=true,gets_compression=false,puts_compression=false"
+                propertySeparator="," />
+
+        <!-- must be pinned inCache to avoid cache entries being thrown out randomly -->
+        <pinning store="inCache"></pinning>
+
+        <!-- should be set to strong to keep consistent across the cluster -->
+        <terracotta consistency="strong" localCacheEnabled="false">
+            <nonstop immediateTimeout="false" timeoutMillis="60000">
+                <timeoutBehavior type="exception" />
+            </nonstop>
+        </terracotta>
+
+        <searchable keys="false" values="false" allowDynamicIndexing="false">
+            <searchAttribute name="publicKey" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <!-- if the custom key is a complex object, you can extract any attribute using expression -->
+            <!--<searchAttribute name="publicKey1" expression="key.cacheKey.attr1.subattr2"/>-->
+
+            <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="chunkSize" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastRead" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWritten" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+        </searchable>
+    </cache>
+
+    <cache name="FileStoreDistributedStrong"
+           maxEntriesLocalHeap="1000"
+           overflowToOffHeap="true"
+           maxBytesLocalOffHeap="256m"
+           eternal="true">
+
+        <cacheDecoratorFactory
+                class="org.ehcache.extensions.io.EhcacheStreamDecoratorFactory"
+                properties="puts_overwrite=true,gets_asbytes=true,gets_compression=false,puts_compression=false"
+                propertySeparator="," />
+
+        <!-- must be pinned inCache to avoid cache entries being thrown out randomly -->
+        <pinning store="inCache"></pinning>
+
+        <!-- should be set to strong to keep consistent across the cluster -->
+        <terracotta consistency="strong">
+            <nonstop immediateTimeout="false" timeoutMillis="60000">
+                <timeoutBehavior type="exception" />
+            </nonstop>
+        </terracotta>
+
+        <searchable keys="false" values="false" allowDynamicIndexing="false">
+            <searchAttribute name="publicKey" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <!-- if the custom key is a complex object, you can extract any attribute using expression -->
+            <!--<searchAttribute name="publicKey1" expression="key.cacheKey.attr1.subattr2"/>-->
+
+            <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="chunkSize" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastRead" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWritten" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+        </searchable>
+    </cache>
+
+    <cache name="FileStoreDistributedEventual"
+           maxEntriesLocalHeap="1000"
+           overflowToOffHeap="true"
+           maxBytesLocalOffHeap="256m"
+           eternal="true">
+
+        <cacheDecoratorFactory
+                class="org.ehcache.extensions.io.EhcacheStreamDecoratorFactory"
+                properties="puts_overwrite=true,gets_asbytes=true,gets_compression=false,puts_compression=false"
+                propertySeparator="," />
+
+        <!-- must be pinned inCache to avoid cache entries being thrown out randomly -->
+        <pinning store="inCache"></pinning>
+
+        <!-- should be set to strong to keep consistent across the cluster -->
+        <terracotta consistency="eventual">
+            <nonstop immediateTimeout="false" timeoutMillis="60000">
+                <timeoutBehavior type="exception" />
+            </nonstop>
+        </terracotta>
+
+        <searchable keys="false" values="false" allowDynamicIndexing="false">
+            <searchAttribute name="publicKey" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <!-- if the custom key is a complex object, you can extract any attribute using expression -->
+            <!--<searchAttribute name="publicKey1" expression="key.cacheKey.attr1.subattr2"/>-->
+
+            <searchAttribute name="keyType" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="keyChunkIndex" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamKeyExtractor"/>
+            <searchAttribute name="chunkCount" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="chunkSize" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="writers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="readers" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastRead" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+            <searchAttribute name="lastWritten" class="org.ehcache.extensions.io.impl.utils.extractors.EhcacheStreamValueExtractor"/>
+        </searchable>
+    </cache>
+</ehcache>

@@ -1,6 +1,9 @@
-package org.ehcache.extensions.io.impl.utils;
+package org.ehcache.extensions.io.impl.utils.cas;
 
 import org.ehcache.extensions.io.EhcacheStreamingTestsBase;
+import org.ehcache.extensions.io.impl.utils.EhcacheStreamCasTest;
+import org.ehcache.extensions.io.impl.utils.cas.ConstantWaitStrategy;
+import org.ehcache.extensions.io.impl.utils.cas.ExponentialWait;
 import org.junit.Assert;
 import org.junit.Test;
 import org.slf4j.Logger;
